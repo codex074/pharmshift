@@ -17,6 +17,7 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
   const [formData, setFormData] = useState({
     fullname: currentUser.fullname || '',
     nickname: currentUser.nickname || '',
+    salary_number: currentUser.salary_number || '',
     password: '',
     confirmPassword: '',
   });
@@ -44,6 +45,7 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
         body: JSON.stringify({
           nickname: formData.nickname.trim(),
           fullname: formData.fullname.trim(),
+          salary_number: formData.salary_number.trim(),
           password: formData.password || undefined,
         }),
       });
@@ -108,6 +110,21 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
                   className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
                 />
                 <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">เลขที่รับเงินเดือน</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="salary_number"
+                  value={formData.salary_number}
+                  onChange={handleChange}
+                  placeholder="กรอกเลขที่รับเงินเดือน"
+                  className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+                />
+                <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
               </div>
             </div>
 

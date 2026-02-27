@@ -83,6 +83,9 @@ interface DayEntry {
 interface UserRowData {
   userId: string;
   fullName: string;
+  salaryNumber: string;
+  role: string;
+  phaId: number;
   days: Record<number, DayEntry[]>;
   totalValue: number;
   totalAmount: number;
@@ -167,10 +170,18 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         const targetName = s.user?.name || s.user_name || '';
         const prefix = s.user?.prefix || s.user_prefix || '';
         const generatedFullName = `${prefix}${targetName}`.trim() || s.user?.nickname || s.user_nickname || 'ไม่ทราบชื่อ';
+        const salaryNumber = s.user?.salary_number || '';
         
+        const role = s.user?.role || 'pharmacist';
+        const phaIdRaw = s.user?.pha_id || 0;
+        const phaId = typeof phaIdRaw === 'number' ? phaIdRaw : parseInt(phaIdRaw as string, 10) || 0;
+
         userRow = {
           userId: s.user_id,
           fullName: generatedFullName,
+          salaryNumber: salaryNumber,
+          role,
+          phaId,
           days: {},
           totalValue: 0,
           totalAmount: 0,
@@ -188,9 +199,22 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       userRow.totalAmount += val * config.rate;
     }
 
+    const roleWeight: Record<string, number> = {
+      pharmacist: 1,
+      pharmacy_technician: 2,
+      officer: 3,
+    };
+
     const rowsData = Array.from(userMap.values())
       .filter(u => u.totalValue > 0)
-      .sort((a, b) => a.fullName.localeCompare(b.fullName, 'th'));
+      .sort((a, b) => {
+        const weightA = roleWeight[a.role] || 4;
+        const weightB = roleWeight[b.role] || 4;
+        if (weightA !== weightB) {
+          return weightA - weightB;
+        }
+        return a.phaId - b.phaId;
+      });
 
     // 2. Setup Columns matching 39 total columns (A to AM)
     const columns = [
@@ -311,7 +335,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
         if (isRegularShift) {
           // Output 2 rows.
-          const rowValues1: any[] = [runningSeq, '', row.fullName, 'เภสัชกร', config.rate];
+          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' : 
+                                row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
+          const rowValues1: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.rate];
           const rowValues2: any[] = ['', '', '', '', ''];
 
           for (let i = 1; i <= 31; i++) {
@@ -357,11 +383,13 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
           });
         } else {
           // Output 1 row
+          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' : 
+                                row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
           const rowValues: any[] = [
             runningSeq,
-            '', // salaryNo (empty)
+            row.salaryNumber, // salaryNo
             row.fullName,
-            'เภสัชกร',
+            positionLabel,
             config.rate,
           ];
 

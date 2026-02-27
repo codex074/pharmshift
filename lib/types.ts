@@ -1,5 +1,17 @@
 // TypeScript interfaces for เวรดี๊ดี
 
+export type UserRole = 'pharmacist' | 'pharmacy_technician' | 'officer' | 'admin';
+
+export const ROLE_LABELS: Record<UserRole, string> = {
+  pharmacist:          'เภสัชกร',
+  pharmacy_technician: 'เจ้าพนักงานเภสัชกรรม',
+  officer:             'เจ้าหน้าที่',
+  admin:               'ผู้ดูแลระบบ',
+};
+
+/** Non-admin roles that have shift schedules */
+export const STAFF_ROLES: UserRole[] = ['pharmacist', 'pharmacy_technician', 'officer'];
+
 export interface User {
   id: string;
   auth_id?: string;
@@ -8,10 +20,11 @@ export interface User {
   fullname?: string;
   nickname?: string;
   prefix?: string; // ภก. or ภญ.
-  role: 'pharmacist' | 'admin';
+  role: UserRole;
   profile_image?: 'male' | 'female';
   password?: string;           // plain-text copy stored in DB
   must_change_password?: boolean;
+  salary_number?: string;
   created_at?: string;
 }
 
@@ -61,7 +74,7 @@ export interface CalendarDay {
   isToday: boolean;
 }
 
-export type ShiftType = 'เช้า' | 'บ่าย' | 'ดึก' | 'รุ่งอรุณ';
+export type ShiftType = 'เช้า' | 'บ่าย' | 'ดึก' | 'รุ่งอรุณ' | 'smc';
 
 // ─── Shift Structure Config ─────────────────────────
 
@@ -162,6 +175,7 @@ export const SHIFT_CONFIG: Record<ShiftType, { icon: string; color: string; labe
   บ่าย:    { icon: '☀️', color: '#0ea5e9', label: 'บ่าย',    time: '16:30-23:59' },
   ดึก:     { icon: '🌙', color: '#6366f1', label: 'ดึก',     time: '00:00-08:30' },
   รุ่งอรุณ: { icon: '🌄', color: '#f97316', label: 'รุ่งอรุณ', time: '07:00-08:30' },
+  smc:     { icon: '🏥', color: '#a855f7', label: 'SMC',      time: '16:30-20:30' },
 };
 
 // Keep legacy exports for backward compat
@@ -180,4 +194,5 @@ export const SHIFT_STYLES: Record<string, { badge: string; label: string; icon: 
   บ่าย:    { badge: 'badge-bai',  label: 'บ่าย',    icon: '☀️' },
   ดึก:     { badge: 'badge-duek', label: 'ดึก',     icon: '🌙' },
   รุ่งอรุณ: { badge: 'badge-rung', label: 'รุ่งอรุณ', icon: '🌄' },
+  smc:     { badge: 'badge-smc',  label: 'SMC',     icon: '🏥' },
 };

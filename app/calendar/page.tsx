@@ -7,6 +7,8 @@ import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser } from '@/hooks/useShifts';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
+import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
+import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
@@ -17,9 +19,10 @@ import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import type { Shift, CalendarDay } from '@/lib/types';
-import { SHIFT_CONFIG, DEPT_COLORS } from '@/lib/types';
+import type { Shift, CalendarDay, UserRole } from '@/lib/types';
+import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 export default function CalendarPage() {
   const now = new Date();
@@ -30,9 +33,19 @@ export default function CalendarPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
+  const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
-  const { shifts, isPublished, loading: shiftsLoading, refetch } = useShifts(year, month);
+  const { shifts: allShifts, isPublished, loading: shiftsLoading, refetch } = useShifts(year, month);
+
+  // For admin: use viewRoleGroup selector; for staff: use own role
+  const effectiveRoleGroup: UserRole =
+    currentUser?.role === 'admin'
+      ? viewRoleGroup
+      : (currentUser?.role as UserRole) ?? 'pharmacist';
+
+  // Shifts for the active role group (used in "ทุกเวร" view)
+  const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
   const {
     swapRequests, pendingCount, acceptSwap, rejectSwap,
   } = useSwapRequests(currentUser?.id);
@@ -79,8 +92,8 @@ export default function CalendarPage() {
     setSelectedShift(shift);
   }
 
-  // Stats
-  const myShifts  = shifts.filter((s) => s.user_id === currentUser?.id);
+  // Stats — myShifts comes from allShifts so it's never empty for own user
+  const myShifts  = allShifts.filter((s) => s.user_id === currentUser?.id);
   const chaoCount = shifts.filter((s) => s.shift_type === 'เช้า').length;
   const baiCount  = shifts.filter((s) => s.shift_type === 'บ่าย').length;
   const duekCount = shifts.filter((s) => s.shift_type === 'ดึก').length;
@@ -110,12 +123,12 @@ export default function CalendarPage() {
         onViewModeChange={setViewMode}
       />
 
-      <main className="max-w-screen-xl mx-auto px-4 py-6 space-y-5">
+      <main className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              {viewMode === 'mine' ? 'เวรของฉัน' : 'ตารางเวรเภสัชกร'}
+              {viewMode === 'mine' ? 'เวรของฉัน' : `ตารางเวร${ROLE_LABELS[effectiveRoleGroup]}`}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
           </div>
@@ -137,10 +150,38 @@ export default function CalendarPage() {
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
-            <ExcelExportButton shifts={shifts} year={year} month={month} />
+            <ExcelExportButton year={year} month={month} />
             <ExportButton shifts={viewMode === 'mine' ? myShifts : shifts} year={year} month={month} />
           </div>
         </div>
+
+        {/* Admin: role group tab switcher */}
+        {currentUser?.role === 'admin' && (
+          <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm self-start mb-2">
+            {STAFF_ROLES.map((role) => {
+              const isActive = viewRoleGroup === role;
+              let activeClass = 'bg-gray-800 text-white shadow-md'; 
+              if (role === 'pharmacist') activeClass = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20';
+              if (role === 'pharmacy_technician') activeClass = 'bg-violet-600 text-white shadow-md shadow-violet-600/20';
+              if (role === 'officer') activeClass = 'bg-sky-500 text-white shadow-md shadow-sky-500/20';
+
+              return (
+                <button
+                  key={role}
+                  onClick={() => setViewRoleGroup(role)}
+                  className={cn(
+                    'px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300',
+                    isActive
+                      ? activeClass
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-white/60'
+                  )}
+                >
+                  {ROLE_LABELS[role]}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {!isPublished && currentUser?.role === 'admin' && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-center gap-2">
@@ -169,22 +210,24 @@ export default function CalendarPage() {
           {/* PDF Title Header (hidden on web, shown in PDF) */}
           <div className="hidden pdf-show pb-2">
             <h2 className="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-4">
-              ตารางเวรเภสัชกรประจำเดือน {formatThaiMonth(year, month)}
+              ตารางเวร{ROLE_LABELS[effectiveRoleGroup]}ประจำเดือน {formatThaiMonth(year, month)}
             </h2>
           </div>
 
           {/* Legend */}
-          <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
-            <div className="text-green-700">
-              Med รายชื่อ1 = D/C , รายชื่อ 2 = ยา Cont
+          {effectiveRoleGroup === 'pharmacist' && (
+            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
+              <div className="text-green-700">
+                Med รายชื่อ1 = D/C , รายชื่อ 2 = ยา Cont
+              </div>
+              <div className="text-orange-900">
+                บ่าย ชื่อ1 = บ่าย ER ,รายชื่อ 2 =บ่าย MED
+              </div>
+              <div className="text-red-600">
+                รุ่งอรุณ ชื่อ 1 = OPD ชื่อ 2 = ER ชื่อ 3 = HIV
+              </div>
             </div>
-            <div className="text-orange-900">
-              บ่าย ชื่อ1 = บ่าย ER ,รายชื่อ 2 =บ่าย MED
-            </div>
-            <div className="text-red-600">
-              รุ่งอรุณ ชื่อ 1 = OPD ชื่อ 2 = ER ชื่อ 3 = HIV
-            </div>
-          </div>
+          )}
 
           {/* Calendar */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
@@ -204,6 +247,24 @@ export default function CalendarPage() {
                 month={month}
                 shifts={myShifts}
                 onDayClick={handleDayClick}
+              />
+            ) : effectiveRoleGroup === 'pharmacy_technician' ? (
+              <PharmacyTechCalendarGrid
+                year={year}
+                month={month}
+                shifts={shifts}
+                currentUser={currentUser}
+                onDayClick={handleDayClick}
+                viewMode={viewMode}
+              />
+            ) : effectiveRoleGroup === 'officer' ? (
+              <OfficeCalendarGrid
+                year={year}
+                month={month}
+                shifts={shifts}
+                currentUser={currentUser}
+                onDayClick={handleDayClick}
+                viewMode={viewMode}
               />
             ) : (
               <CalendarGrid
@@ -233,6 +294,7 @@ export default function CalendarPage() {
         <DayDetailModal
           day={selectedDay}
           currentUser={currentUser}
+          roleGroup={effectiveRoleGroup}
           onClose={() => setSelectedDay(null)}
           onSwapClick={handleSwapClickFromDay}
         />

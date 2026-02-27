@@ -34,7 +34,17 @@ export function PdfExportButton({ targetId, filename }: PdfExportButtonProps) {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        windowWidth: 1200, // Force a desktop width layout
+        // Increase windowWidth to ensure we capture the full min-w-[1240px] calendar
+        windowWidth: 1400,
+        // Wait for elements to be fully rendered
+        onclone: (clonedDoc) => {
+          const el = clonedDoc.getElementById(targetId);
+          if (el) {
+            // Force the element to stay within the simulated wide window
+            el.style.width = '1400px';
+            el.style.maxWidth = '1400px';
+          }
+        }
       });
 
       document.body.classList.remove('exporting-pdf');
@@ -53,12 +63,15 @@ export function PdfExportButton({ targetId, filename }: PdfExportButtonProps) {
       
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const ratio = Math.min((pdfWidth - 20) / imgWidth, (pdfHeight - 20) / imgHeight); // 10mm margins on all sides
       
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 10; // small top margin
+      const adjustedWidth = imgWidth * ratio;
+      const adjustedHeight = imgHeight * ratio;
 
-      pdf.addImage(imgData, 'JPEG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      const imgX = (pdfWidth - adjustedWidth) / 2;
+      const imgY = 10; // top margin
+
+      pdf.addImage(imgData, 'JPEG', imgX, imgY, adjustedWidth, adjustedHeight);
       pdf.save(`${filename}.pdf`);
       
       toast.success('ส่งออก PDF เรียบร้อยแล้ว');

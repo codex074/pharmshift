@@ -44,9 +44,11 @@ export function Header({
     onMonthChange(d.getFullYear(), d.getMonth() + 1);
   }
 
-  const displayName = currentUser?.prefix
-    ? `${currentUser.prefix}${currentUser.nickname || currentUser.name}`
-    : currentUser?.name || '';
+  const displayName = currentUser?.fullname
+    ? currentUser.fullname
+    : currentUser?.prefix
+      ? `${currentUser.prefix}${currentUser.name}`
+      : currentUser?.name || '';
 
   return (
     <>

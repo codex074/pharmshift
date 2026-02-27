@@ -10,7 +10,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullname, nickname, password } = body;
+    const { fullname, nickname, password, salary_number } = body;
 
     if (!fullname || !nickname) {
       return NextResponse.json({ error: 'Missing required fields (fullname, nickname)' }, { status: 400 });
@@ -21,6 +21,7 @@ export async function PUT(req: NextRequest) {
     const updatePayload: any = {
       fullname,
       nickname,
+      salary_number: salary_number || null,
     };
 
     if (password && password.trim() !== '') {

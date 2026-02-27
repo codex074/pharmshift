@@ -202,6 +202,11 @@ body.exporting-pdf .pdf-show {
   display: block !important;
 }
 
+body.exporting-pdf .overflow-x-auto {
+  overflow-x: visible !important;
+  width: max-content !important;
+}
+
 /* ── SweetAlert2 PharmShift Theme ───────────────────────────────────────── */
 
 /* Modal Popup */

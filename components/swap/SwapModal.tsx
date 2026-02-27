@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, Clock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import type { Shift, User as UserType } from '@/lib/types';
-import { DEPT_STYLES, SHIFT_STYLES } from '@/lib/types';
+import type { Shift, User as UserType, UserRole } from '@/lib/types';
+import { DEPT_STYLES, SHIFT_STYLES, ROLE_LABELS } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -31,18 +31,20 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
 
   useEffect(() => {
     if (!shift) return;
+    // Filter by same role as the shift owner so only same-role users can swap
+    const ownerRole: UserRole = (shift.user as any)?.role || currentUser?.role || 'pharmacist';
     setFetchingUsers(true);
     supabase
       .from('users')
       .select('*')
-      .eq('role', 'pharmacist')
+      .eq('role', ownerRole)
       .neq('id', shift.user_id)
       .order('name')
       .then(({ data }) => {
         setUsers(data as UserType[] || []);
         setFetchingUsers(false);
       });
-  }, [shift]);
+  }, [shift, currentUser]);
 
   // Fetch shifts for the secondary selection in 'swap' mode
   useEffect(() => {
@@ -92,8 +94,10 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
   if (!shift || !currentUser) return null;
 
   const deptName = (shift.department as { name: string })?.name || '';
-  const shiftOwner = (shift.user as { name: string; nickname?: string });
+  const shiftOwner = (shift.user as { name: string; nickname?: string; role?: UserRole });
   const ownerLabel = shiftOwner?.nickname || shiftOwner?.name || '—';
+  const ownerRole: UserRole = shiftOwner?.role || currentUser?.role || 'pharmacist';
+  const roleName = ROLE_LABELS[ownerRole] || 'เภสัชกร';
   const shiftDate = new Date(shift.date + 'T00:00:00');
   const isOwnShift = currentUser.id === shift.user_id;
 
@@ -109,7 +113,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
 
       if (requestType === 'transfer') {
         if (isOwnShift) {
-          if (!selectedUser) throw new Error("กรุณาเลือกเภสัชกรปลายทาง");
+          if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ปลายทาง`);
           submitTargetUserId = selectedUser.id;
         } else {
           submitTargetUserId = shift.user_id;
@@ -119,7 +123,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         // Swap
         if (!selectedTargetShift) throw new Error("กรุณาเลือกเวรที่จะแลก");
         if (isOwnShift) {
-          if (!selectedUser) throw new Error("กรุณาเลือกเภสัชกรปลายทาง");
+          if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ปลายทาง`);
           submitTargetUserId = selectedUser.id;
           submitShiftId = shift.id;
           submitTargetShiftId = selectedTargetShift.id;
@@ -294,7 +298,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           {isOwnShift && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                เลือกเภสัชกรปลายทาง
+                เลือก{roleName}ปลายทาง
               </h3>
               {fetchingUsers ? (
                 <div className="flex items-center justify-center py-4">

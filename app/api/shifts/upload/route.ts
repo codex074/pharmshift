@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
       const row = dataRows[r];
       if (!row || row.length === 0) continue;
 
-      const userIdentifier = String(row[0] || '').trim();
+      const userIdentifier = String(row[1] || '').trim();
       if (!userIdentifier) continue;
 
       const userId = userMap.get(userIdentifier.toLowerCase());
@@ -144,7 +144,7 @@ export async function POST(req: NextRequest) {
       }
 
       for (let day = 1; day <= 31; day++) {
-        const cellValue = row[day];
+        const cellValue = row[day + 1];
         if (!cellValue) continue;
 
         const dateObj = new Date(targetYear, targetMonth - 1, day);

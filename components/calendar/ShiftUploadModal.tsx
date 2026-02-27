@@ -145,9 +145,13 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
           <div className="bg-blue-50 text-blue-800 p-4 rounded-xl text-sm border border-blue-100 flex items-start gap-3">
             <FileDown className="w-5 h-5 flex-shrink-0 mt-0.5 text-blue-600" />
             <div>
-              <p className="font-semibold mb-1">ดาวน์โหลดไฟล์ตัวอย่าง</p>
-              <p className="text-blue-700/80 mb-2">ใช้ไฟล์นี้เป็นแบบฟอร์มเพื่อกรอกข้อมูลเวรที่จะโยนเข้าระบบ (ใส่ชื่อเวรย่อในแต่ละวัน)</p>
-              <a href="/sample_shifts.xlsx" download className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-blue-700 font-medium hover:bg-blue-50 transition-colors shadow-sm">
+              <p className="font-semibold mb-1">คำแนะนำการเตรียมไฟล์ Excel</p>
+              <ul className="text-blue-700/80 mb-2 list-disc pl-4 space-y-1 text-xs">
+                <li>เริ่มใส่ชื่อ-นามสกุล หรือ รหัสประจำตัวใน <strong>คอลัมน์ B</strong></li>
+                <li>เวรของวันที่ 1-31 ให้เริ่มใส่ตั้งแต่ <strong>คอลัมน์ C</strong> เป็นต้นไป</li>
+                <li><strong>คอลัมน์ A</strong> จะถูกเพิกเฉย (สามารถใช้ใส่ข้อมูลอื่นได้ เช่น ลำดับที่)</li>
+              </ul>
+              <a href="/sample_shifts.xlsx" download className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-blue-200 rounded-lg text-blue-700 font-medium hover:bg-blue-50 transition-colors shadow-sm mt-1">
                 <FileDown className="w-4 h-4" />
                 ดาวน์โหลด Excel
               </a>

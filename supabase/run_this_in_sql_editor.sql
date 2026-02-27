@@ -32,3 +32,6 @@ create policy "Users can see swap requests involving them" on public.swap_reques
 create policy "Users can create swap requests" on public.swap_requests for insert with check (true);
 create policy "Target user can update (accept/reject)" on public.swap_requests for update using (true);
 create policy "Allowed to delete swap requests" on public.swap_requests for delete using (true);
+
+-- Add salary_number to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS salary_number TEXT;
