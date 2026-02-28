@@ -6,8 +6,9 @@ import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight border-b border-r border-gray-400/50 flex flex-wrap items-center justify-center p-0.5 min-h-[1.5rem] relative";
+const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.5rem] relative";
+const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
 
 interface CalendarGridProps {
   year: number;
@@ -57,7 +58,7 @@ export function OfficeCalendarGrid({ year, month, shifts, currentUser, onDayClic
       <div className="min-w-[1000px] select-none">
         
         {/* Header Row */}
-        <div className="grid grid-cols-7 border-b-2 border-gray-400/60">
+        <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-gray-400/60">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
               'py-1.5 text-center text-xs font-bold border-r-2 border-gray-400/60',
@@ -70,7 +71,7 @@ export function OfficeCalendarGrid({ year, month, shifts, currentUser, onDayClic
 
         {/* Days */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b-2 border-gray-400/60 h-auto">
+          <div key={wi} className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-gray-400/60 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
                 return <div key={di} className="border-r-2 border-gray-400/60 bg-gray-100/50" />;
@@ -79,7 +80,7 @@ export function OfficeCalendarGrid({ year, month, shifts, currentUser, onDayClic
 
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none" />}
+                  {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
                   <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
                 </div>
               );
@@ -113,7 +114,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
@@ -124,60 +125,304 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
 
 function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
-  const dow = day.date.getDay();
+  const dow = day.date.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
   const isWeekend = dow === 0 || dow === 6;
 
-  if (isWeekend) {
+  const br = 'border-r border-gray-400/60';
+  const bb = 'border-b border-gray-400/60';
+  const rowH = 'min-h-[1.5rem]';
+
+  const subHdr = (extra?: string) => cn(
+    'flex items-center justify-center font-bold text-[10px] xl:text-[11px] tracking-tight truncate',
+    rowH, bb, extra
+  );
+  const nameCell = (extra?: string) => cn(
+    'bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5',
+    rowH, bb, extra
+  );
+  const empty = (extra?: string) => cn('bg-white', rowH, bb, extra);
+
+  /** Sorted shift list for a given type + optional dept */
+  const getList = (shiftType: ShiftType, dept?: string): Shift[] => {
+    const list = day.shifts.filter(s =>
+      s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
+    );
+    list.sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
+    return list;
+  };
+
+  /** Single slot cell: shows the i-th shift or an empty cell */
+  const slot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
+    const list = getList(shiftType, dept);
+    const s = list[i];
+    const isMe = s && currentUser && s.user_id === currentUser.id;
     return (
-      <div className="grid grid-cols-[1.5fr_1.5fr_1.5fr_1.25fr_1.25fr] grid-rows-[repeat(5,_minmax(1.75rem,_auto))] h-full" onClick={() => onDayClick(day)}>
-        <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 5' }}></div>
-        <div className={cn(headerStyle, dow === 0 ? 'text-red-500' : 'text-indigo-600', 'text-sm')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
+      <div className={cn(nameCell(), cls)}>
+        {s && (
+          <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+            {getUserName(s)}
+          </span>
+        )}
+      </div>
+    );
+  };
 
-        <div className={headerStyle} style={{ gridArea: '2 / 1 / 3 / 2' }}>คพ</div>
-        <div className={headerStyle} style={{ gridArea: '2 / 2 / 3 / 3' }}>Surg</div>
-        <div className={headerStyle} style={{ gridArea: '2 / 3 / 3 / 4' }}>MED</div>
-        <div className={cn(headerStyle, 'bg-[#ffffff] px-0')} style={{ gridArea: '2 / 4 / 3 / 5' }}>บ่ายMED</div>
-        <div className={cn(headerStyle, 'bg-[#ffffff] px-0')} style={{ gridArea: '2 / 5 / 3 / 6' }}>บ่ายER</div>
+  // ═══════════════════════════════════════════════════════════════════  //
+  // WEEKEND (เสาร์/อาทิตย์)
+  //
+  // เสาร์: 6 คอล — โครงการ | Surg | MED | บ่ายMED | บ่ายER | ส่งยา สอ.
+  // อาทิตย์: 5 คอล — โครงการ | Surg | MED | บ่ายMED | บ่ายER
+  //
+  // Layout (2 morning rows + ER row + post-ER rows):
+  //   Row 0: โครงการ[0] | Surg[0] | MED[0] | บ่ายMED[0]* | บ่ายER[0]
+  //   Row 1: โครงการ[1] | Surg[1] | MED[1] | (empty)*    | บ่ายER[1]
+  //   ER row: "ER" | ER[0]* | (empty) | "ดึก"(gray) spanning c4+c5
+  //   Post-ER row 0: (empty) | Surg[2] | MED[2] | ดึก[0] spanning c4+c5
+  //   Post-ER row 1 (Sun only): (empty) | (empty) | MED[3] | (empty)
+  //   (* = ลบ border-b เพื่อให้เป็น 1 ช่อง ไม่มีเส้นแบ่ง)
+  //
+  // สรุปจำนวน slot: โครงการ=2, ER=1, Surg=3, MED=3(เสาร์)/4(อาทิตย์)
+  //                 บ่ายMED=1, บ่ายER=2, ดึก=1
+  // ═══════════════════════════════════════════════════════════════════
+  if (isWeekend) {
+    const isSun = dow === 0;
+    const isSat = dow === 6;
+    const dateColor = isSun ? 'text-red-500' : 'text-indigo-600';
+    const dateBg    = isSun ? 'bg-red-200'  : 'bg-[#e9d5ff]';
 
-        <div className={cn(nameCellStyle, 'bg-[#bbf7d0] hover:bg-[#86efac]')} style={{ gridArea: '3 / 1 / 6 / 2' }}>
-          {renderNames(day.shifts, 'เช้า', 'โครงการ', currentUser)}
-          {renderNames(day.shifts, 'เช้า', 'ER', currentUser)}
+    // Post-ER rows: always 1 for both Sat and Sun (removes extra MED[3] row)
+    const postErRows = 1;
+
+    // Fix row height: h-[1.75rem] for consistent equal-height SURG cells
+    const fixedRowH = 'h-[1.75rem]';
+
+    // Column widths: Sat adds ส่งยา สอ. column
+    const c1 = isSat ? 'w-[15%]' : 'w-[20%]';
+    const c2 = isSat ? 'w-[15%]' : 'w-[20%]';
+    const c3 = isSat ? 'w-[15%]' : 'w-[20%]';
+    const c4 = isSat ? 'w-[15%]' : 'w-[20%]';
+    const c5 = isSat ? 'w-[15%]' : 'flex-1';
+    const dukW = isSat ? 'w-[30%]' : 'flex-1';
+
+    // Slot cell with flex-1 for absolute overlay
+    const surgSlot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
+      const list = day.shifts.filter(s =>
+        s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
+      ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
+      const s = list[i];
+      const isMe = s && currentUser && s.user_id === currentUser.id;
+      return (
+        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer flex-1', cls)}>
+          {s && (
+            <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+              {getUserName(s)}
+            </span>
+          )}
         </div>
-        <div className={cn(nameCellStyle, 'bg-[#a5f3fc] hover:bg-[#67e8f9]')} style={{ gridArea: '3 / 2 / 6 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', currentUser)}</div>
-        <div className={cn(nameCellStyle, 'bg-[#fef08a] hover:bg-[#fde047]')} style={{ gridArea: '3 / 3 / 6 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', currentUser)}</div>
-        <div className={nameCellStyle} style={{ gridArea: '3 / 4 / 5 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', currentUser)}</div>
-        <div className={nameCellStyle} style={{ gridArea: '3 / 5 / 5 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', currentUser)}</div>
+      );
+    };
 
-        <div className={cn(headerStyle, 'bg-[#ffffff] py-0.5 border-t-0')} style={{ gridArea: '5 / 4 / 6 / 5' }}>ดึก</div>
-        <div className={nameCellStyle} style={{ gridArea: '5 / 5 / 6 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', currentUser)}</div>
+    // Slot cell with fixed height
+    const fslot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
+      const list = day.shifts.filter(s =>
+        s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
+      ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
+      const s = list[i];
+      const isMe = s && currentUser && s.user_id === currentUser.id;
+      return (
+        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer', fixedRowH, bb, cls)}>
+          {s && (
+            <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+              {getUserName(s)}
+            </span>
+          )}
+        </div>
+      );
+    };
+    const fempty = (cls: string) => <div className={cn('bg-white', fixedRowH, bb, cls)} />;
+
+    return (
+      <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
+
+        {/* Date header */}
+        <div className={cn('flex items-center justify-center font-bold text-sm h-7', dateBg, dateColor, bb)}>
+          {dayNum}
+        </div>
+
+        {/* Column sub-headers */}
+        <div className="flex">
+          <div className={cn(c1, br, subHdr('bg-gray-200/60 text-gray-600'))}>โครงการ</div>
+          <div className={cn(c2, br, subHdr('bg-gray-200/60 text-gray-800'))}>Surg</div>
+          <div className={cn(c3, br, subHdr('bg-gray-200/60 text-gray-800'))}>MED</div>
+          <div className={cn(c4, br, subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายMED</div>
+          <div className={cn(c5, isSat ? br : '', subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายER</div>
+          {isSat && <div className={cn('flex-1', subHdr('bg-gray-200/60 text-gray-700'))}>ส่งยา สอ.</div>}
+        </div>
+
+        {/* === Rows Container === */}
+        <div className="relative flex-1 flex flex-col items-stretch">
+          {/* Morning Row 0 */}
+          <div className="flex">
+            {fslot('เช้า', 'โครงการ',  0, cn(c1, br))}
+            {fempty(cn(c2, br))}
+            {fslot('เช้า', 'MED',       0, cn(c3, br))}
+            {/* บ่ายMED: ลบ border-b เพื่อให้ดูเป็น 1 ช่อง (ไม่มีเส้นแบ่ง) */}
+            {fslot('บ่าย', 'MED',       0, cn(c4, br, 'border-b-0'))}
+            {fslot('บ่าย', 'ER',        0, cn(c5, isSat ? br : ''))}
+            {isSat && fslot('เช้า', 'ส่งยา สอ.', 0, 'flex-1')}
+          </div>
+
+          {/* Morning Row 1 */}
+          <div className="flex">
+            {fslot('เช้า', 'โครงการ',  1, cn(c1, br))}
+            {fempty(cn(c2, br))}
+            {fslot('เช้า', 'MED',       1, cn(c3, br))}
+            {/* บ่ายMED empty: ลบ border-b → ให้ต่อเนื่องกับ row 0 เป็น 1 ช่อง */}
+            {fempty(cn(c4, br, 'border-b-0'))}
+            {fslot('บ่าย', 'ER',        1, cn(c5, isSat ? br : ''))}
+            {isSat && fempty(cn('flex-1'))}
+          </div>
+
+          {/* ER separator row (gray) */}
+          <div className="flex">
+            <div className={cn(c1, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', fixedRowH)}>ER</div>
+            {/* SURG area empty string to retain border */}
+            {fempty(cn(c2, br))}
+            {fempty(cn(c3, br))}
+            {/* ดึก label: spans c4+c5 เท่านั้น */}
+            <div className={cn(dukW, isSat ? br : '', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', fixedRowH)}>ดึก</div>
+            {isSat && fempty('flex-1')}
+          </div>
+
+          {/* Post-ER rows: MED[2+], ดึก[0] spanning */}
+          {Array.from({ length: postErRows }, (_, i) => (
+            <div key={i} className="flex">
+              {fempty(cn(c1, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {fempty(cn(c2, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {/* MED[2] / MED[3] */}
+              {fslot('เช้า', 'MED', i + 2, cn(c3, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {/* ดึก[0] in first post-ER row, spanning c4+c5 */}
+              {i === 0
+                ? fslot('ดึก', 'ER', 0, cn(dukW, isSat ? br : '', postErRows === 1 ? 'border-b-0' : ''))
+                : <div className={cn(dukW, isSat ? br : '', 'bg-white', fixedRowH, i === postErRows - 1 ? 'border-b-0' : '')} />
+              }
+              {isSat && fempty(cn('flex-1', i === postErRows - 1 ? 'border-b-0' : ''))}
+            </div>
+          ))}
+
+          {/* SURG Overlay (3 equal height slots) */}
+          <div 
+            className={cn("absolute top-0 bottom-0 bg-white flex flex-col z-10", br)} 
+            style={{ 
+              left: isSat ? '15%' : '20%', 
+              width: isSat ? '15%' : '20%' 
+            }}
+          >
+            {surgSlot('เช้า', 'SURG', 0, 'border-b border-gray-400/60')}
+            {surgSlot('เช้า', 'SURG', 1, 'border-b border-gray-400/60')}
+            {surgSlot('เช้า', 'SURG', 2, '')}
+          </div>
+        </div>
+
       </div>
     );
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // WEEKDAY (จันทร์–ศุกร์)
+  //
+  // 3 คอล: โครงการ | บ่ายMED | บ่าย ER
+  //   (ดึก แสดงใน SMC separator row — ไม่มีคอลแยก)
+  //
+  // สรุปจำนวน slot: โครงการ=2, บ่ายMED=1, บ่ายER=2, ดึก=1, smc=2
+  //
+  // จันทร์–พฤหัส:
+  //   Row 0: โครงการ[0] | บ่ายMED[0] | บ่ายER[0]
+  //   Row 1: โครงการ[1] | (empty)    | บ่ายER[1]
+  //   SMC row (gray): "SMC" label (red) | "ดึก" label (spanning บ่ายMED+บ่ายER)
+  //   smc Row 0: smc[0] | ดึก[0](spanning)
+  //   smc Row 1: smc[1] | (empty)
+  //
+  // ศุกร์ (dow===5): ไม่มี SMC row/slots — แค่ 2 แถวธรรมดา
+  // ═══════════════════════════════════════════════════════════════════
+
+  const isFriday = dow === 5;
+  const col1w = 'w-[33.333%]';
+
   return (
-    <div className="grid grid-cols-[2fr_1fr_1fr] grid-rows-[repeat(5,_minmax(1.75rem,_auto))] h-full" onClick={() => onDayClick(day)}>
-      <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 3' }}></div>
-      <div className={cn(headerStyle, 'text-gray-900 text-sm')} style={{ gridArea: '1 / 3 / 2 / 4' }}>{dayNum}</div>
+    <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
-      <div className={cn(headerStyle, 'bg-[#ffffff]')} style={{ gridArea: '2 / 1 / 3 / 2' }}>คพ</div>
-      <div className={cn(headerStyle, 'bg-[#ffffff]')} style={{ gridArea: '2 / 2 / 3 / 3' }}>บ่ายMED</div>
-      <div className={cn(headerStyle, 'bg-[#ffffff]')} style={{ gridArea: '2 / 3 / 3 / 4' }}>บ่ายER</div>
-
-      <div className={nameCellStyle} style={{ gridArea: '3 / 1 / 5 / 2' }}>
-        {renderNames(day.shifts, 'เช้า', 'โครงการ', currentUser)}
-        {renderNames(day.shifts, 'เช้า', 'MED', currentUser)}
-        {renderNames(day.shifts, 'รุ่งอรุณ', 'รุ่งอรุณ', currentUser)}
+      {/* Date header */}
+      <div className={cn('flex items-center justify-center font-bold text-sm h-7 bg-gray-200/60 text-gray-900', bb)}>
+        {dayNum}
       </div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 5 / 3' }}>{renderNames(day.shifts, 'บ่าย', 'MED', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 3 / 5 / 4' }}>{renderNames(day.shifts, 'บ่าย', 'ER', currentUser)}</div>
 
-      <div className={cn(headerStyle, 'bg-[#ffffff] py-0.5')} style={{ gridArea: '5 / 1 / 6 / 2' }}>Ext/SMC</div>
-      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 6 / 4' }}>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold text-[11px] xl:text-xs text-gray-800 bg-white/50 z-0">ดึก</div>
-        <div className="relative z-10 w-full flex flex-wrap justify-center items-center">
-          {renderNames(day.shifts, 'ดึก', 'ER', currentUser)}
-        </div>
+      {/* Column sub-headers: โครงการ | บ่ายMED | บ่าย ER */}
+      <div className="flex">
+        <div className={cn(col1w, br, subHdr('bg-gray-200/60 text-gray-600'))}>โครงการ</div>
+        <div className={cn(col1w, br, subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายMED</div>
+        <div className={cn('flex-1',  subHdr('bg-[#fffbeb] text-amber-700'))}>บ่าย ER</div>
       </div>
+
+      {/* Row 0: โครงการ[0] | บ่ายMED[0] | บ่ายER[0] */}
+      <div className="flex">
+        {slot('เช้า', 'โครงการ', 0, cn(col1w, br))}
+        {slot('บ่าย', 'MED',     0, cn(col1w, br, 'border-b-0'))}
+        {slot('บ่าย', 'ER',      0, 'flex-1')}
+      </div>
+
+      {/* Row 1: โครงการ[1] | (empty) | บ่ายER[1] */}
+      <div className="flex">
+        {slot('เช้า', 'โครงการ', 1, cn(col1w, br))}
+        <div className={cn(col1w, br, empty())} />
+        {slot('บ่าย', 'ER',      1, 'flex-1')}
+      </div>
+
+      {/* Friday: no SMC section — but has 'ดึก' and 'รุ่งอรุณ' */}
+      {isFriday ? (
+        <>
+          {/* Separator row: "รุ่งอรุณ" | "ดึก" */}
+          <div className="flex">
+            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', rowH)}>รุ่งอรุณ</div>
+            <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
+          </div>
+          {/* Row 0 */}
+          <div className="flex">
+            {slot('รุ่งอรุณ', 'OPD', 0, cn(col1w, br))}
+            {slot('ดึก', 'ER', 0, cn('flex-1', 'border-b-0'))}
+          </div>
+          {/* Row 1 */}
+          <div className="flex">
+            {slot('รุ่งอรุณ', 'OPD', 1, cn(col1w, br, 'border-b-0'))}
+            <div className={cn('flex-1', empty('border-b-0'))} />
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Separator row: "รุ่งอรุณ" | "SMC" | "ดึก" */}
+          <div className="flex">
+            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', rowH)}>รุ่งอรุณ</div>
+            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-red-500', rowH)}>SMC</div>
+            <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
+          </div>
+
+          {/* Row 0 */}
+          <div className="flex">
+            {slot('รุ่งอรุณ', 'OPD', 0, cn(col1w, br))}
+            {slot('บ่าย', 'SMC', 0, cn(col1w, br))}
+            {slot('ดึก',  'ER',  0, cn('flex-1', 'border-b-0'))}
+          </div>
+
+          {/* Row 1 */}
+          <div className="flex">
+            {slot('รุ่งอรุณ', 'OPD', 1, cn(col1w, br, 'border-b-0'))}
+            {slot('บ่าย', 'SMC', 1, cn(col1w, br, 'border-b-0'))}
+            {slot('ดึก',  'ER',  1, cn('flex-1', 'border-b-0'))}
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
+

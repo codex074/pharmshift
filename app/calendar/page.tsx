@@ -191,10 +191,13 @@ export default function CalendarPage() {
 
         <div id="pdf-export-target" className="space-y-4 bg-white p-2">
           {/* PDF Title Header (hidden on web, shown in PDF) */}
-          <div className="hidden pdf-show pb-2">
-            <h2 className="text-2xl font-bold text-gray-900 border-b-2 border-gray-900 pb-2 mb-4">
+          <div className="hidden pdf-show pb-2 border-b-2 border-gray-900 mb-4 flex justify-between items-end">
+            <h2 className="text-2xl font-bold text-gray-900 pb-2">
               ตารางเวร{ROLE_LABELS[effectiveRoleGroup]}ประจำเดือน {formatThaiMonth(year, month)}
             </h2>
+            <div className="text-right text-sm text-gray-500 pb-2">
+              ข้อมูลอัพเดทเมื่อวันที่ {format(new Date(), 'd MMMM yyyy HH:mm น.', { locale: th })}
+            </div>
           </div>
 
           {/* Legend */}
@@ -263,7 +266,7 @@ export default function CalendarPage() {
 
           {/* PDF Export Footer (hidden on web, shown in PDF) */}
           <div className="hidden pdf-show text-right text-sm text-gray-500 pt-4 pr-4">
-            ข้อมูลอัพเดทเมื่อวันที่ {format(new Date(), 'd MMMM yyyy HH:mm น.', { locale: th })}
+            {/* The update text was moved to the header */}
           </div>
         </div>
 

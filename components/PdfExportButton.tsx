@@ -34,7 +34,7 @@ export function PdfExportButton({ targetId, filename }: PdfExportButtonProps) {
         useCORS: true,
         logging: false,
         backgroundColor: '#ffffff',
-        // Increase windowWidth to ensure we capture the full min-w-[1240px] calendar
+        // Use 1400px to ensure the relative font sizes don't become microscopic when scaled down to A4
         windowWidth: 1400,
         // Wait for elements to be fully rendered
         onclone: (clonedDoc) => {
@@ -63,13 +63,18 @@ export function PdfExportButton({ targetId, filename }: PdfExportButtonProps) {
       
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min((pdfWidth - 20) / imgWidth, (pdfHeight - 20) / imgHeight); // 10mm margins on all sides
+      
+      // Minimal margin (2mm each side) to fill A4 as requested
+      const horizontalMargin = 4;
+      const verticalMargin = 4;
+      
+      const ratio = Math.min((pdfWidth - horizontalMargin) / imgWidth, (pdfHeight - verticalMargin) / imgHeight);
       
       const adjustedWidth = imgWidth * ratio;
       const adjustedHeight = imgHeight * ratio;
 
       const imgX = (pdfWidth - adjustedWidth) / 2;
-      const imgY = 10; // top margin
+      const imgY = 2; // 2mm top margin
 
       pdf.addImage(imgData, 'JPEG', imgX, imgY, adjustedWidth, adjustedHeight);
       pdf.save(`${filename}.pdf`);

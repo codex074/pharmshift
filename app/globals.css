@@ -204,7 +204,7 @@ body.exporting-pdf .pdf-show {
 
 body.exporting-pdf .overflow-x-auto {
   overflow-x: visible !important;
-  width: max-content !important;
+  width: 100% !important;
 }
 
 /* ── SweetAlert2 PharmShift Theme ───────────────────────────────────────── */

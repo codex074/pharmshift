@@ -6,10 +6,10 @@ import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 import { DEPT_COLORS } from '@/lib/types';
 
-// Hardcoded explicit styles ensuring we don't rely only on dynamic tailwind classes that might get purged
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight border-b border-r border-gray-400/50 flex flex-wrap items-center justify-center p-0.5 min-h-[1.5rem] relative";
+const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.5rem] relative";
+const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
 
 interface CalendarGridProps {
   year: number;
@@ -81,7 +81,7 @@ export function CalendarGrid({ year, month, shifts, currentUser, onDayClick, vie
 
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none" />}
+                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
                   { (dow === 0 || dow === 6) ? <WeekendGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     (dow === 5) ? <FridayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     <MonThuGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
@@ -124,7 +124,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, cu
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
@@ -135,7 +135,7 @@ function renderPersonalShift(s: Shift | undefined, currentUser?: User | null) {
   if (!s) return null;
   const isMe = currentUser && s.user_id === currentUser.id;
   return (
-    <span className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+    <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
       {getUserName(s)}
     </span>
   );
@@ -148,11 +148,11 @@ function renderRungAroonBlocks(day: CalendarDay, currentUser?: User | null) {
   else if (dow >= 3 && dow <= 5) positions = ['OPD', 'ER']; // Wed-Fri
   
   return (
-    <div className="flex flex-col overflow-hidden relative" style={{ gridArea: '5 / 1 / 8 / 2' }}>
+    <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea: '5 / 1 / 8 / 2' }}>
       {positions.map((pos, idx) => {
         const matchingShifts = day.shifts.filter(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
         return (
-          <div key={idx} className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-col items-center justify-center p-0.5 overflow-hidden gap-1">
+          <div key={idx} className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible gap-1">
             {matchingShifts.map((s, i) => <div key={i}>{renderPersonalShift(s, currentUser)}</div>)}
           </div>
         );
@@ -194,7 +194,7 @@ function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curre
       {/* ROW 5-7 */}
       <div className={nameCellStyle} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', currentUser)}</div>
       
-      <div className="flex flex-col overflow-hidden relative" style={{ gridArea: '5 / 2 / 8 / 3' }}>
+      <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea: '5 / 2 / 8 / 3' }}>
         <div className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5">
           {renderPersonalShift(chemoShifts[0], currentUser)}
         </div>

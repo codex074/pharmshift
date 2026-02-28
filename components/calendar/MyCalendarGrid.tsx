@@ -83,7 +83,7 @@ export function MyCalendarGrid({ year, month, shifts, onDayClick }: MyCalendarGr
                     'min-h-[120px] p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
                     !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
                     day.isCurrentMonth && 'hover:bg-violet-50/30 cursor-pointer text-gray-700',
-                    day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 ring-inset z-20'
+                    day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 [.exporting-pdf_&]:ring-0 ring-inset z-20'
                   )}
                 >
                   {/* Day Number */}
@@ -103,7 +103,7 @@ export function MyCalendarGrid({ year, month, shifts, onDayClick }: MyCalendarGr
                   </div>
 
                   {/* Shifts List */}
-                  <div className="space-y-1 mt-1">
+                  <div className="space-y-1 mt-1 flex flex-col justify-center h-full">
                     {day.shifts.map((shift, i) => {
                       const cfg = SHIFT_CONFIG[shift.shift_type] || { icon: '•', color: 'bg-gray-100 text-gray-700' };
                       const deptName = getDeptName(shift);
@@ -112,15 +112,15 @@ export function MyCalendarGrid({ year, month, shifts, onDayClick }: MyCalendarGr
                       return (
                         <div 
                           key={i} 
-                          className="flex items-center justify-between text-[11px] p-1.5 rounded-md border border-gray-100 shadow-sm transition-all hover:shadow bg-white"
+                          className="flex items-center justify-between text-[11px] p-1.5 rounded-md border border-gray-100 shadow-sm transition-all hover:shadow bg-white overflow-hidden [.exporting-pdf_&]:overflow-visible"
                         >
-                          <div className="flex items-center gap-1.5 font-medium truncate">
+                          <div className="flex items-center gap-1.5 font-medium min-w-0 pr-1">
                             <span>{cfg.icon}</span>
                             <span className="truncate">{shift.shift_type}</span>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0 bg-gray-50 px-1.5 py-0.5 rounded text-[10px]">
-                            <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: deptColor }} />
-                            <span className="font-semibold text-gray-600 max-w-[50px] truncate">{deptName}</span>
+                          <div className="flex items-center gap-1 shrink-0 bg-gray-50 px-1.5 py-0.5 rounded text-[10px] min-w-0">
+                            <span className="w-1.5 h-1.5 shrink-0 rounded-full" style={{ backgroundColor: deptColor }} />
+                            <span className="font-semibold text-gray-600 truncate">{deptName}</span>
                           </div>
                         </div>
                       );

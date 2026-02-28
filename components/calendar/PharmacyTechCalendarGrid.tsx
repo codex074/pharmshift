@@ -6,8 +6,9 @@ import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight flex flex-col items-center justify-center p-0";
+const headerStyle = "bg-gray-200/60 font-bold border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0";
+const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
 
 interface CalendarGridProps {
   year: number;
@@ -79,7 +80,7 @@ export function PharmacyTechCalendarGrid({ year, month, shifts, currentUser, onD
 
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none" />}
+                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
                   <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
                 </div>
               );
@@ -113,7 +114,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
@@ -141,12 +142,12 @@ function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColo
         const isMe = s && currentUser && s.user_id === currentUser.id;
         return (
           <div key={i} className={cn(
-            "flex-1 border-b border-gray-400/60 flex items-center justify-center p-0.5 overflow-hidden min-h-[1.5rem]",
+            "flex-1 border-b border-gray-400/60 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible min-h-[1.5rem]",
             bgColor, `hover:${hoverColor}`,
             (hideInnerBorders || i === count - 1) ? "border-b-0" : ""
           )}>
             {s && (
-              <span className={cn('block text-center text-[11px] xl:text-xs w-full truncate', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+              <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
                 {getUserName(s)}
               </span>
             )}
