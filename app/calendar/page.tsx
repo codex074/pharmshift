@@ -16,6 +16,7 @@ import { ExportButton } from '@/components/ExportButton';
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
+import { DeployModal } from '@/components/calendar/DeployModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -32,11 +33,12 @@ export default function CalendarPage() {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showDeployModal, setShowDeployModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
-  const { shifts: allShifts, isPublished, loading: shiftsLoading, refetch } = useShifts(year, month);
+  const { shifts: allShifts, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
 
   // For admin: use viewRoleGroup selector; for staff: use own role
   const effectiveRoleGroup: UserRole =
@@ -55,26 +57,7 @@ export default function CalendarPage() {
     refetch();
   }
 
-  async function handleDeploy() {
-    if (!currentUser || currentUser.role !== 'admin') return;
-    try {
-      const monthYear = format(new Date(year, month - 1), 'yyyy-MM');
-      const { error } = await supabase
-        .from('published_months')
-        .upsert({
-          month_year: monthYear,
-          is_published: true,
-          published_at: new Date().toISOString(),
-          published_by: currentUser.id,
-        });
 
-      if (error) throw error;
-      await toastSuccess('ประกาศตารางเวรสำเร็จแล้ว!');
-      refetch();
-    } catch (err: any) {
-      await toastError('เกิดข้อผิดพลาด: ' + err.message);
-    }
-  }
 
   function handleMonthChange(y: number, m: number) {
     setYear(y);
@@ -133,9 +116,9 @@ export default function CalendarPage() {
             <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
           </div>
         <div className="flex items-center gap-2">
-            {!isPublished && currentUser?.role === 'admin' && (
+            {currentUser?.role === 'admin' && (
               <button
-                onClick={handleDeploy}
+                onClick={() => setShowDeployModal(true)}
                 className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
               >
                 ประกาศตารางเวร
@@ -183,9 +166,9 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {!isPublished && currentUser?.role === 'admin' && (
+        {!publishedRoles[effectiveRoleGroup] && currentUser?.role === 'admin' && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-center gap-2">
-            ⚠️ ตารางเวรเดือนนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด "ประกาศตารางเวร" เมื่อพร้อม
+            ⚠️ ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด "ประกาศตารางเวร" เมื่อพร้อม
           </div>
         )}
 
@@ -236,9 +219,9 @@ export default function CalendarPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
                 <span className="text-sm">กำลังโหลดตารางเวร...</span>
               </div>
-            ) : !isPublished && currentUser?.role !== 'admin' ? (
+            ) : !publishedRoles[effectiveRoleGroup] && currentUser?.role !== 'admin' ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
-                <p className="text-lg font-medium text-gray-600">ตารางเวรเดือน {formatThaiMonth(year, month)} ยังไม่ถูกประกาศ</p>
+                <p className="text-lg font-medium text-gray-600">ตารางเวรตำแหน่งนี้ประจำเดือน {formatThaiMonth(year, month)} ยังไม่ถูกประกาศ</p>
                 <p className="text-sm">กรุณารอการประกาศตารางเวรจากผู้ดูแลระบบ</p>
               </div>
             ) : viewMode === 'mine' ? (
@@ -325,6 +308,17 @@ export default function CalendarPage() {
       {showUploadModal && (
         <ShiftUploadModal
           onClose={() => setShowUploadModal(false)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {/* Deploy Modal */}
+      {showDeployModal && (
+        <DeployModal
+          initialYear={year}
+          initialMonth={month}
+          currentUser={currentUser}
+          onClose={() => setShowDeployModal(false)}
           onSuccess={() => refetch()}
         />
       )}

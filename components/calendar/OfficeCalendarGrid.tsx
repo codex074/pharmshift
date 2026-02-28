@@ -5,8 +5,8 @@ import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[10px] sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] truncate tracking-tight";
+const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
+const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
 const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight border-b border-r border-gray-400/50 flex flex-wrap items-center justify-center p-0.5 min-h-[1.5rem] relative";
 
 interface CalendarGridProps {
@@ -78,7 +78,8 @@ export function OfficeCalendarGrid({ year, month, shifts, currentUser, onDayClic
               const dow = day.date.getDay();
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative', day.isToday && 'ring-2 ring-violet-500 ring-inset z-10')}>
+                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
+                  {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none" />}
                   <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
                 </div>
               );
@@ -112,7 +113,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[10px] w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
@@ -172,7 +173,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
 
       <div className={cn(headerStyle, 'bg-[#ffffff] py-0.5')} style={{ gridArea: '5 / 1 / 6 / 2' }}>Ext/SMC</div>
       <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 6 / 4' }}>
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold text-[10px] text-gray-800 bg-white/50 z-0">ดึก</div>
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none font-bold text-[11px] xl:text-xs text-gray-800 bg-white/50 z-0">ดึก</div>
         <div className="relative z-10 w-full flex flex-wrap justify-center items-center">
           {renderNames(day.shifts, 'ดึก', 'ER', currentUser)}
         </div>

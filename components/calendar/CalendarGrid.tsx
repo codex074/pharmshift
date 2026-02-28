@@ -7,8 +7,8 @@ import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns
 import { DEPT_COLORS } from '@/lib/types';
 
 // Hardcoded explicit styles ensuring we don't rely only on dynamic tailwind classes that might get purged
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[10px] sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] truncate tracking-tight";
+const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
+const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
 const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight border-b border-r border-gray-400/50 flex flex-wrap items-center justify-center p-0.5 min-h-[1.5rem] relative";
 
 interface CalendarGridProps {
@@ -80,7 +80,8 @@ export function CalendarGrid({ year, month, shifts, currentUser, onDayClick, vie
               const dow = day.date.getDay();
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative', day.isToday && 'ring-2 ring-violet-500 ring-inset z-10')}>
+                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
+                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none" />}
                   { (dow === 0 || dow === 6) ? <WeekendGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     (dow === 5) ? <FridayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     <MonThuGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
@@ -123,7 +124,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, cu
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[10px] w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
@@ -134,7 +135,7 @@ function renderPersonalShift(s: Shift | undefined, currentUser?: User | null) {
   if (!s) return null;
   const isMe = currentUser && s.user_id === currentUser.id;
   return (
-    <span className={cn('block text-center text-[10px] w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+    <span className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
       {getUserName(s)}
     </span>
   );

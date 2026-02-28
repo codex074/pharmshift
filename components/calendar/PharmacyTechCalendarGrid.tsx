@@ -5,8 +5,8 @@ import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[10px] sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] truncate tracking-tight";
+const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
+const headerStyle = "bg-gray-200/60 font-bold border-gray-400/60 flex items-center justify-center text-[11px] xl:text-xs sm:text-[11px] truncate tracking-tight";
 const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden leading-tight flex flex-col items-center justify-center p-0";
 
 interface CalendarGridProps {
@@ -78,7 +78,8 @@ export function PharmacyTechCalendarGrid({ year, month, shifts, currentUser, onD
               const dow = day.date.getDay();
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative', day.isToday && 'ring-2 ring-violet-500 ring-inset z-10')}>
+                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
+                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none" />}
                   <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
                 </div>
               );
@@ -112,18 +113,25 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   return matching.map((s, i) => {
     const isMe = currentUser && s.user_id === currentUser.id;
     return (
-      <span key={i} className={cn('block text-center text-[10px] w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+      <span key={i} className={cn('block text-center text-[11px] xl:text-xs w-full', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
         {getUserName(s)}
       </span>
     );
   });
 }
 
-function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColor, hoverColor }: { shifts: Shift[], shiftType: ShiftType, count: number, deptName?: string, currentUser?: User | null, bgColor: string, hoverColor: string }) {
+function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColor, hoverColor, hideInnerBorders }: { shifts: Shift[], shiftType: ShiftType, count: number, deptName?: string, currentUser?: User | null, bgColor: string, hoverColor: string, hideInnerBorders?: boolean }) {
   const matching = shifts.filter(s => 
     s.shift_type === shiftType && 
     (!deptName || getDeptName(s) === deptName)
   );
+  
+  if (shiftType === 'รุ่งอรุณ') {
+    const order: Record<string, number> = { 'OPD': 1, 'ER': 2, 'HIV': 3 };
+    matching.sort((a, b) => (order[a.position || ''] || 99) - (order[b.position || ''] || 99));
+  } else {
+    matching.sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
+  }
   
   const slots = Array.from({ length: count });
   return (
@@ -135,10 +143,10 @@ function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColo
           <div key={i} className={cn(
             "flex-1 border-b border-gray-400/60 flex items-center justify-center p-0.5 overflow-hidden min-h-[1.5rem]",
             bgColor, `hover:${hoverColor}`,
-            i === count - 1 ? "border-b-0" : ""
+            (hideInnerBorders || i === count - 1) ? "border-b-0" : ""
           )}>
             {s && (
-              <span className={cn('block text-center text-[10px] w-full truncate', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
+              <span className={cn('block text-center text-[11px] xl:text-xs w-full truncate', isMe ? 'text-violet-700 font-bold bg-violet-100/50 px-0.5 rounded-sm' : 'text-slate-800')}>
                 {getUserName(s)}
               </span>
             )}
@@ -172,53 +180,53 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="w-[50%] flex flex-row border-r border-gray-400/60">
             {/* Surg + ER Column (w-50%) */}
             <div className="w-[50%] flex flex-col border-r border-gray-400/60">
-              {/* Surg (2 slots, h-66.666%) */}
-              <div className="h-[66.666%] flex flex-col border-b border-gray-400/60">
-                <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[10px] flex items-center justify-center">Surg</div>
+              {/* Surg (2 slots, h-60%) */}
+              <div className="h-[60%] flex flex-col border-b border-gray-400/60">
+                <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">Surg</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
                 </div>
               </div>
-              {/* ER (1 slot, h-33.333%) */}
-              <div className="h-[33.333%] flex flex-col">
-                <div className="h-[33.333%] border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[10px] flex items-center justify-center">ER</div>
-                <div className="h-[66.666%]">
+              {/* ER (1 slot, h-40%) */}
+              <div className="h-[40%] flex flex-col">
+                <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ER</div>
+                <div className="flex-1">
                   <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
                 </div>
               </div>
             </div>
             {/* MED Column (3 slots, w-50%) */}
             <div className="w-[50%] flex flex-col">
-              <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[10px] flex items-center justify-center">MED</div>
+              <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">MED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
               </div>
             </div>
           </div>
 
           {/* RIGHT SECTION (w-50%) */}
           <div className="w-[50%] flex flex-col">
-            {/* Top part: บ่าย (h-66.66% so ดึก corresponds to the last 1/3 slot) */}
-            <div className="h-[66.666%] flex flex-row border-b border-gray-400/60">
-              {/* บ่ายMED (2 slots => relative to its h-66%, so each is 50%) */}
+            {/* Top part: บ่าย (h-60% so ดึก corresponds to the last 40% slot) */}
+            <div className="h-[60%] flex flex-row border-b border-gray-400/60">
+              {/* บ่ายMED (2 slots => relative to its h-60%, so each is 50%) */}
               <div className="w-[50%] flex flex-col border-r border-gray-400/60">
-                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[10px] flex items-center justify-center">บ่ายMED</div>
+                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
                 </div>
               </div>
-              {/* บ่ายER (1 slot => relative to its h-66%, meaning it's 100% of this tall container) */}
+              {/* บ่ายER (1 slot => relative to its h-60%, meaning it's 100% of this tall container) */}
               <div className="w-[50%] flex flex-col">
-                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[10px] flex items-center justify-center">บ่ายER</div>
+                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
                 <div className="flex-1">
                   <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
                 </div>
               </div>
             </div>
-            {/* Bottom part: ดึก (h-33.333% so it perfectly aligns with the bottom 3rd of MED) */}
-            <div className="h-[33.333%] flex flex-col">
-              <div className="h-[33.333%] border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[10px] flex items-center justify-center">ดึก</div>
-              <div className="h-[66.666%] bg-white">
+            {/* Bottom part: ดึก (h-40% so it perfectly aligns with the bottom of MED) */}
+            <div className="h-[40%] flex flex-col">
+              <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
+              <div className="flex-1 bg-white">
                 <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
               </div>
             </div>
@@ -247,16 +255,16 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
         <div className="w-[33.333%] flex flex-col border-r border-gray-400/60">
           {/* รุ่งอรุณ (h-60%) */}
           <div className="h-[60%] flex flex-col border-b border-gray-400/60">
-            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[10px] flex items-center justify-center">รุ่งอรุณ</div>
+            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">รุ่งอรุณ</div>
             <div className="flex-1">
               <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" count={rungAroonSlots} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>
           </div>
           {/* smc - 2 slots (h-40%) */}
           <div className="h-[40%] flex flex-col">
-            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[10px] flex items-center justify-center">smc</div>
+            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">smc</div>
             <div className="flex-1">
-               <SlotContainer shifts={day.shifts} shiftType="smc" count={2} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>
           </div>
         </div>
@@ -267,14 +275,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="h-[60%] flex flex-row border-b border-gray-400/60">
             {/* บ่ายMED */}
             <div className="w-[50%] flex flex-col border-r border-gray-400/60">
-              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[10px] flex items-center justify-center">บ่ายMED</div>
+              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
               </div>
             </div>
             {/* บ่ายER */}
             <div className="w-[50%] flex flex-col">
-              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[10px] flex items-center justify-center">บ่ายER</div>
+              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
               <div className="flex-1">
                 <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
               </div>
@@ -282,7 +290,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           </div>
           {/* Bottom part: ดึก (h-40%) */}
           <div className="h-[40%] flex flex-col">
-            <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[10px] flex items-center justify-center">ดึก</div>
+            <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
             <div className="flex-1 bg-white">
               <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>

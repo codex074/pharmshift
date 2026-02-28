@@ -83,7 +83,7 @@ export function MyCalendarGrid({ year, month, shifts, onDayClick }: MyCalendarGr
                     'min-h-[120px] p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
                     !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
                     day.isCurrentMonth && 'hover:bg-violet-50/30 cursor-pointer text-gray-700',
-                    day.isToday && 'bg-violet-50/50'
+                    day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 ring-inset z-20'
                   )}
                 >
                   {/* Day Number */}

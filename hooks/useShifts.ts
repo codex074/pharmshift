@@ -8,6 +8,11 @@ import { toMonthYear } from '@/lib/utils';
 export function useShifts(year: number, month: number) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isPublished, setIsPublished] = useState(false);
+  const [publishedRoles, setPublishedRoles] = useState<Record<string, boolean>>({
+    pharmacist: false,
+    pharmacy_technician: false,
+    officer: false
+  });
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -18,11 +23,16 @@ export function useShifts(year: number, month: number) {
 
     const { data: publishData } = await supabase
       .from('published_months')
-      .select('is_published')
+      .select('is_published, pharmacist_published, pharmacy_technician_published, officer_published')
       .eq('month_year', monthYear)
       .maybeSingle();
       
     setIsPublished(publishData?.is_published ?? false);
+    setPublishedRoles({
+      pharmacist: publishData?.pharmacist_published ?? publishData?.is_published ?? false,
+      pharmacy_technician: publishData?.pharmacy_technician_published ?? publishData?.is_published ?? false,
+      officer: publishData?.officer_published ?? publishData?.is_published ?? false,
+    });
 
     const { data, error } = await supabase
       .from('shifts')
@@ -65,7 +75,7 @@ export function useShifts(year: number, month: number) {
     };
   }, [monthYear, fetchShifts]);
 
-  return { shifts, isPublished, loading, refetch: fetchShifts };
+  return { shifts, isPublished, publishedRoles, loading, refetch: fetchShifts };
 }
 
 export function useSwapRequests(userId?: string) {
