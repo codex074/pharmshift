@@ -51,15 +51,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F4F0FF] relative overflow-hidden font-sans selection:bg-violet-200">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 relative overflow-hidden font-sans selection:bg-violet-200">
       {/* Dynamic Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 -right-32 w-96 h-96 bg-violet-300/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" />
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 bg-fuchsia-300/40 rounded-full blur-[100px] mix-blend-multiply animate-pulse" style={{ animationDelay: '1s' }} />
+        <div className="absolute -top-[20%] -right-[10%] w-[500px] h-[500px] bg-violet-200/40 rounded-full blur-3xl mix-blend-multiply opacity-70 animate-pulse" />
+        <div className="absolute -bottom-[20%] -left-[10%] w-[500px] h-[500px] bg-fuchsia-200/40 rounded-full blur-3xl mix-blend-multiply opacity-70 animate-pulse" style={{ animationDelay: '2s' }} />
       </div>
 
-      <div className="relative w-full max-w-md px-5 z-10">
-        <div className="bg-white/70 backdrop-blur-xl rounded-[2.5rem] p-8 sm:p-10 shadow-[0_8px_40px_-12px_rgba(139,92,246,0.15)] border border-white/60">
+      <div className="relative w-full max-w-md px-6 z-10">
+        <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-violet-500/10 border border-white">
 
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-10">
@@ -69,13 +69,13 @@ export default function LoginPage() {
             <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
               เวรดี๊ดี
             </h1>
-            <p className="text-gray-500 font-medium text-[15px]">
+            <p className="text-gray-500 font-medium text-sm">
               ระบบจัดการตารางเวรกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
             </p>
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="phaId" className="block text-sm font-semibold text-gray-700 ml-1">
                 รหัสผู้ใช้งาน
@@ -92,7 +92,7 @@ export default function LoginPage() {
                   required
                   placeholder="เช่น pha208"
                   autoComplete="username"
-                  className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200/80 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-[3px] focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-300 text-[15px] font-medium shadow-sm hover:border-gray-300"
+                  className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-300 text-sm font-medium shadow-sm hover:border-gray-300"
                 />
               </div>
             </div>
@@ -113,7 +113,7 @@ export default function LoginPage() {
                   required
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full pl-11 pr-12 py-3.5 bg-white border border-gray-200/80 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-[3px] focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-300 text-sm font-medium tracking-wider shadow-sm hover:border-gray-300"
+                  className="w-full pl-11 pr-12 py-3.5 bg-white border border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all duration-300 text-sm font-medium tracking-wider shadow-sm hover:border-gray-300"
                 />
                 <button
                   type="button"
@@ -128,10 +128,9 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full mt-8 relative group overflow-hidden rounded-2xl"
+              className="w-full mt-8 relative group overflow-hidden rounded-2xl bg-violet-600 hover:bg-violet-700 transition-all duration-300 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 opacity-90 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="relative flex items-center justify-center gap-2 px-6 py-4 text-white font-semibold text-[16px] shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed">
+              <div className="relative flex items-center justify-center gap-2 px-6 py-4 text-white font-semibold text-base transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed">
                 {loading ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
@@ -145,8 +144,8 @@ export default function LoginPage() {
           </form>
 
           {/* Footer Note */}
-          <div className="mt-8 text-center pt-6">
-            <p className="text-[13px] font-medium text-gray-400/80">
+          <div className="mt-8 text-center pt-6 border-t border-gray-100">
+            <p className="text-xs font-medium text-gray-400">
               กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
             </p>
           </div>
