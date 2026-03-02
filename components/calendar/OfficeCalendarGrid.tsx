@@ -429,15 +429,15 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
           </div>
           
-          <div className="flex flex-1">
+          <div className="grid grid-cols-[1fr_2fr] flex-1">
              {/* รุ่งอรุณ OPD */}
-             <div className={cn(col1w, br)}>
+             <div className={cn(br)}>
                {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
              </div>
              {/* ดึก ER */}
-             <div className="flex-1 flex flex-col">
-               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 flex-1')}
-               {slot('ดึก', 'ER', 1, 'flex-1 border-b-0')}
+             <div className="grid grid-rows-2">
+               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 h-full')}
+               {slot('ดึก', 'ER', 1, 'h-full border-b-0')}
              </div>
           </div>
         </>
@@ -450,22 +450,22 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
           </div>
 
-          <div className="flex flex-1">
+          <div className="grid grid-cols-3 flex-1">
              {/* รุ่งอรุณ OPD Column - single cell spanning remaining height */}
-             <div className={cn(col1w, br)}>
+             <div className={cn(br)}>
                {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
              </div>
              
              {/* SMC Column - 2 rows */}
-             <div className={cn(col1w, br, 'flex flex-col')}>
-               {slot('บ่าย', 'SMC', 0, 'border-b border-gray-400/60 flex-1')}
-               {slot('บ่าย', 'SMC', 1, 'flex-1 border-b-0')}
+             <div className={cn(br, 'grid grid-rows-2')}>
+               {slot('บ่าย', 'SMC', 0, 'border-b border-gray-400/60 h-full')}
+               {slot('บ่าย', 'SMC', 1, 'h-full border-b-0')}
              </div>
 
              {/* ดึก ER Column - 2 rows */}
-             <div className="flex-1 flex flex-col">
-               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 flex-1')}
-               {slot('ดึก', 'ER', 1, 'flex-1 border-b-0')}
+             <div className="grid grid-rows-2">
+               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 h-full')}
+               {slot('ดึก', 'ER', 1, 'h-full border-b-0')}
              </div>
           </div>
         </>

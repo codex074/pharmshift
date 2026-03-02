@@ -199,11 +199,11 @@ function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curre
       {/* ROW 5-7 */}
       <div className={nameCellStyle} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', currentUser)}</div>
       
-      <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea: '5 / 2 / 8 / 3' }}>
-        <div className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5">
+      <div className="grid grid-rows-2" style={{ gridArea: '5 / 2 / 8 / 3' }}>
+        <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
           {renderPersonalShift(chemoShifts[0], currentUser)}
         </div>
-        <div className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5">
+        <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
           {renderPersonalShift(chemoShifts[1], currentUser)}
         </div>
       </div>

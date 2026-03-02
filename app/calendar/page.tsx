@@ -12,7 +12,7 @@ import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
-import { ExportButton } from '@/components/ExportButton';
+
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
@@ -149,8 +149,10 @@ export default function CalendarPage() {
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
-            <ExcelExportButton year={year} month={month} />
-            <ExportButton shifts={viewMode === 'mine' ? myShifts : shifts} year={year} month={month} />
+            {currentUser?.role === 'admin' && (
+              <ExcelExportButton year={year} month={month} />
+            )}
+
           </div>
         </div>
 
