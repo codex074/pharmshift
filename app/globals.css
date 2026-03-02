@@ -47,6 +47,10 @@ body {
   color: hsl(var(--foreground));
   font-family: "Inter", "Sarabun", sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* iOS safe area */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
 }
 
 /* Custom Scrollbar */
@@ -84,6 +88,14 @@ body {
   flex-direction: column;
   gap: 4px;
   transition: background-color 0.15s ease;
+}
+
+@media (max-width: 639px) {
+  .day-cell {
+    min-height: 72px;
+    padding: 4px;
+    gap: 2px;
+  }
 }
 
 .day-cell:hover {
@@ -321,4 +333,30 @@ body.exporting-pdf .overflow-x-auto {
 .animate__faster   { animation-duration: 0.15s; }
 .animate__fadeInDown  { animation-name: animate__fadeInDown; }
 .animate__fadeOutUp   { animation-name: animate__fadeOutUp; }
+
+/* ── Mobile Touch Utilities ──────────────────────────────────────────────── */
+
+/* Make all buttons easy to tap (min 44×44 touch target) */
+@media (max-width: 767px) {
+  button, [role="button"] {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text zoom on input focus (iOS) */
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+
+  /* Calendar horizontal scroll on mobile */
+  .calendar-grid-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Shift badges smaller on mobile */
+  .shift-badge {
+    font-size: 0.6rem;
+    padding: 1px 4px;
+  }
+}
 

@@ -110,36 +110,42 @@ export default function CalendarPage() {
 
       <main className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
         {/* Page title + actions */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
               {viewMode === 'mine' ? 'เวรของฉัน' : `ตารางเวร${ROLE_LABELS[effectiveRoleGroup]}`}
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
           </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => setShowDeployModal(true)}
-                className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+                className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
               >
-                ประกาศตารางเวร
+                <span>📢</span>
+                <span className="sm:hidden">ประกาศ</span>
+                <span className="hidden sm:inline">ประกาศตารางเวร</span>
               </button>
             )}
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+                className="bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
               >
-                เพิ่มเวร (CSV)
+                <span>📂</span>
+                <span className="sm:hidden">CSV</span>
+                <span className="hidden sm:inline">เพิ่มเวร (CSV)</span>
               </button>
             )}
             {currentUser?.role === 'admin' && (
               <button
                 onClick={() => setShowHolidaysModal(true)}
-                className="bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+                className="bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
               >
-                จัดการวันหยุด
+                <span>🗓️</span>
+                <span className="sm:hidden">วันหยุด</span>
+                <span className="hidden sm:inline">จัดการวันหยุด</span>
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
@@ -150,29 +156,31 @@ export default function CalendarPage() {
 
         {/* Admin: role group tab switcher */}
         {currentUser?.role === 'admin' && (
-          <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm self-start mb-2">
-            {STAFF_ROLES.map((role) => {
-              const isActive = viewRoleGroup === role;
-              let activeClass = 'bg-gray-800 text-white shadow-md'; 
-              if (role === 'pharmacist') activeClass = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20';
-              if (role === 'pharmacy_technician') activeClass = 'bg-violet-600 text-white shadow-md shadow-violet-600/20';
-              if (role === 'officer') activeClass = 'bg-sky-500 text-white shadow-md shadow-sky-500/20';
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
+            <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm w-max min-w-full sm:w-auto">
+              {STAFF_ROLES.map((role) => {
+                const isActive = viewRoleGroup === role;
+                let activeClass = 'bg-gray-800 text-white shadow-md';
+                if (role === 'pharmacist') activeClass = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20';
+                if (role === 'pharmacy_technician') activeClass = 'bg-violet-600 text-white shadow-md shadow-violet-600/20';
+                if (role === 'officer') activeClass = 'bg-sky-500 text-white shadow-md shadow-sky-500/20';
 
-              return (
-                <button
-                  key={role}
-                  onClick={() => setViewRoleGroup(role)}
-                  className={cn(
-                    'px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300',
-                    isActive
-                      ? activeClass
-                      : 'text-gray-500 hover:text-gray-900 hover:bg-white/60'
-                  )}
-                >
-                  {ROLE_LABELS[role]}
-                </button>
-              );
-            })}
+                return (
+                  <button
+                    key={role}
+                    onClick={() => setViewRoleGroup(role)}
+                    className={cn(
+                      'px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap',
+                      isActive
+                        ? activeClass
+                        : 'text-gray-500 hover:text-gray-900 hover:bg-white/60'
+                    )}
+                  >
+                    {ROLE_LABELS[role]}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -192,9 +200,9 @@ export default function CalendarPage() {
             { label: '🌄 รุ่งอรุณ', value: rungCount,   color: 'bg-orange-50 text-orange-700 border-orange-100' },
             { label: '⭐ เวรฉัน', value: myShifts.length, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
           ].map(({ label, value, color }) => (
-            <div key={label} className={`rounded-xl border p-3 ${color}`}>
-              <p className="text-xl font-bold">{value}</p>
-              <p className="text-[10px] font-medium opacity-70">{label}</p>
+            <div key={label} className={`rounded-xl border p-2 sm:p-3 ${color}`}>
+              <p className="text-lg sm:text-xl font-bold">{value}</p>
+              <p className="text-[9px] sm:text-[10px] font-medium opacity-70 leading-tight">{label}</p>
             </div>
           ))}
         </div>
@@ -226,7 +234,8 @@ export default function CalendarPage() {
           )}
 
           {/* Calendar */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 sm:p-3 overflow-x-auto">
+            <div className="min-w-[360px]">
             {shiftsLoading ? (
               <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -276,6 +285,7 @@ export default function CalendarPage() {
                 viewMode={viewMode}
               />
             )}
+            </div>
           </div>
 
           {/* PDF Export Footer (hidden on web, shown in PDF) */}
