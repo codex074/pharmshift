@@ -2,24 +2,25 @@
 
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
-import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
+import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
 const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.5rem] relative";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.65rem] relative";
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
 
 interface CalendarGridProps {
   year: number;
   month: number;
   shifts: Shift[];
+  holidays: Holiday[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[][] {
+function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -35,12 +36,14 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
     }
     const dateStr = format(current, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr);
+    const isHoliday = holidays.some(h => h.date === dateStr);
 
     weeks[weeks.length - 1].push({
       date: new Date(current),
       shifts: dayShifts,
       isCurrentMonth: current.getMonth() === month - 1,
       isToday: current.getTime() === today.getTime(),
+      isHoliday,
     });
 
     current = addDays(current, 1);
@@ -50,8 +53,8 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
   return weeks;
 }
 
-export function OfficeCalendarGrid({ year, month, shifts, currentUser, onDayClick, viewMode }: CalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts);
+export function OfficeCalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+  const weeks = buildWeeks(year, month, shifts, holidays);
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -126,11 +129,11 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
 function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dow = day.date.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
-  const isWeekend = dow === 0 || dow === 6;
+  const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
   const br = 'border-r border-gray-400/60';
   const bb = 'border-b border-gray-400/60';
-  const rowH = 'min-h-[1.5rem]';
+  const rowH = 'min-h-[1.65rem]';
 
   const subHdr = (extra?: string) => cn(
     'flex items-center justify-center font-bold text-[10px] xl:text-[11px] tracking-tight truncate',
@@ -184,17 +187,17 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
   // สรุปจำนวน slot: โครงการ=2, ER=1, Surg=3, MED=3(เสาร์)/4(อาทิตย์)
   //                 บ่ายMED=1, บ่ายER=2, ดึก=1
   // ═══════════════════════════════════════════════════════════════════
-  if (isWeekend) {
-    const isSun = dow === 0;
-    const isSat = dow === 6;
-    const dateColor = isSun ? 'text-red-500' : 'text-indigo-600';
-    const dateBg    = isSun ? 'bg-red-200'  : 'bg-[#e9d5ff]';
+  if (isWeekendOrHoliday) {
+    const isSunOrHoliday = dow === 0 || day.isHoliday;
+    const isSat = dow === 6 && !day.isHoliday; // If holiday falls on Saturday, treat it like Sunday for layout
+    const dateColor = isSunOrHoliday ? 'text-red-500' : 'text-indigo-600';
+    const dateBg    = isSunOrHoliday ? 'bg-red-200'  : 'bg-[#e9d5ff]';
 
     // Post-ER rows: always 1 for both Sat and Sun (removes extra MED[3] row)
     const postErRows = 1;
 
-    // Fix row height: h-[1.75rem] for consistent equal-height SURG cells
-    const fixedRowH = 'h-[1.75rem]';
+    // Fix row height: h-[1.925rem] for consistent equal-height SURG cells
+    const fixedRowH = 'h-[1.925rem]';
 
     // Column widths: Sat adds ส่งยา สอ. column
     const c1 = isSat ? 'w-[15%]' : 'w-[20%]';
@@ -241,6 +244,8 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
     };
     const fempty = (cls: string) => <div className={cn('bg-white', fixedRowH, bb, cls)} />;
 
+    const has4MedSlots = dow === 0 && !day.isHoliday;
+
     return (
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
@@ -265,7 +270,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="flex">
             {fslot('เช้า', 'โครงการ',  0, cn(c1, br))}
             {fempty(cn(c2, br))}
-            {fslot('เช้า', 'MED',       0, cn(c3, br))}
+            {fempty(cn(c3, br))}
             {/* บ่ายMED: ลบ border-b เพื่อให้ดูเป็น 1 ช่อง (ไม่มีเส้นแบ่ง) */}
             {fslot('บ่าย', 'MED',       0, cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        0, cn(c5, isSat ? br : ''))}
@@ -276,7 +281,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="flex">
             {fslot('เช้า', 'โครงการ',  1, cn(c1, br))}
             {fempty(cn(c2, br))}
-            {fslot('เช้า', 'MED',       1, cn(c3, br))}
+            {fempty(cn(c3, br))}
             {/* บ่ายMED empty: ลบ border-b → ให้ต่อเนื่องกับ row 0 เป็น 1 ช่อง */}
             {fempty(cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        1, cn(c5, isSat ? br : ''))}
@@ -299,8 +304,8 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div key={i} className="flex">
               {fempty(cn(c1, br, i === postErRows - 1 ? 'border-b-0' : ''))}
               {fempty(cn(c2, br, i === postErRows - 1 ? 'border-b-0' : ''))}
-              {/* MED[2] / MED[3] */}
-              {fslot('เช้า', 'MED', i + 2, cn(c3, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {/* MED[2] / MED[3] - replaced by overlay */}
+              {fempty(cn(c3, br, i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* ดึก[0] in first post-ER row, spanning c4+c5 */}
               {i === 0
                 ? fslot('ดึก', 'ER', 0, cn(dukW, isSat ? br : '', postErRows === 1 ? 'border-b-0' : ''))
@@ -312,21 +317,58 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
 
           {/* SURG Overlay (3 equal height slots) */}
           <div 
-            className={cn("absolute top-0 bottom-0 bg-white flex flex-col z-10", br)} 
+            className={cn("absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none", br)} 
             style={{ 
               left: isSat ? '15%' : '20%', 
               width: isSat ? '15%' : '20%' 
             }}
           >
-            {surgSlot('เช้า', 'SURG', 0, 'border-b border-gray-400/60')}
-            {surgSlot('เช้า', 'SURG', 1, 'border-b border-gray-400/60')}
-            {surgSlot('เช้า', 'SURG', 2, '')}
+            {surgSlot('เช้า', 'SURG', 0, 'border-b border-gray-400/60 pointer-events-auto')}
+            {surgSlot('เช้า', 'SURG', 1, 'border-b border-gray-400/60 pointer-events-auto')}
+            {surgSlot('เช้า', 'SURG', 2, 'pointer-events-auto')}
+          </div>
+
+          {/* MED Overlay (3 slots for Sat/Holiday, 4 slots for Sun) */}
+          <div 
+            className={cn("absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none", br)} 
+            style={{ 
+              left: isSat ? '30%' : '40%', 
+              width: isSat ? '15%' : '20%' 
+            }}
+          >
+            {surgSlot('เช้า', 'MED', 0, 'border-b border-gray-400/60 pointer-events-auto')}
+            {surgSlot('เช้า', 'MED', 1, 'border-b border-gray-400/60 pointer-events-auto')}
+            {surgSlot('เช้า', 'MED', 2, has4MedSlots ? 'border-b border-gray-400/60 pointer-events-auto' : 'pointer-events-auto')}
+            {has4MedSlots && surgSlot('เช้า', 'MED', 3, 'pointer-events-auto')}
           </div>
         </div>
 
       </div>
     );
   }
+
+  /** Combined slot cell: shows all shifts of a given type/dept separated by '/' */
+  const combinedSlot = (shiftType: ShiftType, dept: string | undefined, cls: string) => {
+    const list = getList(shiftType, dept);
+    
+    return (
+      <div className={cn(nameCell(), cls)}>
+        <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
+          {list.map((s, idx) => {
+            const isMe = currentUser && s.user_id === currentUser.id;
+            return (
+              <div key={idx} className="flex items-center">
+                {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
+                <span className={cn(nameTextStyle, 'w-auto px-0.5', isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+                  {getUserName(s)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
 
   // ═══════════════════════════════════════════════════════════════════
   // WEEKDAY (จันทร์–ศุกร์)
@@ -386,15 +428,17 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', rowH)}>รุ่งอรุณ</div>
             <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
           </div>
-          {/* Row 0 */}
-          <div className="flex">
-            {slot('รุ่งอรุณ', 'OPD', 0, cn(col1w, br))}
-            {slot('ดึก', 'ER', 0, cn('flex-1', 'border-b-0'))}
-          </div>
-          {/* Row 1 */}
-          <div className="flex">
-            {slot('รุ่งอรุณ', 'OPD', 1, cn(col1w, br, 'border-b-0'))}
-            <div className={cn('flex-1', empty('border-b-0'))} />
+          
+          <div className="flex flex-1">
+             {/* รุ่งอรุณ OPD */}
+             <div className={cn(col1w, br)}>
+               {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
+             </div>
+             {/* ดึก ER */}
+             <div className="flex-1 flex flex-col">
+               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 flex-1')}
+               {slot('ดึก', 'ER', 1, 'flex-1 border-b-0')}
+             </div>
           </div>
         </>
       ) : (
@@ -406,18 +450,23 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
           </div>
 
-          {/* Row 0 */}
-          <div className="flex">
-            {slot('รุ่งอรุณ', 'OPD', 0, cn(col1w, br))}
-            {slot('บ่าย', 'SMC', 0, cn(col1w, br))}
-            {slot('ดึก',  'ER',  0, cn('flex-1', 'border-b-0'))}
-          </div>
+          <div className="flex flex-1">
+             {/* รุ่งอรุณ OPD Column - single cell spanning remaining height */}
+             <div className={cn(col1w, br)}>
+               {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
+             </div>
+             
+             {/* SMC Column - 2 rows */}
+             <div className={cn(col1w, br, 'flex flex-col')}>
+               {slot('บ่าย', 'SMC', 0, 'border-b border-gray-400/60 flex-1')}
+               {slot('บ่าย', 'SMC', 1, 'flex-1 border-b-0')}
+             </div>
 
-          {/* Row 1 */}
-          <div className="flex">
-            {slot('รุ่งอรุณ', 'OPD', 1, cn(col1w, br, 'border-b-0'))}
-            {slot('บ่าย', 'SMC', 1, cn(col1w, br, 'border-b-0'))}
-            {slot('ดึก',  'ER',  1, cn('flex-1', 'border-b-0'))}
+             {/* ดึก ER Column - 2 rows */}
+             <div className="flex-1 flex flex-col">
+               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 flex-1')}
+               {slot('ดึก', 'ER', 1, 'flex-1 border-b-0')}
+             </div>
           </div>
         </>
       )}

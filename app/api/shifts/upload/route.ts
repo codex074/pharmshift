@@ -41,6 +41,57 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
     }
   }
 
+  // Officer specific
+  if (role === 'officer') {
+    const cLower = c.toLowerCase();
+    
+    // SURG (s1, s2, s3)
+    if (cLower.startsWith('s') && cLower.length <= 2) {
+      return { dept: 'SURG', type: 'เช้า', position: cLower };
+    }
+    
+    // MED (m1, m2, m3, m4)
+    if (cLower.startsWith('m') && cLower.length <= 2) {
+      return { dept: 'MED', type: 'เช้า', position: cLower };
+    }
+    
+    // ER (e)
+    if (cLower === 'e') {
+      return { dept: 'ER', type: 'เช้า', position: 'e' };
+    }
+    
+    // บ่าย MED (บm)
+    if (cLower === 'บm') {
+      return { dept: 'MED', type: 'บ่าย', position: 'บm' };
+    }
+    
+    // บ่าย ER (บe1, บe2)
+    if (cLower.startsWith('บe') || cLower === 'บe') {
+      return { dept: 'ER', type: 'บ่าย', position: cLower };
+    }
+    
+    // รุ่งอรุณ (รe, รo1, รo2)
+    if (cLower.startsWith('รe') || cLower.startsWith('รo') || cLower === 'รe' || cLower === 'รo') {
+      return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: cLower };
+    }
+    
+    // SMC (smc1, smc2)
+    if (cLower.startsWith('smc')) {
+      return { dept: 'SMC', type: 'บ่าย', position: cLower };
+    }
+    
+    // โครงการ (ext1, ext2)
+    if (cLower.startsWith('ext')) {
+       return { dept: 'โครงการ', type: isWeekend ? 'เช้า' : 'บ่าย', position: cLower };
+    }
+    
+    // ส่งยาสอ. (สอ1, สอ2, สอ3, สอ4)
+    if (cLower.startsWith('สอ')) {
+       // Using 'ส่งยา สอ.' as the department name based on my calendar code check
+       return { dept: 'ส่งยา สอ.', type: 'เช้า', position: cLower };
+    }
+  }
+
   return null;
 };
 
@@ -167,6 +218,14 @@ export async function POST(req: NextRequest) {
       const { data: newDept } = await supabase.from('departments').insert({ name: 'Chemo' }).select('id, name').single();
       if (newDept) {
         deptMap.set('chemo', newDept.id);
+      }
+    }
+
+    // Ensure ส่งยา สอ. exists
+    if (!deptMap.has('ส่งยา สอ.')) {
+      const { data: newDept } = await supabase.from('departments').insert({ name: 'ส่งยา สอ.' }).select('id, name').single();
+      if (newDept) {
+        deptMap.set('ส่งยา สอ.', newDept.id);
       }
     }
 

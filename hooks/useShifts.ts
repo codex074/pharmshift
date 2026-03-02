@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Shift, SwapRequest, User } from '@/lib/types';
+import type { Shift, SwapRequest, User, Holiday } from '@/lib/types';
 import { toMonthYear } from '@/lib/utils';
 
 export function useShifts(year: number, month: number) {
@@ -13,6 +13,7 @@ export function useShifts(year: number, month: number) {
     pharmacy_technician: false,
     officer: false
   });
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
@@ -44,9 +45,18 @@ export function useShifts(year: number, month: number) {
       .eq('month_year', monthYear)
       .order('date', { ascending: true });
 
+    const { data: holidaysData, error: holidaysError } = await supabase
+      .from('holidays')
+      .select('*');
+
     if (!error && data) {
       setShifts(data as Shift[]);
     }
+    
+    if (!holidaysError && holidaysData) {
+      setHolidays(holidaysData as Holiday[]);
+    }
+    
     setLoading(false);
   }, [monthYear]);
 
@@ -75,7 +85,7 @@ export function useShifts(year: number, month: number) {
     };
   }, [monthYear, fetchShifts]);
 
-  return { shifts, isPublished, publishedRoles, loading, refetch: fetchShifts };
+  return { shifts, holidays, isPublished, publishedRoles, loading, refetch: fetchShifts };
 }
 
 export function useSwapRequests(userId?: string) {

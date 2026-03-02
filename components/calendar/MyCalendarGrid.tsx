@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
-import type { Shift, CalendarDay } from '@/lib/types';
+import type { Shift, CalendarDay, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth, isToday } from 'date-fns';
 import { SHIFT_CONFIG, DEPT_COLORS } from '@/lib/types';
 
@@ -10,10 +10,11 @@ interface MyCalendarGridProps {
   year: number;
   month: number;
   shifts: Shift[]; // already filtered to only mine
+  holidays: Holiday[];
   onDayClick: (day: CalendarDay) => void;
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[][] {
+function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -29,12 +30,14 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
     }
     const dateStr = format(current, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr);
+    const isHoliday = holidays.some(h => h.date === dateStr);
 
     weeks[weeks.length - 1].push({
       date: new Date(current),
       shifts: dayShifts,
       isCurrentMonth: current.getMonth() === month - 1,
       isToday: current.getTime() === today.getTime(),
+      isHoliday,
     });
 
     current = addDays(current, 1);
@@ -49,8 +52,8 @@ function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-export function MyCalendarGrid({ year, month, shifts, onDayClick }: MyCalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts);
+export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: MyCalendarGridProps) {
+  const weeks = buildWeeks(year, month, shifts, holidays);
 
   return (
     <div className="w-full border border-gray-200 rounded-xl overflow-hidden bg-white">

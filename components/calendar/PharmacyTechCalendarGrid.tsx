@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
-import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
+import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
@@ -14,12 +14,13 @@ interface CalendarGridProps {
   year: number;
   month: number;
   shifts: Shift[];
+  holidays: Holiday[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[][] {
+function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -35,12 +36,14 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
     }
     const dateStr = format(current, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr);
+    const isHoliday = holidays.some(h => h.date === dateStr);
 
     weeks[weeks.length - 1].push({
       date: new Date(current),
       shifts: dayShifts,
       isCurrentMonth: current.getMonth() === month - 1,
       isToday: current.getTime() === today.getTime(),
+      isHoliday,
     });
 
     current = addDays(current, 1);
@@ -50,8 +53,8 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
   return weeks;
 }
 
-export function PharmacyTechCalendarGrid({ year, month, shifts, currentUser, onDayClick, viewMode }: CalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts);
+export function PharmacyTechCalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+  const weeks = buildWeeks(year, month, shifts, holidays);
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -163,16 +166,16 @@ function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColo
 function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dow = day.date.getDay();
-  const isWeekend = dow === 0 || dow === 6;
+  const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
   // Render internal borders manually in the flex layout
-  if (isWeekend) {
+  if (isWeekendOrHoliday) {
     return (
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
         {/* Row 1: Date Header */}
         <div className="flex border-b-2 border-gray-400/60 h-6">
           <div className="w-[50%] border-r border-gray-400/60 bg-gray-200/60"></div>
-          <div className={cn("w-[50%] flex items-center justify-center font-bold text-sm bg-gray-200/60", dow === 0 ? 'text-red-500' : 'text-indigo-600')}>{dayNum}</div>
+          <div className={cn("w-[50%] flex items-center justify-center font-bold text-sm bg-gray-200/60", (dow === 0 || day.isHoliday) ? 'text-red-500' : 'text-indigo-600')}>{dayNum}</div>
         </div>
 
         {/* Column Headers + Body Wrapper */}

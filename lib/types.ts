@@ -72,9 +72,17 @@ export interface CalendarDay {
   shifts: Shift[];
   isCurrentMonth: boolean;
   isToday: boolean;
+  isHoliday?: boolean;
 }
 
 export type ShiftType = 'เช้า' | 'บ่าย' | 'ดึก' | 'รุ่งอรุณ' | 'smc';
+
+export interface Holiday {
+  id: string;
+  date: string;
+  name: string;
+  created_at?: string;
+}
 
 // ─── Shift Structure Config ─────────────────────────
 
@@ -168,6 +176,7 @@ export const DEPT_COLORS: Record<string, string> = {
   SMC:     '#a855f7',
   รุ่งอรุณ: '#f97316',
   Chemo:   '#14b8a6',
+  'ส่งยา สอ.': '#b45309', // Amber-700
 };
 
 export const SHIFT_CONFIG: Record<ShiftType, { icon: string; color: string; label: string; time: string }> = {
@@ -187,6 +196,7 @@ export const DEPT_STYLES: Record<string, { bg: string; text: string; label: stri
   SMC:      { bg: 'dept-smc',     text: 'text-purple-700', label: 'SMC' },
   รุ่งอรุณ:  { bg: 'dept-rung',    text: 'text-orange-700', label: 'รุ่งอรุณ' },
   Chemo:    { bg: 'dept-chemo',   text: 'text-teal-700',   label: 'Chemo' },
+  'ส่งยา สอ.': { bg: 'bg-amber-100', text: 'text-amber-700',  label: 'ส่งยา สอ.' },
 };
 
 export const SHIFT_STYLES: Record<string, { badge: string; label: string; icon: string }> = {

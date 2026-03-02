@@ -2,25 +2,26 @@
 
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
-import type { Shift, User, CalendarDay, ShiftType } from '@/lib/types';
+import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 import { DEPT_COLORS } from '@/lib/types';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
 const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.5rem] relative";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative";
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
 
 interface CalendarGridProps {
   year: number;
   month: number;
   shifts: Shift[];
+  holidays: Holiday[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[][] {
+function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
@@ -36,12 +37,14 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
     }
     const dateStr = format(current, 'yyyy-MM-dd');
     const dayShifts = shifts.filter(s => s.date === dateStr);
+    const isHoliday = holidays.some(h => h.date === dateStr);
 
     weeks[weeks.length - 1].push({
       date: new Date(current),
       shifts: dayShifts,
       isCurrentMonth: current.getMonth() === month - 1,
       isToday: current.getTime() === today.getTime(),
+      isHoliday,
     });
 
     current = addDays(current, 1);
@@ -51,8 +54,8 @@ function buildWeeks(year: number, month: number, shifts: Shift[]): CalendarDay[]
   return weeks;
 }
 
-export function CalendarGrid({ year, month, shifts, currentUser, onDayClick, viewMode }: CalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts);
+export function CalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+  const weeks = buildWeeks(year, month, shifts, holidays);
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -78,11 +81,12 @@ export function CalendarGrid({ year, month, shifts, currentUser, onDayClick, vie
                 return <div key={di} className="border-r-2 border-gray-400/60 bg-gray-100/50" />;
               }
               const dow = day.date.getDay();
+              const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
                   {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
-                  { (dow === 0 || dow === 6) ? <WeekendGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
+                  { (isWeekendOrHoliday) ? <WeekendGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     (dow === 5) ? <FridayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
                     <MonThuGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
                   }
@@ -165,19 +169,20 @@ function renderRungAroonBlocks(day: CalendarDay, currentUser?: User | null) {
 
 function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
-  const isSunday = day.date.getDay() === 0;
+  const dow = day.date.getDay();
+  const isSundayOrHoliday = dow === 0 || day.isHoliday;
 
   const chemoShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'Chemo');
 
   return (
-    <div className="grid grid-cols-5 grid-rows-[repeat(7,_minmax(1.75rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className="grid grid-cols-5 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
       
       {/* ROW 1 */}
       <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
       <div className={headerStyle} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
       <div className={headerStyle} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
       <div className={headerStyle} style={{ gridArea: '1 / 4 / 2 / 5', backgroundColor: '#fffbeb' }}>บ่าย</div>
-      <div className={cn(headerStyle, isSunday ? 'text-red-500' : 'text-indigo-600', 'text-sm')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
+      <div className={cn(headerStyle, isSundayOrHoliday ? 'text-red-500' : 'text-indigo-600', 'text-sm')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
       <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', currentUser)}</div>
@@ -214,7 +219,7 @@ function MonThuGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curren
   const smcShifts = day.shifts.filter(s => s.shift_type === 'บ่าย' && getDeptName(s) === 'SMC');
 
   return (
-    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(1.75rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
       
       {/* ROW 1 */}
       <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
@@ -244,7 +249,7 @@ function MonThuGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curren
 function FridayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   return (
-    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(1.75rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
       
       {/* ROW 1 */}
       <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>

@@ -17,6 +17,7 @@ import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { DeployModal } from '@/components/calendar/DeployModal';
+import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -34,11 +35,12 @@ export default function CalendarPage() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
-  const { shifts: allShifts, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
+  const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
 
   // For admin: use viewRoleGroup selector; for staff: use own role
   const effectiveRoleGroup: UserRole =
@@ -130,6 +132,14 @@ export default function CalendarPage() {
                 className="bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
               >
                 เพิ่มเวร (CSV)
+              </button>
+            )}
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setShowHolidaysModal(true)}
+                className="bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 font-medium px-4 py-2 rounded-xl text-sm transition-colors shadow-sm flex items-center gap-2"
+              >
+                จัดการวันหยุด
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
@@ -232,6 +242,7 @@ export default function CalendarPage() {
                 year={year}
                 month={month}
                 shifts={myShifts}
+                holidays={holidays}
                 onDayClick={handleDayClick}
               />
             ) : effectiveRoleGroup === 'pharmacy_technician' ? (
@@ -239,6 +250,7 @@ export default function CalendarPage() {
                 year={year}
                 month={month}
                 shifts={shifts}
+                holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
@@ -248,6 +260,7 @@ export default function CalendarPage() {
                 year={year}
                 month={month}
                 shifts={shifts}
+                holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
@@ -257,6 +270,7 @@ export default function CalendarPage() {
                 year={year}
                 month={month}
                 shifts={shifts}
+                holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
@@ -322,6 +336,14 @@ export default function CalendarPage() {
           initialMonth={month}
           currentUser={currentUser}
           onClose={() => setShowDeployModal(false)}
+          onSuccess={() => refetch()}
+        />
+      )}
+
+      {/* Holidays Modal */}
+      {showHolidaysModal && (
+        <ManageHolidaysModal
+          onClose={() => setShowHolidaysModal(false)}
           onSuccess={() => refetch()}
         />
       )}
