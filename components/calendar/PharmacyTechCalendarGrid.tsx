@@ -168,7 +168,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string | u
     (!deptName || getDeptName(s) === deptName)
   );
   
-  if (matching.length === 0) return null;
+    if (matching.length === 0) return null;
 
   return matching.map((s) => renderShiftBadge(s, ctx));
 }
