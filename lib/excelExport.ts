@@ -108,47 +108,51 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์ (เวรรุ่งอรุณ)',
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
-      rate: 135,
+      getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
       filter: (s: Shift) => s.shift_type === 'รุ่งอรุณ',
       getValue: () => 1.5, // 1.5 hours per shift
+      note: 'คลินิกรุ่งอรุณ 07.00 น.- 08.30 น. (ยกเว้นวันเสาร์,อาทิตย์และวันหยุดราชการ)',
     },
     {
       name: 'โครงการ',
       title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์  (เวรโครงการพิเศษ)',
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
-      rate: 135,
+      getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
       filter: (s: Shift) => getDeptName(s) === 'โครงการ',
       getValue: () => 4, // 4 hours per shift
-      note: '- ช่วงเวลาการปฏิบัติงาน 08.30 น. - 12.30 น.',
+      note: 'โครงการพิเศษ (คพ) คลินิกนอกเวลาราชการ 16.30 น. - 20.30 น. ยกเว้นวันเสาร์, อาทิตย์ และวันหยุดราชการ  =  08.30 น. - 12.30 น.',
     },
     {
       name: 'เช้า-บ่าย-ดึก',
       title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์  (เช้า บ่าย ดึก)',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      rate: 780,
+      getRate: (role: string) => role === 'officer' ? 330 : role === 'pharmacy_technician' ? 520 : 780,
       filter: (s: Shift) => ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) && !['โครงการ', 'SMC', 'Chemo'].includes(getDeptName(s)),
       getValue: () => 1, // 1 shift
       getCode: getShiftCode,
+      note: 'เวรดึก(ด) = 00.30 น. - 08.30 น.     เวรเช้า(ช) = 08.30 น. - 16.30 น.     เวรบ่าย(บ)  = 16.30 น. - 00.30 น.',
     },
     {
       name: 'SMC',
       title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์ (พิเศษ SMC)',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      rate: 900,
+      getRate: (role: string) => role === 'officer' ? 375 : role === 'pharmacy_technician' ? 600 : 900,
       filter: (s: Shift) => getDeptName(s) === 'SMC',
       getValue: () => 1, // 1 shift
+      note: 'ปฏิบัติงานตึกผู้ป่วยนอก (OPD) บ = 16.30 น. - 20.30 น.',
     },
     {
       name: 'Chemo',
       title: 'หลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      rate: 390,
+      getRate: (role: string) => 390,
       filter: (s: Shift) => getDeptName(s) === 'Chemo',
       getValue: () => 1, // 1 shift
+      note: 'ช่วงเวลาปฏิบัติงาน 08.30 น. - 12.30 น.',
     },
   ];
 
@@ -196,7 +200,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       userRow.days[day].push({ val, code });
 
       userRow.totalValue += val;
-      userRow.totalAmount += val * config.rate;
+      userRow.totalAmount += val * config.getRate(userRow.role);
     }
 
     const roleWeight: Record<string, number> = {
@@ -337,7 +341,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
           // Output 2 rows.
           const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' : 
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
-          const rowValues1: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.rate];
+          const rowValues1: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.getRate(row.role)];
           const rowValues2: any[] = ['', '', '', '', ''];
 
           for (let i = 1; i <= 31; i++) {
@@ -390,7 +394,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
             row.salaryNumber, // salaryNo
             row.fullName,
             positionLabel,
-            config.rate,
+            config.getRate(row.role),
           ];
 
           for (let i = 1; i <= 31; i++) {
@@ -470,7 +474,12 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       worksheet.addRow([]); // empty row
 
       const signRow1 = worksheet.addRow([]);
-      signRow1.getCell(2).value = 'ลงชื่อ..............................................................หัวหน้างาน';
+      // Position column (2)
+      if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+        signRow1.getCell(2).value = 'ลงชื่อ..............................................................หัวหน้างาน';
+      } else {
+        signRow1.getCell(2).value = 'ลงชื่อ..............................................................ผู้ตรวจสอบ';
+      }
       signRow1.getCell(30).value = 'ลงชื่อ..............................................................หัวหน้ากลุ่มงาน';
       signRow1.font = { name: 'TH SarabunPSK', size: 16 };
       signRow1.alignment = { horizontal: 'center' };
@@ -478,7 +487,12 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       worksheet.mergeCells(`AD${signRow1.number}:AM${signRow1.number}`);
       
       const signRow2 = worksheet.addRow([]);
-      signRow2.getCell(2).value = '(นางแสงเธียร คณิตปัญญาเจริญ)';
+      // Name column (2)  
+      if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+        signRow2.getCell(2).value = '(นางแสงเธียร คณิตปัญญาเจริญ)';
+      } else {
+        signRow2.getCell(2).value = '(นายอภิเสก คงศิริ)';
+      }
       signRow2.getCell(30).value = '(นางมัณทนา คันทะเรศร์)';
       signRow2.font = { name: 'TH SarabunPSK', size: 16 };
       signRow2.alignment = { horizontal: 'center' };
