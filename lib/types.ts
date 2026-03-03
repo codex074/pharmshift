@@ -108,7 +108,7 @@ export function getSlotsForDate(date: Date): { shift: ShiftType; slots: SlotDef[
       shift: 'เช้า',
       slots: [
         { dept: 'ER',      count: 1, time: '08:30-16:30' },
-        { dept: 'SURG',    count: 2, time: '08:30-16:30' },
+        { dept: 'SURG',    count: 3, time: '08:30-16:30' },
         { dept: 'โครงการ',  count: 1, time: '09:00-13:00' },
         { dept: 'MED',     count: 1, position: 'D/C',  time: '08:30-16:30' },
         { dept: 'MED',     count: 1, position: 'Cont', time: '08:30-16:30' },

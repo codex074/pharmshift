@@ -302,7 +302,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           {/* Post-ER rows: MED[2+], ดึก[0] spanning */}
           {Array.from({ length: postErRows }, (_, i) => (
             <div key={i} className="flex">
-              {fempty(cn(c1, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {i === 0 ? fslot('เช้า', 'ER', 0, cn(c1, br, postErRows === 1 ? 'border-b-0' : '')) : fempty(cn(c1, br, i === postErRows - 1 ? 'border-b-0' : ''))}
               {fempty(cn(c2, br, i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* MED[2] / MED[3] - replaced by overlay */}
               {fempty(cn(c3, br, i === postErRows - 1 ? 'border-b-0' : ''))}
@@ -370,6 +370,29 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
     );
   };
 
+  /** Combined slot cell filtered by position prefix (e.g. 'รo' for OPD, 'รe' for ER) */
+  const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, posPrefix: string, cls: string) => {
+    const list = getList(shiftType, dept).filter(s => (s.position || '').toLowerCase().startsWith(posPrefix.toLowerCase()));
+    
+    return (
+      <div className={cn(nameCell(), cls)}>
+        <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
+          {list.map((s, idx) => {
+            const isMe = currentUser && s.user_id === currentUser.id;
+            return (
+              <div key={idx} className="flex items-center">
+                {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
+                <span className={cn(nameTextStyle, 'w-auto px-0.5', isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+                  {getUserName(s)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   // ═══════════════════════════════════════════════════════════════════
   // WEEKDAY (จันทร์–ศุกร์)
   //
@@ -408,14 +431,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
 
       {/* Row 0: โครงการ[0] | บ่ายMED[0] | บ่ายER[0] */}
       <div className="flex">
-        {slot('เช้า', 'โครงการ', 0, cn(col1w, br))}
+        {slot('บ่าย', 'โครงการ', 0, cn(col1w, br))}
         {slot('บ่าย', 'MED',     0, cn(col1w, br, 'border-b-0'))}
         {slot('บ่าย', 'ER',      0, 'flex-1')}
       </div>
 
       {/* Row 1: โครงการ[1] | (empty) | บ่ายER[1] */}
       <div className="flex">
-        {slot('เช้า', 'โครงการ', 1, cn(col1w, br))}
+        {slot('บ่าย', 'โครงการ', 1, cn(col1w, br))}
         <div className={cn(col1w, br, empty())} />
         {slot('บ่าย', 'ER',      1, 'flex-1')}
       </div>
@@ -430,9 +453,10 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           </div>
           
           <div className="grid grid-cols-[1fr_2fr] flex-1">
-             {/* รุ่งอรุณ OPD */}
-             <div className={cn(br)}>
-               {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
+             {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
+             <div className={cn(br, 'grid grid-rows-2')}>
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รo', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รe', 'h-full border-b-0')}
              </div>
              {/* ดึก ER */}
              <div className="grid grid-rows-2">
@@ -451,9 +475,10 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           </div>
 
           <div className="grid grid-cols-3 flex-1">
-             {/* รุ่งอรุณ OPD Column - single cell spanning remaining height */}
-             <div className={cn(br)}>
-               {combinedSlot('รุ่งอรุณ', 'OPD', 'h-full border-b-0')}
+             {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
+             <div className={cn(br, 'grid grid-rows-2')}>
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รo', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รe', 'h-full border-b-0')}
              </div>
              
              {/* SMC Column - 2 rows */}
