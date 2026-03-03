@@ -19,6 +19,11 @@ interface CalendarGridProps {
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (shift: Shift) => void;
 }
 
 function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
@@ -54,8 +59,13 @@ function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holi
   return weeks;
 }
 
-export function CalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+export function CalendarGrid({ 
+  year, month, shifts, holidays, currentUser, onDayClick,
+  isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift 
+}: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
+
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -86,9 +96,9 @@ export function CalendarGrid({ year, month, shifts, holidays, currentUser, onDay
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
                   {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
-                  { (isWeekendOrHoliday) ? <WeekendGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
-                    (dow === 5) ? <FridayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} /> :
-                    <MonThuGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
+                  { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
+                    (dow === 5) ? <FridayGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
+                    <MonThuGrid day={day} onDayClick={onDayClick} ctx={ctx} />
                   }
                 </div>
               );
@@ -101,7 +111,14 @@ export function CalendarGrid({ year, month, shifts, holidays, currentUser, onDay
   );
 }
 
-// ─── UTILS ──────────────────────────────────────────────────────────
+interface RenderContext {
+  currentUser?: User | null;
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (s: Shift) => void;
+}
 
 function getUserName(shift: Shift): string {
   return (shift as any).user_nickname || shift.user?.nickname || shift.user?.name || (shift as any).user_name || '';
@@ -111,7 +128,44 @@ function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, currentUser?: User | null, position?: string) {
+function renderShiftBadge(s: Shift, ctx: RenderContext) {
+  const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
+  const isPendingDelete = ctx.pendingDeletes?.has(s.id);
+  const pendingSub = ctx.pendingEdits?.[s.id];
+  
+  const displayName = pendingSub ? pendingSub.name : getUserName(s);
+
+  if (ctx.isEditMode) {
+    return (
+      <div 
+        key={s.id} 
+        className={cn(
+          "flex items-center justify-between w-[90%] px-1 py-0.5 rounded border mb-0.5",
+          isPendingDelete ? "bg-red-50 border-red-200" : pendingSub ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-200 hover:border-gray-300 pointer-events-auto"
+        )}
+        onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
+      >
+        <span className={cn("text-[10px] truncate max-w-[70%]", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+          {displayName}
+        </span>
+        <button 
+          onClick={(e) => { e.stopPropagation(); if (ctx.onToggleDelete) ctx.onToggleDelete(s.id) }}
+          className="w-3 h-3 rounded flex items-center justify-center border border-gray-300 bg-white"
+        >
+          {isPendingDelete && <div className="w-1.5 h-1.5 bg-red-500 rounded-sm" />}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <span key={s.id} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+      {displayName}
+    </span>
+  );
+}
+
+function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string) {
   const matching = shifts.filter(s =>
     s.shift_type === shiftType &&
     getDeptName(s) === deptName &&
@@ -119,33 +173,20 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, cu
   );
   if (matching.length === 0) return null;
 
-  // Sort MED shifts so D/C appears above Cont
   if (deptName === 'MED' && !position) {
     const posOrder: Record<string, number> = { 'D/C': 0, 'Cont': 1 };
     matching.sort((a, b) => (posOrder[(a as any).position] ?? 99) - (posOrder[(b as any).position] ?? 99));
   }
 
-  return matching.map((s, i) => {
-    const isMe = currentUser && s.user_id === currentUser.id;
-    return (
-      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-        {getUserName(s)}
-      </span>
-    );
-  });
+  return matching.map((s) => renderShiftBadge(s, ctx));
 }
 
-function renderPersonalShift(s: Shift | undefined, currentUser?: User | null) {
+function renderPersonalShift(s: Shift | undefined, ctx: RenderContext) {
   if (!s) return null;
-  const isMe = currentUser && s.user_id === currentUser.id;
-  return (
-    <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-      {getUserName(s)}
-    </span>
-  );
+  return renderShiftBadge(s, ctx);
 }
 
-function renderRungAroonBlocks(day: CalendarDay, currentUser?: User | null) {
+function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext) {
   const dow = day.date.getDay();
   let positions = ['OPD'];
   if (dow === 2) positions = ['OPD', 'ER', 'HIV']; // Tue
@@ -157,7 +198,7 @@ function renderRungAroonBlocks(day: CalendarDay, currentUser?: User | null) {
         const matchingShifts = day.shifts.filter(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
         return (
           <div key={idx} className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible gap-1">
-            {matchingShifts.map((s, i) => <div key={i}>{renderPersonalShift(s, currentUser)}</div>)}
+            {matchingShifts.map((s, i) => <div key={i}>{renderPersonalShift(s, ctx)}</div>)}
           </div>
         );
       })}
@@ -167,7 +208,7 @@ function renderRungAroonBlocks(day: CalendarDay, currentUser?: User | null) {
 
 // ─── TEMPLATES ──────────────────────────────────────────────────────
 
-function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
+function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dow = day.date.getDay();
   const isSundayOrHoliday = dow === 0 || day.isHoliday;
@@ -185,11 +226,11 @@ function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curre
       <div className={cn(headerStyle, isSundayOrHoliday ? 'text-red-500' : 'text-indigo-600', 'text-sm')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', currentUser)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx)}</div>
 
       {/* ROW 4 */}
       <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
@@ -197,24 +238,24 @@ function WeekendGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curre
       <div className={headerStyle} style={{ gridArea: '4 / 3 / 5 / 6', backgroundColor: '#e0e7ff' }}>ดึก</div>
 
       {/* ROW 5-7 */}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', currentUser)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx)}</div>
       
       <div className="grid grid-rows-2" style={{ gridArea: '5 / 2 / 8 / 3' }}>
         <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
-          {renderPersonalShift(chemoShifts[0], currentUser)}
+          {renderPersonalShift(chemoShifts[0], ctx)}
         </div>
         <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
-          {renderPersonalShift(chemoShifts[1], currentUser)}
+          {renderPersonalShift(chemoShifts[1], ctx)}
         </div>
       </div>
 
-      <div className={nameCellStyle} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', currentUser)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx)}</div>
 
     </div>
   );
 }
 
-function MonThuGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
+function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const smcShifts = day.shifts.filter(s => s.shift_type === 'บ่าย' && getDeptName(s) === 'SMC');
 
@@ -228,25 +269,25 @@ function MonThuGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curren
       <div className={cn(headerStyle, 'text-gray-900 text-sm')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 3' }}>{renderPersonalShift(smcShifts[0], currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 3' }}>{renderPersonalShift(smcShifts[1], currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', currentUser)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 3' }}>{renderPersonalShift(smcShifts[0], ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 3' }}>{renderPersonalShift(smcShifts[1], ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx)}</div>
 
       {/* ROW 4 */}
       <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
       <div className={headerStyle} style={{ gridArea: '4 / 2 / 5 / 5', backgroundColor: '#e0e7ff' }}>ดึก</div>
 
       {/* ROW 5-7 */}
-      {renderRungAroonBlocks(day, currentUser)}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', currentUser)}</div>
+      {renderRungAroonBlocks(day, ctx)}
+      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx)}</div>
 
     </div>
   );
 }
 
-function FridayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
+function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   return (
     <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
@@ -257,17 +298,17 @@ function FridayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, curren
       <div className={cn(headerStyle, 'text-gray-900 text-sm')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', currentUser)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', currentUser)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx)}</div>
+      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx)}</div>
 
       {/* ROW 4 */}
       <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
       <div className={headerStyle} style={{ gridArea: '4 / 2 / 5 / 5', backgroundColor: '#e0e7ff' }}>ดึก</div>
 
       {/* ROW 5-7 */}
-      {renderRungAroonBlocks(day, currentUser)}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', currentUser)}</div>
+      {renderRungAroonBlocks(day, ctx)}
+      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx)}</div>
 
     </div>
   );

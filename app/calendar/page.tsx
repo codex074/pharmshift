@@ -12,6 +12,8 @@ import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
+import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
+import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
 
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
@@ -21,7 +23,7 @@ import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import type { Shift, CalendarDay, UserRole } from '@/lib/types';
+import type { Shift, CalendarDay, UserRole, User } from '@/lib/types';
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -38,6 +40,13 @@ export default function CalendarPage() {
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
+  
+  // Admin Edit Mode states
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
+  const [pendingEdits, setPendingEdits] = useState<Record<string, User>>({});
+  const [editingSubsShift, setEditingSubsShift] = useState<Shift | null>(null);
+  const [showAdminConfirm, setShowAdminConfirm] = useState(false);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
@@ -67,7 +76,7 @@ export default function CalendarPage() {
   }
 
   function handleDayClick(day: CalendarDay) {
-    if (day.isCurrentMonth) {
+    if (day.isCurrentMonth && !isEditMode) {
       setSelectedDay(day);
     }
   }
@@ -75,6 +84,33 @@ export default function CalendarPage() {
   function handleSwapClickFromDay(shift: Shift) {
     setSelectedDay(null);
     setSelectedShift(shift);
+  }
+
+  function handleToggleEditMode() {
+    setIsEditMode(!isEditMode);
+    setPendingDeletes(new Set());
+    setPendingEdits({});
+  }
+
+  function handleToggleDelete(shiftId: string) {
+    setPendingDeletes(prev => {
+      const next = new Set(prev);
+      if (next.has(shiftId)) next.delete(shiftId);
+      else next.add(shiftId);
+      return next;
+    });
+  }
+
+  function handleEditShiftFromCalendar(shift: Shift) {
+    if (!isEditMode) return;
+    setEditingSubsShift(shift);
+  }
+
+  function handleSelectSubstitute(user: User) {
+    if (editingSubsShift) {
+      setPendingEdits(prev => ({ ...prev, [editingSubsShift.id]: user }));
+    }
+    setEditingSubsShift(null);
   }
 
   // Stats — myShifts comes from allShifts so it's never empty for own user
@@ -119,14 +155,43 @@ export default function CalendarPage() {
           </div>
         <div className="flex items-center gap-2 flex-wrap">
             {currentUser?.role === 'admin' && (
-              <button
-                onClick={() => setShowDeployModal(true)}
-                className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
-              >
-                <span>📢</span>
-                <span className="sm:hidden">ประกาศ</span>
-                <span className="hidden sm:inline">ประกาศตารางเวร</span>
-              </button>
+              <>
+                {isEditMode ? (
+                  <>
+                    <button
+                      onClick={() => setShowAdminConfirm(true)}
+                      className="bg-indigo-600 text-white hover:bg-indigo-700 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>✅</span>
+                      <span>ยืนยันการแก้ไข</span>
+                    </button>
+                    <button
+                      onClick={handleToggleEditMode}
+                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                    >
+                      <span>❌</span>
+                      <span>ยกเลิก</span>
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleToggleEditMode}
+                    className="bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    <span>✏️</span>
+                    <span className="sm:hidden">แก้ไข</span>
+                    <span className="hidden sm:inline">โหมดแก้ไข</span>
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowDeployModal(true)}
+                  className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                >
+                  <span>📢</span>
+                  <span className="sm:hidden">ประกาศ</span>
+                  <span className="hidden sm:inline">ประกาศตารางเวร</span>
+                </button>
+              </>
             )}
             {currentUser?.role === 'admin' && (
               <button
@@ -265,6 +330,11 @@ export default function CalendarPage() {
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
+                isEditMode={isEditMode}
+                pendingDeletes={pendingDeletes}
+                pendingEdits={pendingEdits}
+                onToggleDelete={handleToggleDelete}
+                onEditShift={handleEditShiftFromCalendar}
               />
             ) : effectiveRoleGroup === 'officer' ? (
               <OfficeCalendarGrid
@@ -275,6 +345,11 @@ export default function CalendarPage() {
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
+                isEditMode={isEditMode}
+                pendingDeletes={pendingDeletes}
+                pendingEdits={pendingEdits}
+                onToggleDelete={handleToggleDelete}
+                onEditShift={handleEditShiftFromCalendar}
               />
             ) : (
               <CalendarGrid
@@ -285,6 +360,11 @@ export default function CalendarPage() {
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 viewMode={viewMode}
+                isEditMode={isEditMode}
+                pendingDeletes={pendingDeletes}
+                pendingEdits={pendingEdits}
+                onToggleDelete={handleToggleDelete}
+                onEditShift={handleEditShiftFromCalendar}
               />
             )}
             </div>
@@ -357,6 +437,31 @@ export default function CalendarPage() {
         <ManageHolidaysModal
           onClose={() => setShowHolidaysModal(false)}
           onSuccess={() => refetch()}
+        />
+      )}
+      {/* Admin Replace Modal */}
+      {editingSubsShift && isEditMode && (
+        <AdminShiftSubstituteModal
+          shift={editingSubsShift}
+          onClose={() => setEditingSubsShift(null)}
+          onSelectSubstitute={handleSelectSubstitute}
+        />
+      )}
+
+      {/* Admin Confirm Submit Modal */}
+      {showAdminConfirm && isEditMode && (
+        <AdminConfirmModal
+          pendingDeletes={pendingDeletes}
+          pendingEdits={pendingEdits}
+          allShifts={allShifts}
+          currentUser={currentUser}
+          onClose={() => setShowAdminConfirm(false)}
+          onSuccess={() => {
+            setShowAdminConfirm(false);
+            setPendingDeletes(new Set());
+            setPendingEdits({});
+            refetch();
+          }}
         />
       )}
     </>

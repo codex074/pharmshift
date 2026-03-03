@@ -18,6 +18,11 @@ interface CalendarGridProps {
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (shift: Shift) => void;
 }
 
 function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
@@ -53,8 +58,13 @@ function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holi
   return weeks;
 }
 
-export function OfficeCalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+export function OfficeCalendarGrid({ 
+  year, month, shifts, holidays, currentUser, onDayClick, viewMode,
+  isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift 
+}: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
+
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -84,7 +94,7 @@ export function OfficeCalendarGrid({ year, month, shifts, holidays, currentUser,
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
                   {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
-                  <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
+                  <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
                 </div>
               );
             })}
@@ -106,7 +116,53 @@ function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, currentUser?: User | null) {
+interface RenderContext {
+  currentUser?: User | null;
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (s: Shift) => void;
+}
+
+function renderShiftBadge(s: Shift, ctx: RenderContext) {
+  const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
+  const isPendingDelete = ctx.pendingDeletes?.has(s.id);
+  const pendingSub = ctx.pendingEdits?.[s.id];
+  
+  const displayName = pendingSub ? pendingSub.name : getUserName(s);
+
+  if (ctx.isEditMode) {
+    return (
+      <div 
+        key={s.id} 
+        className={cn(
+          "flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5",
+          isPendingDelete ? "bg-red-50 border-red-200" : pendingSub ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-200 hover:border-gray-300 pointer-events-auto"
+        )}
+        onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }
+      >
+        <span className={cn("text-[10px] truncate flex-1 leading-tight", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+          {displayName}
+        </span>
+        <button 
+          onClick={(e) => { e.stopPropagation(); if (ctx.onToggleDelete) ctx.onToggleDelete(s.id) }
+          className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center border border-gray-300 bg-white"
+        >
+          {isPendingDelete && <div className="w-1.5 h-1.5 bg-red-500 rounded-sm" />}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <span key={s.id} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+      {displayName}
+    </span>
+  );
+}
+
+function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string | undefined, ctx: RenderContext) {
   const matching = shifts.filter(s => 
     s.shift_type === shiftType && 
     (!deptName || getDeptName(s) === deptName)
@@ -114,19 +170,12 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   
   if (matching.length === 0) return null;
 
-  return matching.map((s, i) => {
-    const isMe = currentUser && s.user_id === currentUser.id;
-    return (
-      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-        {getUserName(s)}
-      </span>
-    );
-  });
+  return matching.map((s) => renderShiftBadge(s, ctx));
 }
 
 // ─── TEMPLATES ──────────────────────────────────────────────────────
 
-function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
+function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dow = day.date.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
   const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
@@ -154,18 +203,12 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
     return list;
   };
 
-  /** Single slot cell: shows the i-th shift or an empty cell */
   const slot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
     const list = getList(shiftType, dept);
     const s = list[i];
-    const isMe = s && currentUser && s.user_id === currentUser.id;
     return (
       <div className={cn(nameCell(), cls)}>
-        {s && (
-          <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-            {getUserName(s)}
-          </span>
-        )}
+        {s && renderShiftBadge(s, ctx)}
       </div>
     );
   };
@@ -213,32 +256,21 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
         s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
-      const isMe = s && currentUser && s.user_id === currentUser.id;
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer flex-1', cls)}>
-          {s && (
-            <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-              {getUserName(s)}
-            </span>
-          )}
+          {s && renderShiftBadge(s, ctx)}
         </div>
       );
     };
 
-    // Slot cell with fixed height
     const fslot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
       const list = day.shifts.filter(s =>
         s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
-      const isMe = s && currentUser && s.user_id === currentUser.id;
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer', fixedRowH, bb, cls)}>
-          {s && (
-            <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-              {getUserName(s)}
-            </span>
-          )}
+          {s && renderShiftBadge(s, ctx)}
         </div>
       );
     };
@@ -321,7 +353,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             style={{ 
               left: isSat ? '15%' : '20%', 
               width: isSat ? '15%' : '20%' 
-            }}
+            }
           >
             {surgSlot('เช้า', 'SURG', 0, 'border-b border-gray-400/60 pointer-events-auto')}
             {surgSlot('เช้า', 'SURG', 1, 'border-b border-gray-400/60 pointer-events-auto')}
@@ -334,7 +366,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             style={{ 
               left: isSat ? '30%' : '40%', 
               width: isSat ? '15%' : '20%' 
-            }}
+            }
           >
             {surgSlot('เช้า', 'MED', 0, 'border-b border-gray-400/60 pointer-events-auto')}
             {surgSlot('เช้า', 'MED', 1, 'border-b border-gray-400/60 pointer-events-auto')}
@@ -347,7 +379,6 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
     );
   }
 
-  /** Combined slot cell: shows all shifts of a given type/dept separated by '/' */
   const combinedSlot = (shiftType: ShiftType, dept: string | undefined, cls: string) => {
     const list = getList(shiftType, dept);
     
@@ -355,13 +386,10 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
       <div className={cn(nameCell(), cls)}>
         <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
           {list.map((s, idx) => {
-            const isMe = currentUser && s.user_id === currentUser.id;
             return (
-              <div key={idx} className="flex items-center">
+              <div key={idx} className="flex items-center w-full">
                 {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
-                <span className={cn(nameTextStyle, 'w-auto px-0.5', isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-                  {getUserName(s)}
-                </span>
+                {renderShiftBadge(s, ctx)}
               </div>
             );
           })}
@@ -370,7 +398,6 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
     );
   };
 
-  /** Combined slot cell filtered by position prefix (e.g. 'รo' for OPD, 'รe' for ER) */
   const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, posPrefix: string, cls: string) => {
     const list = getList(shiftType, dept).filter(s => (s.position || '').toLowerCase().startsWith(posPrefix.toLowerCase()));
     
@@ -378,13 +405,10 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
       <div className={cn(nameCell(), cls)}>
         <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
           {list.map((s, idx) => {
-            const isMe = currentUser && s.user_id === currentUser.id;
             return (
-              <div key={idx} className="flex items-center">
+              <div key={idx} className="flex items-center w-full">
                 {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
-                <span className={cn(nameTextStyle, 'w-auto px-0.5', isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-                  {getUserName(s)}
-                </span>
+                {renderShiftBadge(s, ctx)}
               </div>
             );
           })}

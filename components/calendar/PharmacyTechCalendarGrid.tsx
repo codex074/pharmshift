@@ -18,6 +18,11 @@ interface CalendarGridProps {
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   viewMode: 'all' | 'mine';
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (shift: Shift) => void;
 }
 
 function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
@@ -53,8 +58,13 @@ function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holi
   return weeks;
 }
 
-export function PharmacyTechCalendarGrid({ year, month, shifts, holidays, currentUser, onDayClick, viewMode }: CalendarGridProps) {
+export function PharmacyTechCalendarGrid({ 
+  year, month, shifts, holidays, currentUser, onDayClick, viewMode,
+  isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift 
+}: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
+
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -84,7 +94,7 @@ export function PharmacyTechCalendarGrid({ year, month, shifts, holidays, curren
               return (
                 <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
                   {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
-                  <DayGrid day={day} currentUser={currentUser} onDayClick={onDayClick} />
+                  <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
                 </div>
               );
             })}
@@ -106,7 +116,53 @@ function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, currentUser?: User | null) {
+interface RenderContext {
+  currentUser?: User | null;
+  isEditMode?: boolean;
+  pendingDeletes?: Set<string>;
+  pendingEdits?: Record<string, User>;
+  onToggleDelete?: (id: string) => void;
+  onEditShift?: (s: Shift) => void;
+}
+
+function renderShiftBadge(s: Shift, ctx: RenderContext) {
+  const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
+  const isPendingDelete = ctx.pendingDeletes?.has(s.id);
+  const pendingSub = ctx.pendingEdits?.[s.id];
+  
+  const displayName = pendingSub ? pendingSub.name : getUserName(s);
+
+  if (ctx.isEditMode) {
+    return (
+      <div 
+        key={s.id} 
+        className={cn(
+          "flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5",
+          isPendingDelete ? "bg-red-50 border-red-200" : pendingSub ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-200 hover:border-gray-300 pointer-events-auto"
+        )}
+        onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }
+      >
+        <span className={cn("text-[10px] truncate flex-1 leading-tight", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+          {displayName}
+        </span>
+        <button 
+          onClick={(e) => { e.stopPropagation(); if (ctx.onToggleDelete) ctx.onToggleDelete(s.id) }
+          className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center border border-gray-300 bg-white"
+        >
+          {isPendingDelete && <div className="w-1.5 h-1.5 bg-red-500 rounded-sm" />}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <span key={s.id} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+      {displayName}
+    </span>
+  );
+}
+
+function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string | undefined, ctx: RenderContext) {
   const matching = shifts.filter(s => 
     s.shift_type === shiftType && 
     (!deptName || getDeptName(s) === deptName)
@@ -114,17 +170,10 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName?: string, c
   
   if (matching.length === 0) return null;
 
-  return matching.map((s, i) => {
-    const isMe = currentUser && s.user_id === currentUser.id;
-    return (
-      <span key={i} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-        {getUserName(s)}
-      </span>
-    );
-  });
+  return matching.map((s) => renderShiftBadge(s, ctx));
 }
 
-function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColor, hoverColor, hideInnerBorders }: { shifts: Shift[], shiftType: ShiftType, count: number, deptName?: string, currentUser?: User | null, bgColor: string, hoverColor: string, hideInnerBorders?: boolean }) {
+function SlotContainer({ shifts, shiftType, deptName, count, ctx, bgColor, hoverColor, hideInnerBorders }: { shifts: Shift[], shiftType: ShiftType, count: number, deptName?: string, ctx: RenderContext, bgColor: string, hoverColor: string, hideInnerBorders?: boolean }) {
   const matching = shifts.filter(s => 
     s.shift_type === shiftType && 
     (!deptName || getDeptName(s) === deptName)
@@ -142,18 +191,13 @@ function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColo
     <div className="flex flex-col h-full w-full">
       {slots.map((_, i) => {
         const s = matching[i];
-        const isMe = s && currentUser && s.user_id === currentUser.id;
         return (
           <div key={i} className={cn(
             "flex-1 border-b border-gray-400/60 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible min-h-[1.5rem]",
             bgColor, `hover:${hoverColor}`,
             (hideInnerBorders || i === count - 1) ? "border-b-0" : ""
           )}>
-            {s && (
-              <span className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
-                {getUserName(s)}
-              </span>
-            )}
+            {s && renderShiftBadge(s, ctx)}
           </div>
         );
       })}
@@ -163,7 +207,7 @@ function SlotContainer({ shifts, shiftType, deptName, count, currentUser, bgColo
 
 // ─── TEMPLATES ──────────────────────────────────────────────────────
 
-function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUser?: User | null, onDayClick: any }) {
+function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dow = day.date.getDay();
   const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
@@ -188,14 +232,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
               <div className="h-[60%] flex flex-col border-b border-gray-400/60">
                 <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">Surg</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
+                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
                 </div>
               </div>
               {/* ER (1 slot, h-40%) */}
               <div className="h-[40%] flex flex-col">
                 <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ER</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                  <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
                 </div>
               </div>
             </div>
@@ -203,7 +247,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className="w-[50%] flex flex-col">
               <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">MED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
+                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
               </div>
             </div>
           </div>
@@ -216,14 +260,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
               <div className="w-[50%] flex flex-col border-r border-gray-400/60">
                 <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
+                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
                 </div>
               </div>
               {/* บ่ายER (1 slot => relative to its h-60%, meaning it's 100% of this tall container) */}
               <div className="w-[50%] flex flex-col">
                 <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
                 </div>
               </div>
             </div>
@@ -231,7 +275,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className="h-[40%] flex flex-col">
               <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
               <div className="flex-1 bg-white">
-                <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
               </div>
             </div>
           </div>
@@ -261,14 +305,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="h-[60%] flex flex-col border-b border-gray-400/60">
             <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">รุ่งอรุณ</div>
             <div className="flex-1">
-              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" count={rungAroonSlots} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>
           </div>
           {/* smc - 2 slots (h-40%) */}
           <div className="h-[40%] flex flex-col">
             <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">smc</div>
             <div className="flex-1">
-               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>
           </div>
         </div>
@@ -281,14 +325,14 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
             <div className="w-[50%] flex flex-col border-r border-gray-400/60">
               <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
+                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} />
               </div>
             </div>
             {/* บ่ายER */}
             <div className="w-[50%] flex flex-col">
               <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
               </div>
             </div>
           </div>
@@ -296,7 +340,7 @@ function DayGrid({ day, currentUser, onDayClick }: { day: CalendarDay, currentUs
           <div className="h-[40%] flex flex-col">
             <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
             <div className="flex-1 bg-white">
-              <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" currentUser={currentUser} bgColor="bg-white" hoverColor="bg-violet-50/40" />
+              <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" />
             </div>
           </div>
         </div>
