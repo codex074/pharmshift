@@ -63,6 +63,7 @@ export interface SwapRequest {
   target_shift?: Shift;
   status: 'pending' | 'accepted' | 'rejected';
   message?: string;
+  requester_read?: boolean;
   created_at?: string;
   updated_at?: string;
 }
@@ -81,6 +82,21 @@ export interface Holiday {
   id: string;
   date: string;
   name: string;
+  created_at?: string;
+}
+
+export interface ShiftLog {
+  id: string;
+  shift_id: string;
+  shift?: Shift;
+  action: 'swap' | 'transfer' | 'admin_edit' | 'admin_delete';
+  old_user_id?: string;
+  old_user?: User;
+  new_user_id?: string;
+  new_user?: User;
+  performed_by?: string;
+  performer?: User;
+  details?: string;
   created_at?: string;
 }
 

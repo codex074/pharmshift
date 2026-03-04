@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, Moon, Sun } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -13,6 +14,7 @@ interface NotificationsPanelProps {
   pendingCount: number;
   onAccept: (req: SwapRequest) => Promise<void>;
   onReject: (swapId: string) => Promise<void>;
+  onOpen?: () => void;
   onClose: () => void;
 }
 
@@ -23,8 +25,13 @@ function statusBadge(status: string) {
 }
 
 export function NotificationsPanel({
-  swapRequests, currentUser, pendingCount, onAccept, onReject, onClose,
+  swapRequests, currentUser, pendingCount, onAccept, onReject, onOpen, onClose,
 }: NotificationsPanelProps) {
+
+  // Mark requester results as read when panel opens
+  useEffect(() => {
+    if (onOpen) onOpen();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAccept(req: SwapRequest) {
     try {
@@ -82,13 +89,17 @@ export function NotificationsPanel({
               const deptName = shift?.department?.name || '';
               const shiftDate = shift?.date ? new Date(shift.date + 'T00:00:00') : null;
               const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
+              const isUnreadResult = req.requester_id === currentUser?.id && (req.status === 'accepted' || req.status === 'rejected') && req.requester_read === false;
 
               return (
                 <div
                   key={req.id}
                   className={cn(
                     'rounded-xl border p-3 space-y-2 transition-all',
-                    isIncoming ? 'border-violet-200 bg-violet-50/50' : 'border-gray-100 bg-white'
+                    isIncoming ? 'border-violet-200 bg-violet-50/50' :
+                    isUnreadResult && req.status === 'accepted' ? 'border-green-200 bg-green-50/50 ring-1 ring-green-200' :
+                    isUnreadResult && req.status === 'rejected' ? 'border-red-200 bg-red-50/50 ring-1 ring-red-200' :
+                    'border-gray-100 bg-white'
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -124,7 +135,7 @@ export function NotificationsPanel({
                       )}
 
                       {req.message && (
-                        <p className="text-[10px] text-gray-400 italic">"{req.message}"</p>
+                        <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
                       )}
                     </div>
                     {statusBadge(req.status)}
@@ -141,7 +152,7 @@ export function NotificationsPanel({
                       </button>
                       <button
                         onClick={() => handleReject(req)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-all"
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all"
                       >
                         <Ban className="w-3 h-3" /> ปฏิเสธ
                       </button>
