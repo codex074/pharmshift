@@ -12,6 +12,7 @@ import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
+import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
 import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
 import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
 
@@ -35,6 +36,7 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showSwapHistory, setShowSwapHistory] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
@@ -60,7 +62,7 @@ export default function CalendarPage() {
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
   const {
-    swapRequests, pendingCount, acceptSwap, rejectSwap,
+    swapRequests, pendingCount, acceptSwap, rejectSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
 
   async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0]) {
@@ -137,6 +139,7 @@ export default function CalendarPage() {
         currentUser={currentUser}
         pendingCount={pendingCount}
         onBellClick={() => setShowNotifications(true)}
+        onHistoryClick={() => setShowSwapHistory(true)}
         year={year}
         month={month}
         onMonthChange={handleMonthChange}
@@ -253,7 +256,7 @@ export default function CalendarPage() {
 
         {!publishedRoles[effectiveRoleGroup] && currentUser?.role === 'admin' && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-center gap-2">
-            ⚠️ ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด "ประกาศตารางเวร" เมื่อพร้อม
+            ⚠️ ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด &ldquo;ประกาศตารางเวร&rdquo; เมื่อพร้อม
           </div>
         )}
 
@@ -409,7 +412,16 @@ export default function CalendarPage() {
           pendingCount={pendingCount}
           onAccept={handleAcceptSwap}
           onReject={rejectSwap}
+          onOpen={markRequesterRead}
           onClose={() => setShowNotifications(false)}
+        />
+      )}
+
+      {/* Shift Logs History Modal */}
+      {showSwapHistory && (
+        <ShiftLogsModal
+          currentUser={currentUser}
+          onClose={() => setShowSwapHistory(false)}
         />
       )}
 

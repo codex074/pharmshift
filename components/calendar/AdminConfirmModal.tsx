@@ -44,6 +44,16 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, allShifts, cur
       // 1. Delete shifts
       if (deletes.length > 0) {
         const delIds = deletes.map(s => s.id);
+
+        const logs = deletes.map(s => ({
+          shift_id: s.id,
+          action: 'admin_delete',
+          old_user_id: s.user_id,
+          performed_by: currentUser?.id,
+          details: `Admin deleted shift: ${s.date} ${s.shift_type}`,
+        }));
+        await supabase.from('shift_logs').insert(logs);
+
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
       }
@@ -56,6 +66,16 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, allShifts, cur
                .update({ user_id: e.newUser.id })
                .eq('id', e.shift.id);
            if (error) throw error;
+           
+           // Log edit
+           await supabase.from('shift_logs').insert({
+             shift_id: e.shift.id,
+             action: 'admin_edit',
+             old_user_id: e.shift.user_id,
+             new_user_id: e.newUser.id,
+             performed_by: currentUser?.id,
+             details: 'Admin changed shift owner',
+           });
         });
         await Promise.all(promises);
       }

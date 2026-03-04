@@ -109,7 +109,10 @@ export function useSwapRequests(userId?: string) {
 
     if (data) {
       setSwapRequests(data as SwapRequest[]);
-      setPendingCount(data.filter((r) => r.status === 'pending' && r.target_user_id === userId).length);
+      // Count: incoming pending + unread results for requester
+      const incomingPending = data.filter((r) => r.status === 'pending' && r.target_user_id === userId).length;
+      const unreadResults = data.filter((r) => (r.status === 'accepted' || r.status === 'rejected') && r.requester_id === userId && r.requester_read === false).length;
+      setPendingCount(incomingPending + unreadResults);
     }
   }, [userId]);
 
@@ -174,10 +177,10 @@ export function useSwapRequests(userId?: string) {
       }
     }
     
-    // 1. Update swap status → accepted
+    // 1. Update swap status → accepted + mark requester_read = false
     await supabase
       .from('swap_requests')
-      .update({ status: 'accepted' })
+      .update({ status: 'accepted', requester_read: false })
       .eq('id', req.id);
 
     if (req.request_type === 'swap' && req.target_shift_id) {
@@ -190,6 +193,26 @@ export function useSwapRequests(userId?: string) {
         .from('shifts')
         .update({ user_id: req.requester_id })
         .eq('id', req.target_shift_id);
+
+      // Log both shift changes
+      await supabase.from('shift_logs').insert([
+        {
+          shift_id: req.shift_id,
+          action: 'swap',
+          old_user_id: req.requester_id,
+          new_user_id: req.target_user_id,
+          performed_by: req.target_user_id, // Acceptor is target_user
+          details: 'Swap accepted (outgoing shift)',
+        },
+        {
+          shift_id: req.target_shift_id,
+          action: 'swap',
+          old_user_id: req.target_user_id,
+          new_user_id: req.requester_id,
+          performed_by: req.target_user_id, // Acceptor is target_user
+          details: 'Swap accepted (incoming shift)',
+        }
+      ]);
     } else {
       // For transfer, the new owner is whoever is currently NOT the owner
       const currentOwnerId = req.shift?.user_id;
@@ -199,6 +222,16 @@ export function useSwapRequests(userId?: string) {
         .from('shifts')
         .update({ user_id: newUserId })
         .eq('id', req.shift_id);
+
+      // Log transfer
+      await supabase.from('shift_logs').insert({
+        shift_id: req.shift_id,
+        action: 'transfer',
+        old_user_id: currentOwnerId,
+        new_user_id: newUserId,
+        performed_by: req.target_user_id, // Acceptor
+        details: 'Transfer accepted',
+      });
     }
 
     await fetchSwaps();
@@ -207,12 +240,24 @@ export function useSwapRequests(userId?: string) {
   const rejectSwap = async (swapId: string) => {
     await supabase
       .from('swap_requests')
-      .update({ status: 'rejected' })
+      .update({ status: 'rejected', requester_read: false })
       .eq('id', swapId);
     await fetchSwaps();
   };
 
-  return { swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap };
+  const markRequesterRead = async () => {
+    if (!userId) return;
+    // Mark all unread results for this user as read
+    await supabase
+      .from('swap_requests')
+      .update({ requester_read: true })
+      .eq('requester_id', userId)
+      .eq('requester_read', false)
+      .in('status', ['accepted', 'rejected']);
+    await fetchSwaps();
+  };
+
+  return { swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, markRequesterRead };
 }
 
 export function useCurrentUser() {
