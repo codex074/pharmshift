@@ -76,7 +76,7 @@ export function DayDetailModal({ day, currentUser, roleGroup, onClose, onSwapCli
 function PharmacistView({ day, currentUser, onSwapClick }: {
   day: CalendarDay; currentUser: User | null; onSwapClick: (s: Shift) => void;
 }) {
-  const shiftGroups = getSlotsForDate(day.date);
+  const shiftGroups = getSlotsForDate(day.date, day.isHoliday);
   return (
     <>
       {shiftGroups.map(({ shift, slots }) => {

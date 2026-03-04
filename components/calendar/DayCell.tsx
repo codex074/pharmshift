@@ -18,7 +18,7 @@ export function DayCell({ day, currentUser, onClick, viewMode }: DayCellProps) {
   const isWeekend = dow === 0 || dow === 6;
 
   // Get expected slot structure for this day
-  const shiftGroups = day.isCurrentMonth ? getSlotsForDate(day.date) : [];
+  const shiftGroups = day.isCurrentMonth ? getSlotsForDate(day.date, day.isHoliday) : [];
 
   // Count filled shifts
   const filledCount = day.shifts.length;

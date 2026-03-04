@@ -94,11 +94,10 @@ export interface SlotDef {
 }
 
 /** Returns the expected shift slots for a given date */
-export function getSlotsForDate(date: Date): { shift: ShiftType; slots: SlotDef[] }[] {
+export function getSlotsForDate(date: Date, isPublicHoliday: boolean = false): { shift: ShiftType; slots: SlotDef[] }[] {
   const dow = date.getDay(); // 0=Sun, 1=Mon...6=Sat
   const isWeekend = dow === 0 || dow === 6;
-  // TODO: public holiday check can be added later
-  const isHoliday = isWeekend;
+  const isHoliday = isWeekend || isPublicHoliday;
 
   const result: { shift: ShiftType; slots: SlotDef[] }[] = [];
 
