@@ -304,50 +304,59 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
         {/* === Rows Container === */}
         <div className="relative flex-1 flex flex-col items-stretch">
+          {/* Vertical Column Borders (z-20) to ensure continuous lines to the bottom */}
+          <div className="absolute inset-0 pointer-events-none flex z-20">
+            <div className={cn(c1, br)} />
+            <div className={cn(c2, br)} />
+            <div className={cn(c3, br)} />
+            <div className={cn(c4, br)} />
+            <div className={cn(c5, isSat ? br : '')} />
+          </div>
+
           {/* Morning Row 0 */}
           <div className="flex">
-            {fslot('เช้า', 'โครงการ',  0, cn(c1, br))}
-            {fempty(cn(c2, br))}
-            {fempty(cn(c3, br))}
+            {fslot('เช้า', 'โครงการ',  0, c1)}
+            {fempty(c2)}
+            {fempty(c3)}
             {/* บ่ายMED: ลบ border-b เพื่อให้ดูเป็น 1 ช่อง (ไม่มีเส้นแบ่ง) */}
-            {fslot('บ่าย', 'MED',       0, cn(c4, br, 'border-b-0'))}
-            {fslot('บ่าย', 'ER',        0, cn(c5, isSat ? br : ''))}
+            {fslot('บ่าย', 'MED',       0, cn(c4, 'border-b-0'))}
+            {fslot('บ่าย', 'ER',        0, c5)}
             {isSat && fslot('เช้า', 'ส่งยา สอ.', 0, 'flex-1')}
           </div>
 
           {/* Morning Row 1 */}
           <div className="flex">
-            {fslot('เช้า', 'โครงการ',  1, cn(c1, br))}
-            {fempty(cn(c2, br))}
-            {fempty(cn(c3, br))}
+            {fslot('เช้า', 'โครงการ',  1, c1)}
+            {fempty(c2)}
+            {fempty(c3)}
             {/* บ่ายMED empty: ลบ border-b → ให้ต่อเนื่องกับ row 0 เป็น 1 ช่อง */}
-            {fempty(cn(c4, br, 'border-b-0'))}
-            {fslot('บ่าย', 'ER',        1, cn(c5, isSat ? br : ''))}
-            {isSat && fempty(cn('flex-1'))}
+            {fempty(cn(c4, 'border-b-0'))}
+            {fslot('บ่าย', 'ER',        1, c5)}
+            {isSat && fempty('flex-1')}
           </div>
 
           {/* ER separator row (gray) */}
           <div className="flex">
-            <div className={cn(c1, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', fixedRowH)}>ER</div>
+            <div className={cn(c1, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', fixedRowH)}>ER</div>
             {/* SURG area empty string to retain border */}
-            {fempty(cn(c2, br))}
-            {fempty(cn(c3, br))}
+            {fempty(c2)}
+            {fempty(c3)}
             {/* ดึก label: spans c4+c5 เท่านั้น */}
-            <div className={cn(dukW, isSat ? br : '', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', fixedRowH)}>ดึก</div>
+            <div className={cn(dukW, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', fixedRowH)}>ดึก</div>
             {isSat && fempty('flex-1')}
           </div>
 
           {/* Post-ER rows: MED[2+], ดึก[0] spanning */}
           {Array.from({ length: postErRows }, (_, i) => (
             <div key={i} className="flex">
-              {i === 0 ? fslot('เช้า', 'ER', 0, cn(c1, br, postErRows === 1 ? 'border-b-0' : '')) : fempty(cn(c1, br, i === postErRows - 1 ? 'border-b-0' : ''))}
-              {fempty(cn(c2, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {i === 0 ? fslot('เช้า', 'ER', 0, cn(c1, postErRows === 1 ? 'border-b-0' : '')) : fempty(cn(c1, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {fempty(cn(c2, i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* MED[2] / MED[3] - replaced by overlay */}
-              {fempty(cn(c3, br, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {fempty(cn(c3, i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* ดึก[0] in first post-ER row, spanning c4+c5 */}
               {i === 0
-                ? fslot('ดึก', 'ER', 0, cn(dukW, isSat ? br : '', postErRows === 1 ? 'border-b-0' : ''))
-                : <div className={cn(dukW, isSat ? br : '', 'bg-white', fixedRowH, i === postErRows - 1 ? 'border-b-0' : '')} />
+                ? fslot('ดึก', 'ER', 0, cn(dukW, postErRows === 1 ? 'border-b-0' : ''))
+                : <div className={cn(dukW, 'bg-white', fixedRowH, i === postErRows - 1 ? 'border-b-0' : '')} />
               }
               {isSat && fempty(cn('flex-1', i === postErRows - 1 ? 'border-b-0' : ''))}
             </div>
@@ -355,7 +364,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
           {/* SURG Overlay (3 equal height slots) */}
           <div 
-            className={cn("absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none", br)} 
+            className="absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none"
             style={{ 
               left: isSat ? '15%' : '20%', 
               width: isSat ? '15%' : '20%' 
@@ -368,7 +377,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
           {/* MED Overlay (3 slots for Sat/Holiday, 4 slots for Sun) */}
           <div 
-            className={cn("absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none", br)} 
+            className="absolute top-0 bottom-0 bg-transparent flex flex-col z-10 pointer-events-none"
             style={{ 
               left: isSat ? '30%' : '40%', 
               width: isSat ? '15%' : '20%' 
