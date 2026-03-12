@@ -8,8 +8,8 @@ import { DEPT_COLORS } from '@/lib/types';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
 const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative";
-const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.2] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none";
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center";
+const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
 
 interface CalendarGridProps {
   year: number;
@@ -233,8 +233,8 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
 
       {/* ROW 2 & 3 */}
       <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx)}</div>
+      <div className={cn(nameCellStyle, 'border-r-2 border-r-gray-400/60')} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx)}</div>
+      <div className={cn(nameCellStyle, 'border-r-2 border-r-gray-400/60')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx)}</div>
       <div className={nameCellStyle} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx)}</div>
       <div className={nameCellStyle} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx)}</div>
 
