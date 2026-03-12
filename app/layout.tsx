@@ -8,19 +8,23 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 export const metadata: Metadata = {
   title: 'เวรดี๊ดี — ระบบจัดการตารางเวรเภสัชกร',
   description: 'ระบบจัดการตารางเวรเภสัชกร โรงพยาบาลอุตรดิตถ์',
+  manifest: '/manifest.json',
   icons: {
     icon: '/favicon.ico',
-  },
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    viewportFit: 'cover',
+    apple: '/apple-touch-icon.png',
   },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'เวรดี๊ดี',
   },
+};
+
+export const viewport = {
+  themeColor: '#8b5cf6',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
