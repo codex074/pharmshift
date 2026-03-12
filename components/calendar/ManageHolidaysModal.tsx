@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
-import { X, Calendar, Plus, Trash2, Loader2 } from 'lucide-react';
+import { X, Calendar, Plus, Trash2, Loader2, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Holiday } from '@/lib/types';
@@ -22,6 +22,7 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
   const [name, setName] = useState('');
   const [adding, setAdding] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     fetchHolidays();
@@ -92,6 +93,30 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
     }
   }
 
+  async function handleImportFromJson() {
+    if (!confirm('ยืนยันการนำเข้าข้อมูลวันหยุดจากไฟล์ holidays.json ใช่หรือไม่?\\n(ข้อมูลที่มีในไฟล์จะถูกเพิ่ม หรืออัปเดตหากวันที่ซ้ำกัน)')) return;
+
+    try {
+      setImporting(true);
+      const res = await fetch('/api/holidays/import', { method: 'POST' });
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to import holidays');
+      }
+
+      toastSuccess(data.message || 'นำเข้าข้อมูลวันหยุดสำเร็จ');
+      fetchHolidays();
+      onSuccess(); // Refresh calendar data
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toastError(error.message || 'นำเข้าข้อมูลวันหยุดไม่สำเร็จ');
+    } finally {
+      setImporting(false);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
@@ -120,10 +145,22 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
           
           {/* Add Form */}
           <form onSubmit={handleAdd} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-              <Plus className="w-4 h-4 text-violet-600" />
-              เพิ่มวันหยุดใหม่
-            </h3>
+            <div className="flex items-center justify-between mb-3 border-b border-gray-100 pb-3">
+              <h3 className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-violet-600" />
+                เพิ่มวันหยุดทีละวัน
+              </h3>
+              <button
+                type="button"
+                onClick={handleImportFromJson}
+                disabled={importing}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                นำเข้าจาก holidays.json
+              </button>
+            </div>
+
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-medium text-gray-600 mb-1">วันที่</label>
