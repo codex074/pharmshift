@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="th" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shift Calendar Pro</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Sarabun', sans-serif; }
+    
+    .shift-morning { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 3px solid #f59e0b; }
+    .shift-afternoon { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 3px solid #3b82f6; }
+    .shift-night { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); border-left: 3px solid #6366f1; }
+    .shift-holiday { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); border-left: 3px solid #ec4899; }
+    
+    .calendar-day {
+      transition: all 0.2s ease;
+    }
+    .calendar-day:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    .stat-card {
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+    }
+    
+    .modal-overlay {
+      animation: fadeIn 0.2s ease;
+    }
+    .modal-content {
+      animation: slideUp 0.3s ease;
+    }
+    
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .btn-primary {
+      transition: all 0.2s ease;
+    }
+    .btn-primary:hover {
+      transform: scale(1.02);
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      ring: 2px;
+    }
+    
+    .view-container {
+      display: none;
+    }
+    
+    .view-container.active {
+      display: block;
+    }
+    
+    .week-shift-item {
+      transition: all 0.2s ease;
+    }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full bg-gradient-to-br from-slate-50 to-slate-100 overflow-auto">
+  <div id="app" class="w-full min-h-full p-4 md:p-6">
+   <!-- Header -->
+   <header class="max-w-6xl mx-auto mb-6">
+    <div class="flex items-center justify-between mb-2">
+     <div>
+      <h1 id="app-title" class="text-2xl md:text-3xl font-bold text-slate-800">📅 ตารางเวร</h1>
+      <p class="text-slate-500 text-sm">บันทึกและติดตามตารางเวรของคุณ</p>
+     </div>
+     <div class="flex gap-2 flex-wrap justify-end"><button id="toggle-view" class="px-4 py-2 rounded-lg bg-slate-200 text-slate-700 font-medium text-sm hover:bg-slate-300 transition-colors">📅 เดือน</button> <button id="export-pdf" class="px-4 py-2 rounded-lg bg-blue-500 text-white font-medium text-sm hover:bg-blue-600 transition-colors">📄 PDF</button> <button id="export-excel" class="px-4 py-2 rounded-lg bg-green-500 text-white font-medium text-sm hover:bg-green-600 transition-colors">📊 Excel</button>
+     </div>
+    </div>
+   </header><!-- Stats Cards -->
+   <div class="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 mb-6">
+    <div class="stat-card bg-white/80 rounded-2xl p-4 shadow-sm border border-amber-100">
+     <div class="flex items-center gap-2 mb-2">
+      <span class="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-lg">🌅</span> <span class="text-xs text-slate-500 font-medium">เวรเช้า</span>
+     </div>
+     <p id="stat-morning" class="text-xl font-bold text-slate-800">0 <span class="text-sm font-normal text-slate-400">วัน</span></p>
+     <p id="comp-morning" class="text-xs text-amber-600 font-medium mt-1">฿0</p>
+     <p id="hours-morning" class="text-xs text-amber-500 mt-1">0 ชม.</p>
+    </div>
+    <div class="stat-card bg-white/80 rounded-2xl p-4 shadow-sm border border-blue-100">
+     <div class="flex items-center gap-2 mb-2">
+      <span class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-lg">🌤️</span> <span class="text-xs text-slate-500 font-medium">เวรบ่าย</span>
+     </div>
+     <p id="stat-afternoon" class="text-xl font-bold text-slate-800">0 <span class="text-sm font-normal text-slate-400">วัน</span></p>
+     <p id="comp-afternoon" class="text-xs text-blue-600 font-medium mt-1">฿0</p>
+     <p id="hours-afternoon" class="text-xs text-blue-500 mt-1">0 ชม.</p>
+    </div>
+    <div class="stat-card bg-white/80 rounded-2xl p-4 shadow-sm border border-indigo-100">
+     <div class="flex items-center gap-2 mb-2">
+      <span class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-lg">🌙</span> <span class="text-xs text-slate-500 font-medium">เวรดึก</span>
+     </div>
+     <p id="stat-night" class="text-xl font-bold text-slate-800">0 <span class="text-sm font-normal text-slate-400">วัน</span></p>
+     <p id="comp-night" class="text-xs text-indigo-600 font-medium mt-1">฿0</p>
+     <p id="hours-night" class="text-xs text-indigo-500 mt-1">0 ชม.</p>
+    </div>
+    <div class="stat-card bg-white/80 rounded-2xl p-4 shadow-sm border border-pink-100">
+     <div class="flex items-center gap-2 mb-2">
+      <span class="w-8 h-8 rounded-full bg-pink-100 flex items-center justify-center text-lg">🎉</span> <span class="text-xs text-slate-500 font-medium">OT/วันหยุด</span>
+     </div>
+     <p id="stat-holiday" class="text-xl font-bold text-slate-800">0 <span class="text-sm font-normal text-slate-400">วัน</span></p>
+     <p id="comp-holiday" class="text-xs text-pink-600 font-medium mt-1">฿0</p>
+     <p id="hours-holiday" class="text-xs text-pink-500 mt-1">0 ชม.</p>
+    </div>
+    <div class="stat-card bg-white/80 rounded-2xl p-4 shadow-sm border border-purple-100">
+     <div class="flex items-center gap-2 mb-2">
+      <span class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-lg">⏱️</span> <span class="text-xs text-slate-500 font-medium">รวมชั่วโมง</span>
+     </div>
+     <p id="total-hours" class="text-xl font-bold text-slate-800">0 <span class="text-sm font-normal text-slate-400">ชม.</span></p>
+    </div>
+   </div><!-- Total Summary -->
+   <div class="max-w-6xl mx-auto mb-6">
+    <div class="bg-gradient-to-r from-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg">
+     <div class="flex items-center justify-between">
+      <div>
+       <p class="text-emerald-100 text-sm font-medium">รายได้รวมเดือนนี้</p>
+       <p id="total-income" class="text-3xl md:text-4xl font-bold mt-1">฿0</p>
+      </div>
+      <div class="text-right">
+       <p class="text-emerald-100 text-sm">จำนวนเวรทั้งหมด</p>
+       <p id="total-shifts" class="text-2xl font-bold">0 วัน</p>
+      </div>
+     </div>
+    </div>
+   </div><!-- Month View -->
+   <div id="month-view" class="view-container active max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+    <!-- Calendar Header -->
+    <div class="flex items-center justify-between p-4 border-b border-slate-100">
+     <button id="prev-month" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg></button>
+     <h2 id="current-month" class="text-lg font-semibold text-slate-800"></h2><button id="next-month" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg></button>
+    </div><!-- Days of Week -->
+    <div class="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
+     <div class="p-2 text-center text-xs font-semibold text-red-400">
+      อา
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-slate-500">
+      จ
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-slate-500">
+      อ
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-slate-500">
+      พ
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-slate-500">
+      พฤ
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-slate-500">
+      ศ
+     </div>
+     <div class="p-2 text-center text-xs font-semibold text-blue-400">
+      ส
+     </div>
+    </div><!-- Calendar Grid -->
+    <div id="calendar-grid" class="grid grid-cols-7 gap-1 p-2">
+     <!-- Days will be generated here -->
+    </div>
+   </div><!-- Week View -->
+   <div id="week-view" class="view-container max-w-6xl mx-auto bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden p-4">
+    <div class="flex items-center justify-between mb-4">
+     <button id="prev-week" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg></button>
+     <h2 id="current-week" class="text-lg font-semibold text-slate-800"></h2><button id="next-week" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center transition-colors">
+      <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+      </svg></button>
+    </div>
+    <div id="week-grid" class="space-y-2">
+     <!-- Week shifts will be generated here -->
+    </div>
+   </div><!-- Shift Legend -->
+   <div class="max-w-6xl mx-auto mt-4 flex flex-wrap gap-3 justify-center">
+    <div class="flex items-center gap-2 text-xs text-slate-600">
+     <span class="w-4 h-4 rounded shift-morning"></span> <span>เช้า</span>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-600">
+     <span class="w-4 h-4 rounded shift-afternoon"></span> <span>บ่าย</span>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-600">
+     <span class="w-4 h-4 rounded shift-night"></span> <span>ดึก</span>
+    </div>
+    <div class="flex items-center gap-2 text-xs text-slate-600">
+     <span class="w-4 h-4 rounded shift-holiday"></span> <span>OT/วันหยุด</span>
+    </div>
+   </div>
+  </div><!-- Modal for Adding/Editing Shift -->
+  <div id="shift-modal" class="hidden fixed inset-0 z-50">
+   <div class="modal-overlay absolute inset-0 bg-black/40" onclick="closeModal()"></div>
+   <div class="modal-content absolute bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 bg-white rounded-t-3xl md:rounded-2xl md:max-w-md w-full p-6 shadow-xl">
+    <div class="flex items-center justify-between mb-6">
+     <h3 id="modal-title" class="text-xl font-bold text-slate-800">เพิ่มเวร</h3><button onclick="closeModal()" class="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center">
+      <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewbox="0 0 24 24">
+       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+      </svg></button>
+    </div>
+    <form id="shift-form" onsubmit="saveShift(event)">
+     <input type="hidden" id="shift-id"> <input type="hidden" id="shift-date">
+     <div class="mb-4">
+      <label class="block text-sm font-medium text-slate-700 mb-2">ประเภทเวร</label>
+      <div class="grid grid-cols-2 gap-2">
+       <label class="cursor-pointer"> <input type="radio" name="shift_type" value="morning" class="hidden peer">
+        <div class="peer-checked:ring-2 peer-checked:ring-amber-400 peer-checked:bg-amber-50 p-3 rounded-xl border border-slate-200 text-center transition-all hover:bg-slate-50">
+         <span class="text-2xl">🌅</span>
+         <p class="text-sm font-medium text-slate-700 mt-1">เช้า</p>
+        </div></label> <label class="cursor-pointer"> <input type="radio" name="shift_type" value="afternoon" class="hidden peer">
+        <div class="peer-checked:ring-2 peer-checked:ring-blue-400 peer-checked:bg-blue-50 p-3 rounded-xl border border-slate-200 text-center transition-all hover:bg-slate-50">
+         <span class="text-2xl">🌤️</span>
+         <p class="text-sm font-medium text-slate-700 mt-1">บ่าย</p>
+        </div></label> <label class="cursor-pointer"> <input type="radio" name="shift_type" value="night" class="hidden peer">
+        <div class="peer-checked:ring-2 peer-checked:ring-indigo-400 peer-checked:bg-indigo-50 p-3 rounded-xl border border-slate-200 text-center transition-all hover:bg-slate-50">
+         <span class="text-2xl">🌙</span>
+         <p class="text-sm font-medium text-slate-700 mt-1">ดึก</p>
+        </div></label> <label class="cursor-pointer"> <input type="radio" name="shift_type" value="holiday" class="hidden peer">
+        <div class="peer-checked:ring-2 peer-checked:ring-pink-400 peer-checked:bg-pink-50 p-3 rounded-xl border border-slate-200 text-center transition-all hover:bg-slate-50">
+         <span class="text-2xl">🎉</span>
+         <p class="text-sm font-medium text-slate-700 mt-1">OT/วันหยุด</p>
+        </div></label>
+      </div>
+     </div>
+     <div class="mb-4">
+      <label for="compensation" class="block text-sm font-medium text-slate-700 mb-2">ค่าตอบแทน (บาท)</label> <input type="number" id="compensation" placeholder="0" min="0" step="1" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-slate-800">
+     </div>
+     <div class="mb-4">
+      <label for="shift-hours" class="block text-sm font-medium text-slate-700 mb-2">จำนวนชั่วโมง</label> <input type="number" id="shift-hours" placeholder="8" min="0" step="0.5" class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-slate-800">
+     </div>
+     <div class="mb-6">
+      <label for="note" class="block text-sm font-medium text-slate-700 mb-2">หมายเหตุ</label> <textarea id="note" rows="2" placeholder="บันทึกเพิ่มเติม..." class="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 text-slate-800 resize-none"></textarea>
+     </div>
+     <div class="flex gap-3">
+      <button type="button" id="delete-btn" onclick="deleteShift()" class="hidden flex-1 py-3 px-4 rounded-xl border border-red-200 text-red-500 font-medium hover:bg-red-50 transition-colors"> ลบเวร </button> <button type="submit" id="save-btn" class="btn-primary flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-medium shadow-md hover:shadow-lg disabled:opacity-50"> บันทึก </button>
+     </div>
+    </form>
+   </div>
+  </div><!-- Delete Confirmation -->
+  <div id="delete-confirm" class="hidden fixed inset-0 z-60">
+   <div class="absolute inset-0 bg-black/50"></div>
+   <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl p-6 w-80 shadow-xl">
+    <p class="text-center text-slate-800 font-medium mb-4">ยืนยันลบเวรนี้?</p>
+    <div class="flex gap-3">
+     <button onclick="cancelDelete()" class="flex-1 py-2 rounded-xl border border-slate-200 text-slate-600 font-medium hover:bg-slate-50">ยกเลิก</button> <button onclick="confirmDelete()" class="flex-1 py-2 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600">ลบ</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    // App State
+    let shifts = [];
+    let currentDate = new Date();
+    let currentWeekStart = getWeekStart(new Date());
+    let editingShift = null;
+    let isLoading = false;
+    let currentView = 'month';
+
+    // Default config
+    const defaultConfig = {
+      app_title: '📅 ตารางเวร',
+      currency_symbol: '฿',
+      morning_hours: 8,
+      afternoon_hours: 8,
+      night_hours: 8,
+      background_color: '#f8fafc',
+      surface_color: '#ffffff',
+      text_color: '#1e293b',
+      primary_color: '#10b981',
+      secondary_color: '#64748b'
+    };
+
+    // Thai month names
+    const thaiMonths = [
+      'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+      'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+    ];
+
+    const thaiDays = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
+
+    // Initialize Element SDK
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange: async (config) => {
+          const title = config.app_title || defaultConfig.app_title;
+          const bgColor = config.background_color || defaultConfig.background_color;
+          const surfaceColor = config.surface_color || defaultConfig.surface_color;
+          const textColor = config.text_color || defaultConfig.text_color;
+          
+          document.getElementById('app-title').textContent = title;
+          document.body.style.background = `linear-gradient(to bottom right, ${bgColor}, ${adjustColor(bgColor, -5)})`;
+          
+          document.querySelectorAll('.stat-card, .bg-white').forEach(el => {
+            el.style.backgroundColor = surfaceColor;
+          });
+          
+          document.querySelectorAll('.text-slate-800').forEach(el => {
+            el.style.color = textColor;
+          });
+          
+          updateStats();
+        },
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (v) => { config.background_color = v; window.elementSdk.setConfig({ background_color: v }); }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (v) => { config.surface_color = v; window.elementSdk.setConfig({ surface_color: v }); }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (v) => { config.text_color = v; window.elementSdk.setConfig({ text_color: v }); }
+            },
+            {
+              get: () => config.primary_color || defaultConfig.primary_color,
+              set: (v) => { config.primary_color = v; window.elementSdk.setConfig({ primary_color: v }); }
+            },
+            {
+              get: () => config.secondary_color || defaultConfig.secondary_color,
+              set: (v) => { config.secondary_color = v; window.elementSdk.setConfig({ secondary_color: v }); }
+            }
+          ],
+          borderables: [],
+          fontEditable: undefined,
+          fontSizeable: undefined
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ['app_title', config.app_title || defaultConfig.app_title],
+          ['currency_symbol', config.currency_symbol || defaultConfig.currency_symbol],
+          ['morning_hours', String(config.morning_hours || defaultConfig.morning_hours)],
+          ['afternoon_hours', String(config.afternoon_hours || defaultConfig.afternoon_hours)],
+          ['night_hours', String(config.night_hours || defaultConfig.night_hours)]
+        ])
+      });
+    }
+
+    // Helper function to adjust color brightness
+    function adjustColor(hex, percent) {
+      const num = parseInt(hex.replace('#', ''), 16);
+      const amt = Math.round(2.55 * percent);
+      const R = Math.min(255, Math.max(0, (num >> 16) + amt));
+      const G = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+      const B = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+      return '#' + (0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1);
+    }
+
+    // Get week start date
+    function getWeekStart(date) {
+      const d = new Date(date);
+      const day = d.getDay();
+      const diff = d.getDate() - day;
+      return new Date(d.setDate(diff));
+    }
+
+    // Data Handler for Data SDK
+    const dataHandler = {
+      onDataChanged(data) {
+        shifts = data;
+        renderCalendar();
+        renderWeek();
+        updateStats();
+      }
+    };
+
+    // Initialize Data SDK
+    async function initDataSdk() {
+      if (window.dataSdk) {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) {
+          console.error('Failed to initialize Data SDK');
+        }
+      }
+    }
+
+    // Render Calendar
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      const monthLabel = document.getElementById('current-month');
+      
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      monthLabel.textContent = `${thaiMonths[month]} ${year + 543}`;
+      
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+      const startDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      
+      const today = new Date();
+      const isCurrentMonth = today.getFullYear() === year && today.getMonth() === month;
+      
+      let html = '';
+      
+      // Empty cells before first day
+      for (let i = 0; i < startDay; i++) {
+        html += '<div class="p-1 min-h-[60px] md:min-h-[80px]"></div>';
+      }
+      
+      // Days of month
+      for (let day = 1; day <= totalDays; day++) {
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const shift = shifts.find(s => s.date === dateStr);
+        const isToday = isCurrentMonth && today.getDate() === day;
+        const dayOfWeek = new Date(year, month, day).getDay();
+        const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+        
+        let shiftClass = '';
+        let shiftIcon = '';
+        
+        if (shift) {
+          switch (shift.shift_type) {
+            case 'morning':
+              shiftClass = 'shift-morning';
+              shiftIcon = '🌅';
+              break;
+            case 'afternoon':
+              shiftClass = 'shift-afternoon';
+              shiftIcon = '🌤️';
+              break;
+            case 'night':
+              shiftClass = 'shift-night';
+              shiftIcon = '🌙';
+              break;
+            case 'holiday':
+              shiftClass = 'shift-holiday';
+              shiftIcon = '🎉';
+              break;
+          }
+        }
+        
+        const todayRing = isToday ? 'ring-2 ring-emerald-400 ring-offset-2' : '';
+        const weekendText = isWeekend ? (dayOfWeek === 0 ? 'text-red-400' : 'text-blue-400') : 'text-slate-700';
+        
+        html += `
+          <div class="calendar-day p-1 min-h-[60px] md:min-h-[80px] rounded-xl cursor-pointer ${shiftClass} ${todayRing} ${!shift ? 'hover:bg-slate-50' : ''}"
+               onclick="openModal('${dateStr}')" data-date="${dateStr}">
+            <div class="flex flex-col h-full">
+              <span class="text-sm font-medium ${weekendText} ${isToday ? 'text-emerald-600' : ''}">${day}</span>
+              ${shiftIcon ? `<span class="text-lg mt-auto">${shiftIcon}</span>` : ''}
+              ${shift && shift.compensation ? `<span class="text-[10px] font-medium text-slate-500 truncate">${getCurrency()}${shift.compensation.toLocaleString()}</span>` : ''}
+            </div>
+          </div>
+        `;
+      }
+      
+      grid.innerHTML = html;
+    }
+
+    // Render Week View
+    function renderWeek() {
+      const grid = document.getElementById('week-grid');
+      const weekLabel = document.getElementById('current-week');
+      
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(weekEnd.getDate() + 6);
+      
+      const startMonth = thaiMonths[currentWeekStart.getMonth()];
+      const endMonth = thaiMonths[weekEnd.getMonth()];
+      const startDay = currentWeekStart.getDate();
+      const endDay = weekEnd.getDate();
+      const year = currentWeekStart.getFullYear() + 543;
+      
+      weekLabel.textContent = `${startDay} ${startMonth} - ${endDay} ${endMonth} ${year}`;
+      
+      let html = '';
+      
+      for (let i = 0; i < 7; i++) {
+        const date = new Date(currentWeekStart);
+        date.setDate(date.getDate() + i);
+        
+        const dateStr = date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0') + '-' + String(date.getDate()).padStart(2, '0');
+        const shift = shifts.find(s => s.date === dateStr);
+        const dayName = thaiDays[date.getDay()];
+        const dayNum = date.getDate();
+        
+        let shiftIcon = '';
+        let shiftLabel = '';
+        let shiftColor = '';
+        let shiftDetails = '';
+        
+        if (shift) {
+          switch (shift.shift_type) {
+            case 'morning':
+              shiftIcon = '🌅';
+              shiftLabel = 'เวรเช้า';
+              shiftColor = 'border-l-amber-500 bg-amber-50';
+              break;
+            case 'afternoon':
+              shiftIcon = '🌤️';
+              shiftLabel = 'เวรบ่าย';
+              shiftColor = 'border-l-blue-500 bg-blue-50';
+              break;
+            case 'night':
+              shiftIcon = '🌙';
+              shiftLabel = 'เวรดึก';
+              shiftColor = 'border-l-indigo-500 bg-indigo-50';
+              break;
+            case 'holiday':
+              shiftIcon = '🎉';
+              shiftLabel = 'OT/วันหยุด';
+              shiftColor = 'border-l-pink-500 bg-pink-50';
+              break;
+          }
+          
+          shiftDetails = `
+            <div class="text-xs text-slate-600 mt-1">
+              ${shift.compensation ? `<span class="font-medium">${getCurrency()}${shift.compensation.toLocaleString()}</span> ` : ''}
+              ${shift.hours ? `<span>(${shift.hours} ชม.)</span>` : ''}
+            </div>
+          `;
+        }
+        
+        html += `
+          <div class="week-shift-item p-4 rounded-xl border-l-4 ${shift ? shiftColor : 'border-l-slate-300 bg-slate-50'} cursor-pointer hover:shadow-md transition-shadow" onclick="openModal('${dateStr}')">
+            <div class="flex items-start justify-between">
+              <div class="flex-1">
+                <p class="font-semibold text-slate-700">${dayName}</p>
+                <p class="text-sm text-slate-500">${dayNum} ${thaiMonths[date.getMonth()]}</p>
+              </div>
+              ${shift ? `
+                <div class="text-right">
+                  <p class="text-2xl">${shiftIcon}</p>
+                  <p class="text-xs font-medium text-slate-600">${shiftLabel}</p>
+                  ${shiftDetails}
+                </div>
+              ` : `<p class="text-2xl">➕</p>`}
+            </div>
+          </div>
+        `;
+      }
+      
+      grid.innerHTML = html;
+    }
+
+    // Get currency from config
+    function getCurrency() {
+      if (window.elementSdk && window.elementSdk.config) {
+        return window.elementSdk.config.currency_symbol || defaultConfig.currency_symbol;
+      }
+      return defaultConfig.currency_symbol;
+    }
+
+    // Get shift hours from config
+    function getShiftHours(shiftType) {
+      if (window.elementSdk && window.elementSdk.config) {
+        const config = window.elementSdk.config;
+        const key = shiftType + '_hours';
+        return config[key] || defaultConfig[key];
+      }
+      return defaultConfig[shiftType + '_hours'];
+    }
+
+    // Update Statistics
+    function updateStats() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      const monthShifts = shifts.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      
+      const stats = {
+        morning: { count: 0, comp: 0, hours: 0 },
+        afternoon: { count: 0, comp: 0, hours: 0 },
+        night: { count: 0, comp: 0, hours: 0 },
+        holiday: { count: 0, comp: 0, hours: 0 }
+      };
+      
+      let total = 0;
+      let totalHours = 0;
+      
+      monthShifts.forEach(s => {
+        if (stats[s.shift_type]) {
+          stats[s.shift_type].count++;
+          stats[s.shift_type].comp += (s.compensation || 0);
+          const hours = s.hours || getShiftHours(s.shift_type);
+          stats[s.shift_type].hours += hours;
+          totalHours += hours;
+          total += (s.compensation || 0);
+        }
+      });
+      
+      const currency = getCurrency();
+      
+      document.getElementById('stat-morning').innerHTML = `${stats.morning.count} <span class="text-sm font-normal text-slate-400">วัน</span>`;
+      document.getElementById('comp-morning').textContent = `${currency}${stats.morning.comp.toLocaleString()}`;
+      document.getElementById('hours-morning').textContent = `${Math.round(stats.morning.hours * 10) / 10} ชม.`;
+      
+      document.getElementById('stat-afternoon').innerHTML = `${stats.afternoon.count} <span class="text-sm font-normal text-slate-400">วัน</span>`;
+      document.getElementById('comp-afternoon').textContent = `${currency}${stats.afternoon.comp.toLocaleString()}`;
+      document.getElementById('hours-afternoon').textContent = `${Math.round(stats.afternoon.hours * 10) / 10} ชม.`;
+      
+      document.getElementById('stat-night').innerHTML = `${stats.night.count} <span class="text-sm font-normal text-slate-400">วัน</span>`;
+      document.getElementById('comp-night').textContent = `${currency}${stats.night.comp.toLocaleString()}`;
+      document.getElementById('hours-night').textContent = `${Math.round(stats.night.hours * 10) / 10} ชม.`;
+      
+      document.getElementById('stat-holiday').innerHTML = `${stats.holiday.count} <span class="text-sm font-normal text-slate-400">วัน</span>`;
+      document.getElementById('comp-holiday').textContent = `${currency}${stats.holiday.comp.toLocaleString()}`;
+      document.getElementById('hours-holiday').textContent = `${Math.round(stats.holiday.hours * 10) / 10} ชม.`;
+      
+      document.getElementById('total-income').textContent = `${currency}${total.toLocaleString()}`;
+      document.getElementById('total-shifts').textContent = `${monthShifts.length} วัน`;
+      document.getElementById('total-hours').innerHTML = `${Math.round(totalHours * 10) / 10} <span class="text-sm font-normal text-slate-400">ชม.</span>`;
+    }
+
+    // Open Modal
+    function openModal(dateStr) {
+      const modal = document.getElementById('shift-modal');
+      const modalTitle = document.getElementById('modal-title');
+      const deleteBtn = document.getElementById('delete-btn');
+      const form = document.getElementById('shift-form');
+      
+      editingShift = shifts.find(s => s.date === dateStr);
+      
+      document.getElementById('shift-date').value = dateStr;
+      
+      if (editingShift) {
+        modalTitle.textContent = 'แก้ไขเวร';
+        document.getElementById('shift-id').value = editingShift.__backendId;
+        document.querySelector(`input[name="shift_type"][value="${editingShift.shift_type}"]`).checked = true;
+        document.getElementById('compensation').value = editingShift.compensation || '';
+        document.getElementById('shift-hours').value = editingShift.hours || getShiftHours(editingShift.shift_type);
+        document.getElementById('note').value = editingShift.note || '';
+        deleteBtn.classList.remove('hidden');
+      } else {
+        modalTitle.textContent = 'เพิ่มเวร';
+        form.reset();
+        document.getElementById('shift-id').value = '';
+        document.getElementById('shift-hours').placeholder = getShiftHours('morning');
+        deleteBtn.classList.add('hidden');
+      }
+      
+      modal.classList.remove('hidden');
+    }
+
+    // Close Modal
+    function closeModal() {
+      document.getElementById('shift-modal').classList.add('hidden');
+      editingShift = null;
+    }
+
+    // Save Shift
+    async function saveShift(e) {
+      e.preventDefault();
+      
+      if (isLoading) return;
+      
+      const shiftType = document.querySelector('input[name="shift_type"]:checked');
+      if (!shiftType) {
+        return;
+      }
+      
+      const saveBtn = document.getElementById('save-btn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'กำลังบันทึก...';
+      isLoading = true;
+      
+      const dateStr = document.getElementById('shift-date').value;
+      const compensation = parseInt(document.getElementById('compensation').value) || 0;
+      const hours = parseFloat(document.getElementById('shift-hours').value) || getShiftHours(shiftType.value);
+      const note = document.getElementById('note').value.trim();
+      
+      try {
+        if (editingShift) {
+          const result = await window.dataSdk.update({
+            ...editingShift,
+            shift_type: shiftType.value,
+            compensation,
+            hours,
+            note
+          });
+          
+          if (!result.isOk) {
+            console.error('Failed to update shift');
+          }
+        } else {
+          if (shifts.length >= 999) {
+            const warningDiv = document.createElement('div');
+            warningDiv.className = 'text-red-500 text-sm text-center mt-2';
+            warningDiv.textContent = 'ถึงขีดจำกัดการบันทึกแล้ว (999 รายการ)';
+            document.getElementById('shift-form').appendChild(warningDiv);
+            setTimeout(() => warningDiv.remove(), 3000);
+            return;
+          }
+          
+          const result = await window.dataSdk.create({
+            date: dateStr,
+            shift_type: shiftType.value,
+            compensation,
+            hours,
+            note
+          });
+          
+          if (!result.isOk) {
+            console.error('Failed to create shift');
+          }
+        }
+        
+        closeModal();
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'บันทึก';
+        isLoading = false;
+      }
+    }
+
+    // Delete Shift
+    function deleteShift() {
+      document.getElementById('delete-confirm').classList.remove('hidden');
+    }
+
+    function cancelDelete() {
+      document.getElementById('delete-confirm').classList.add('hidden');
+    }
+
+    async function confirmDelete() {
+      if (!editingShift || isLoading) return;
+      
+      isLoading = true;
+      document.getElementById('delete-confirm').classList.add('hidden');
+      
+      try {
+        const result = await window.dataSdk.delete(editingShift);
+        
+        if (!result.isOk) {
+          console.error('Failed to delete shift');
+        }
+        
+        closeModal();
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    // Toggle View
+    function toggleView() {
+      const toggleBtn = document.getElementById('toggle-view');
+      
+      if (currentView === 'month') {
+        currentView = 'week';
+        document.getElementById('month-view').classList.remove('active');
+        document.getElementById('week-view').classList.add('active');
+        toggleBtn.textContent = '📊 สัปดาห์';
+        renderWeek();
+      } else {
+        currentView = 'month';
+        document.getElementById('week-view').classList.remove('active');
+        document.getElementById('month-view').classList.add('active');
+        toggleBtn.textContent = '📅 เดือน';
+      }
+    }
+
+    // Export to PDF
+    function exportToPDF() {
+      const element = document.getElementById('app');
+      const opt = {
+        margin: 10,
+        filename: `ตารางเวร_${currentDate.getFullYear()}_${currentDate.getMonth() + 1}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' }
+      };
+      
+      html2pdf().set(opt).from(element).save();
+    }
+
+    // Export to Excel (CSV)
+    function exportToExcel() {
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      
+      const monthShifts = shifts.filter(s => {
+        const d = new Date(s.date);
+        return d.getFullYear() === year && d.getMonth() === month;
+      });
+      
+      let csv = 'วันที่,ประเภทเวร,ค่าตอบแทน,จำนวนชั่วโมง,หมายเหตุ\n';
+      
+      monthShifts.sort((a, b) => new Date(a.date) - new Date(b.date));
+      
+      monthShifts.forEach(shift => {
+        const date = new Date(shift.date);
+        const dateStr = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+        const shiftLabel = {
+          morning: 'เวรเช้า',
+          afternoon: 'เวรบ่าย',
+          night: 'เวรดึก',
+          holiday: 'OT/วันหยุด'
+        }[shift.shift_type];
+        
+        const hours = shift.hours || getShiftHours(shift.shift_type);
+        const note = shift.note ? `"${shift.note}"` : '';
+        
+        csv += `${dateStr},${shiftLabel},${shift.compensation || 0},${hours},${note}\n`;
+      });
+      
+      // Add totals
+      const stats = {
+        morning: { count: 0, comp: 0, hours: 0 },
+        afternoon: { count: 0, comp: 0, hours: 0 },
+        night: { count: 0, comp: 0, hours: 0 },
+        holiday: { count: 0, comp: 0, hours: 0 }
+      };
+      
+      let totalComp = 0;
+      let totalHours = 0;
+      
+      monthShifts.forEach(s => {
+        if (stats[s.shift_type]) {
+          stats[s.shift_type].count++;
+          stats[s.shift_type].comp += (s.compensation || 0);
+          const hours = s.hours || getShiftHours(s.shift_type);
+          stats[s.shift_type].hours += hours;
+          totalHours += hours;
+          totalComp += (s.compensation || 0);
+        }
+      });
+      
+      csv += '\n,รวมทั้งสิ้น,' + totalComp + ',' + Math.round(totalHours * 10) / 10 + '\n';
+      
+      const link = document.createElement('a');
+      link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      link.download = `ตารางเวร_${currentDate.getFullYear()}_${currentDate.getMonth() + 1}.csv`;
+      link.click();
+    }
+
+    // Navigation
+    document.getElementById('prev-month').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() - 1);
+      renderCalendar();
+      updateStats();
+    });
+
+    document.getElementById('next-month').addEventListener('click', () => {
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      renderCalendar();
+      updateStats();
+    });
+
+    document.getElementById('prev-week').addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() - 7);
+      renderWeek();
+    });
+
+    document.getElementById('next-week').addEventListener('click', () => {
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      renderWeek();
+    });
+
+    document.getElementById('toggle-view').addEventListener('click', toggleView);
+    document.getElementById('export-pdf').addEventListener('click', exportToPDF);
+    document.getElementById('export-excel').addEventListener('click', exportToExcel);
+
+    // Initialize
+    initDataSdk();
+    renderCalendar();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d6f8e5dd4367334',t:'MTc3MjYxMzQxNi4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
