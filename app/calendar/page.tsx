@@ -9,7 +9,6 @@ import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
 import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
-import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
@@ -33,7 +32,7 @@ export default function CalendarPage() {
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
+  const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null); // kept for MyCalendarGrid only
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSwapHistory, setShowSwapHistory] = useState(false);
@@ -77,14 +76,13 @@ export default function CalendarPage() {
     setMonth(m);
   }
 
-  function handleDayClick(day: CalendarDay) {
-    if (day.isCurrentMonth && !isEditMode) {
-      setSelectedDay(day);
-    }
+  function handleDayClick(_day: CalendarDay) {
+    // Day click no longer opens DayDetailModal
+    // Only used for MyCalendarGrid compatibility
   }
 
-  function handleSwapClickFromDay(shift: Shift) {
-    setSelectedDay(null);
+  function handleShiftClick(shift: Shift) {
+    if (isEditMode) return; // Don't open swap modal in edit mode
     setSelectedShift(shift);
   }
 
@@ -332,6 +330,7 @@ export default function CalendarPage() {
                 holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
+                onShiftClick={handleShiftClick}
                 viewMode={viewMode}
                 isEditMode={isEditMode}
                 pendingDeletes={pendingDeletes}
@@ -347,6 +346,7 @@ export default function CalendarPage() {
                 holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
+                onShiftClick={handleShiftClick}
                 viewMode={viewMode}
                 isEditMode={isEditMode}
                 pendingDeletes={pendingDeletes}
@@ -362,6 +362,7 @@ export default function CalendarPage() {
                 holidays={holidays}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
+                onShiftClick={handleShiftClick}
                 viewMode={viewMode}
                 isEditMode={isEditMode}
                 pendingDeletes={pendingDeletes}
@@ -380,20 +381,9 @@ export default function CalendarPage() {
         </div>
 
         <p className="text-[10px] text-gray-400 text-center pb-4 pdf-hide">
-          คลิกที่วันเพื่อดูรายละเอียดเวร — คลิกชื่อเพื่อขอแลกเวร
+          คลิกที่ชื่อตัวเองเพื่อแลกเวร — คลิกชื่อคนอื่นเพื่อซื้อเวร
         </p>
       </main>
-
-      {/* Day Detail Modal */}
-      {selectedDay && (
-        <DayDetailModal
-          day={selectedDay}
-          currentUser={currentUser}
-          roleGroup={effectiveRoleGroup}
-          onClose={() => setSelectedDay(null)}
-          onSwapClick={handleSwapClickFromDay}
-        />
-      )}
 
       {/* Swap Modal */}
       {selectedShift && (

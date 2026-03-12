@@ -18,6 +18,7 @@ interface CalendarGridProps {
   holidays: Holiday[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
+  onShiftClick?: (shift: Shift) => void;
   viewMode: 'all' | 'mine';
   isEditMode?: boolean;
   pendingDeletes?: Set<string>;
@@ -60,12 +61,12 @@ function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holi
 }
 
 export function CalendarGrid({ 
-  year, month, shifts, holidays, currentUser, onDayClick,
+  year, month, shifts, holidays, currentUser, onDayClick, onShiftClick,
   isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift 
 }: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
 
-  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift };
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -118,6 +119,7 @@ interface RenderContext {
   pendingEdits?: Record<string, User>;
   onToggleDelete?: (id: string) => void;
   onEditShift?: (s: Shift) => void;
+  onShiftClick?: (shift: Shift) => void;
 }
 
 function getUserName(shift: Shift): string {
@@ -159,7 +161,11 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   }
 
   return (
-    <span key={s.id} className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm' : 'text-slate-800')}>
+    <span
+      key={s.id}
+      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm cursor-pointer hover:ring-2 hover:ring-violet-400 hover:bg-violet-100' : 'text-slate-800 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50')}
+      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+    >
       {displayName}
     </span>
   );
