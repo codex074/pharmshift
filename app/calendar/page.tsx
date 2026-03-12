@@ -18,12 +18,13 @@ import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubst
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
+import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
 import { DeployModal } from '@/components/calendar/DeployModal';
 import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import type { Shift, CalendarDay, UserRole, User } from '@/lib/types';
+import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
@@ -38,6 +39,8 @@ export default function CalendarPage() {
   const [showSwapHistory, setShowSwapHistory] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
+  const [showPersonalShiftsModal, setShowPersonalShiftsModal] = useState(false);
+  const [personalShiftsFilter, setPersonalShiftsFilter] = useState<ShiftType | 'all'>('all');
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
@@ -113,12 +116,14 @@ export default function CalendarPage() {
     setEditingSubsShift(null);
   }
 
-  // Stats — myShifts comes from allShifts so it's never empty for own user
+  // Stats — if current user exists, only count their shifts, else count all shifts visible
   const myShifts  = allShifts.filter((s) => s.user_id === currentUser?.id);
-  const chaoCount = shifts.filter((s) => s.shift_type === 'เช้า').length;
-  const baiCount  = shifts.filter((s) => s.shift_type === 'บ่าย').length;
-  const duekCount = shifts.filter((s) => s.shift_type === 'ดึก').length;
-  const rungCount = shifts.filter((s) => s.shift_type === 'รุ่งอรุณ').length;
+  const sourceShiftsForStats = currentUser ? myShifts : shifts;
+  const totalCount = sourceShiftsForStats.length;
+  const chaoCount = sourceShiftsForStats.filter((s) => s.shift_type === 'เช้า').length;
+  const baiCount  = sourceShiftsForStats.filter((s) => s.shift_type === 'บ่าย').length;
+  const duekCount = sourceShiftsForStats.filter((s) => s.shift_type === 'ดึก').length;
+  const rungCount = sourceShiftsForStats.filter((s) => s.shift_type === 'รุ่งอรุณ').length;
 
   if (authLoading) {
     return (
@@ -146,6 +151,15 @@ export default function CalendarPage() {
       />
 
       <main className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+        {/* Personal Shifts Modal */}
+      <PersonalShiftsModal
+        isOpen={showPersonalShiftsModal}
+        onClose={() => setShowPersonalShiftsModal(false)}
+        shifts={myShifts}
+        filterType={personalShiftsFilter}
+        month={month}
+        year={year}
+      />
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -259,16 +273,24 @@ export default function CalendarPage() {
         )}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 pdf-hide">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pdf-hide">
           {[
-            { label: 'ทั้งหมด',  value: shifts.length, color: 'bg-gray-50  text-gray-700  border-gray-100' },
-            { label: '🌅 เช้า',   value: chaoCount,     color: 'bg-amber-50 text-amber-700 border-amber-100' },
-            { label: '☀️ บ่าย',   value: baiCount,      color: 'bg-cyan-50  text-cyan-700  border-cyan-100' },
-            { label: '🌙 ดึก',    value: duekCount,     color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-            { label: '🌄 รุ่งอรุณ', value: rungCount,   color: 'bg-orange-50 text-orange-700 border-orange-100' },
-            { label: '⭐ เวรฉัน', value: myShifts.length, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-          ].map(({ label, value, color }) => (
-            <div key={label} className={`rounded-xl border p-2 sm:p-3 ${color}`}>
+            { id: 'all', label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50  text-gray-700  border-gray-100' },
+            { id: 'เช้า', label: '🌅 เช้า',   value: chaoCount,     color: 'bg-amber-50 text-amber-700 border-amber-100' },
+            { id: 'บ่าย', label: '☀️ บ่าย',   value: baiCount,      color: 'bg-cyan-50  text-cyan-700  border-cyan-100' },
+            { id: 'ดึก', label: '🌙 ดึก',    value: duekCount,     color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+            { id: 'รุ่งอรุณ', label: '🌄 รุ่งอรุณ', value: rungCount,   color: 'bg-orange-50 text-orange-700 border-orange-100' },
+          ].map(({ id, label, value, color }) => (
+            <div 
+              key={id} 
+              onClick={() => {
+                if (currentUser) {
+                  setPersonalShiftsFilter(id as ShiftType | 'all');
+                  setShowPersonalShiftsModal(true);
+                }
+              }}
+              className={cn(`rounded-xl border p-2 sm:p-3 transition-transform ${color}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
+            >
               <p className="text-lg sm:text-xl font-bold">{value}</p>
               <p className="text-[9px] sm:text-[10px] font-medium opacity-70 leading-tight">{label}</p>
             </div>
