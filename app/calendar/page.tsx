@@ -19,6 +19,7 @@ import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
+import { CompensationModal } from '@/components/calendar/CompensationModal';
 import { DeployModal } from '@/components/calendar/DeployModal';
 import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
 import { Header } from '@/components/layout/Header';
@@ -40,6 +41,7 @@ export default function CalendarPage() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showPersonalShiftsModal, setShowPersonalShiftsModal] = useState(false);
+  const [showCompensationModal, setShowCompensationModal] = useState(false);
   const [personalShiftsFilter, setPersonalShiftsFilter] = useState<ShiftType | 'all'>('all');
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
@@ -160,6 +162,15 @@ export default function CalendarPage() {
         month={month}
         year={year}
       />
+      {/* Compensation Modal */}
+      <CompensationModal
+        isOpen={showCompensationModal}
+        onClose={() => setShowCompensationModal(false)}
+        shifts={myShifts}
+        currentUser={currentUser}
+        month={month}
+        year={year}
+      />
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
@@ -229,6 +240,15 @@ export default function CalendarPage() {
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
+            {currentUser && (
+               <button
+                 onClick={() => setShowCompensationModal(true)}
+                 className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+               >
+                 <span>💰</span>
+                 <span className="hidden sm:inline">ค่าตอบแทน</span>
+               </button>
+            )}
             {currentUser?.role === 'admin' && (
               <ExcelExportButton year={year} month={month} />
             )}
