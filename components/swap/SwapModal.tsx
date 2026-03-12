@@ -304,7 +304,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         <div className="flex items-center gap-3 p-5 border-t border-gray-100 shrink-0">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all"
+            className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 hover:text-red-600 text-sm font-medium hover:bg-red-50 transition-all"
           >
             ยกเลิก
           </button>
