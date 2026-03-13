@@ -5,17 +5,19 @@ import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { Loader2, X, AlertCircle } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
+import type { PendingAdd } from './AdminAddShiftModal';
 
 interface AdminConfirmModalProps {
   pendingDeletes: Set<string>;
   pendingEdits: Record<string, User>;
+  pendingAdds: PendingAdd[];
   allShifts: Shift[];
   currentUser: User | null;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export function AdminConfirmModal({ pendingDeletes, pendingEdits, allShifts, currentUser, onClose, onSuccess }: AdminConfirmModalProps) {
+export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, allShifts, currentUser, onClose, onSuccess }: AdminConfirmModalProps) {
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -80,6 +82,37 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, allShifts, cur
         await Promise.all(promises);
       }
 
+      // 3. Insert new shifts
+      if (pendingAdds.length > 0) {
+        const insertRecords = pendingAdds.map(add => ({
+          date: add.date,
+          department_id: add.department_id,
+          shift_type: add.shift_type,
+          position: add.position || null,
+          user_id: add.user.id,
+          month_year: add.month_year,
+        }));
+
+        const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
+        if (insertError) throw insertError;
+
+        // Log each addition
+        const addLogs = pendingAdds.map(add => ({
+          shift_id: null as any, // shift doesn't have an id yet
+          action: 'admin_edit',
+          new_user_id: add.user.id,
+          performed_by: currentUser?.id,
+          details: `Admin added new shift: ${add.date} ${add.shift_type} ${add.department}`,
+        }));
+        // Only insert logs that are valid (shift_id can be null for new shifts)
+        // Use shift_logs without shift_id reference since we don't have the new shift id
+        try {
+          await supabase.from('shift_logs').insert(addLogs);
+        } catch {
+          // ignore log errors — not critical
+        }
+      }
+
       toastSuccess('บันทึกการเปลี่ยนแปลงสำเร็จ');
       onSuccess();
 
@@ -107,8 +140,25 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, allShifts, cur
         </div>
 
         <div className="px-5 py-4 space-y-4 max-h-[60vh] overflow-y-auto">
-          {edits.length === 0 && deletes.length === 0 && (
+          {edits.length === 0 && deletes.length === 0 && pendingAdds.length === 0 && (
             <p className="text-gray-500 text-center py-4">ไม่มีรายการรอเปลี่ยนแปลง</p>
+          )}
+
+          {/* Pending Adds Section */}
+          {pendingAdds.length > 0 && (
+            <div className="space-y-2">
+              <h3 className="font-semibold text-green-800 border-b pb-1">รายการเพิ่มเวรใหม่ ({pendingAdds.length})</h3>
+              <ul className="space-y-1 text-sm">
+                {pendingAdds.map((add, idx) => (
+                  <li key={idx} className="flex flex-col p-2 bg-green-50 rounded text-green-900 border border-green-100">
+                    <span className="font-medium">{add.date} | {add.shift_type} | {add.department}{add.position ? ` (${add.position})` : ''}</span>
+                    <span className="text-xs">
+                      ผู้มีเวร: <span className="font-bold">{add.user.name} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
 
           {edits.length > 0 && (

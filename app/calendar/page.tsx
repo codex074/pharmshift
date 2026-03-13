@@ -14,6 +14,8 @@ import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
 import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
 import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
+import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
+import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
 
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
@@ -55,6 +57,8 @@ export default function CalendarPage() {
   const [pendingEdits, setPendingEdits] = useState<Record<string, User>>({});
   const [editingSubsShift, setEditingSubsShift] = useState<Shift | null>(null);
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
+  const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
+  const [addingShiftContext, setAddingShiftContext] = useState<AddShiftContext | null>(null);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
@@ -97,6 +101,7 @@ export default function CalendarPage() {
     setIsEditMode(!isEditMode);
     setPendingDeletes(new Set());
     setPendingEdits({});
+    setPendingAdds([]);
   }
 
   function handleToggleDelete(shiftId: string) {
@@ -118,6 +123,19 @@ export default function CalendarPage() {
       setPendingEdits(prev => ({ ...prev, [editingSubsShift.id]: user }));
     }
     setEditingSubsShift(null);
+  }
+
+  function handleAddShift(ctx: AddShiftContext) {
+    setAddingShiftContext(ctx);
+  }
+
+  function handleConfirmAdd(add: PendingAdd) {
+    setPendingAdds(prev => [...prev, add]);
+    setAddingShiftContext(null);
+  }
+
+  function handleRemovePendingAdd(index: number) {
+    setPendingAdds(prev => prev.filter((_, i) => i !== index));
   }
 
   // Stats — if current user exists, only count their shifts, else count all shifts visible
@@ -392,6 +410,9 @@ export default function CalendarPage() {
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
                 onEditShift={handleEditShiftFromCalendar}
+                pendingAdds={pendingAdds}
+                onAddShift={handleAddShift}
+                onRemovePendingAdd={handleRemovePendingAdd}
               />
             ) : effectiveRoleGroup === 'officer' ? (
               <OfficeCalendarGrid
@@ -408,6 +429,9 @@ export default function CalendarPage() {
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
                 onEditShift={handleEditShiftFromCalendar}
+                pendingAdds={pendingAdds}
+                onAddShift={handleAddShift}
+                onRemovePendingAdd={handleRemovePendingAdd}
               />
             ) : (
               <CalendarGrid
@@ -424,6 +448,9 @@ export default function CalendarPage() {
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
                 onEditShift={handleEditShiftFromCalendar}
+                pendingAdds={pendingAdds}
+                onAddShift={handleAddShift}
+                onRemovePendingAdd={handleRemovePendingAdd}
               />
             )}
             </div>
@@ -517,6 +544,7 @@ export default function CalendarPage() {
         <AdminConfirmModal
           pendingDeletes={pendingDeletes}
           pendingEdits={pendingEdits}
+          pendingAdds={pendingAdds}
           allShifts={allShifts}
           currentUser={currentUser}
           onClose={() => setShowAdminConfirm(false)}
@@ -524,8 +552,19 @@ export default function CalendarPage() {
             setShowAdminConfirm(false);
             setPendingDeletes(new Set());
             setPendingEdits({});
+            setPendingAdds([]);
             refetch();
           }}
+        />
+      )}
+
+      {/* Admin Add Shift Modal */}
+      {addingShiftContext && isEditMode && (
+        <AdminAddShiftModal
+          context={addingShiftContext}
+          roleGroup={effectiveRoleGroup}
+          onClose={() => setAddingShiftContext(null)}
+          onAdd={handleConfirmAdd}
         />
       )}
     </>
