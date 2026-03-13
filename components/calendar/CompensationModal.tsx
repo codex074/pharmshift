@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { X, Coins } from 'lucide-react';
+import { X, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -77,6 +77,8 @@ export function CompensationModal({
   month,
   year,
 }: CompensationModalProps) {
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+
   if (!isOpen || !currentUser) return null;
 
   const monthName = format(new Date(year, month - 1), 'MMMM yyyy', { locale: th });
@@ -102,6 +104,7 @@ export function CompensationModal({
       totalUnits,
       rate,
       totalAmount,
+      relevantShifts,
     };
   }).filter(b => b.totalUnits > 0);
 
@@ -143,25 +146,53 @@ export function CompensationModal({
           {breakdown.length > 0 ? (
             <div className="space-y-3">
               <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider px-1">รายละเอียดแยกตามประเภทเวร</h3>
-              {breakdown.map((item, idx) => (
-                <div key={idx} className={cn("rounded-xl p-4 border flex flex-col gap-2", item.color)}>
-                  <div className="flex items-center justify-between font-bold text-base">
-                    <span>{item.name}</span>
-                    <span>{item.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-2 mt-1 text-sm font-medium opacity-80 border-t border-black/5 pt-2">
-                    <div className="flex justify-between">
-                      <span>จำนวน:</span>
-                      <span>{item.totalUnits} {item.unitLabel}</span>
+              {breakdown.map((item, idx) => {
+                const isExpanded = expandedIndex === idx;
+                return (
+                  <div 
+                    key={idx} 
+                    className={cn("rounded-xl p-4 border flex flex-col gap-2 cursor-pointer transition-all hover:brightness-95", item.color, isExpanded ? "shadow-md scale-[1.02]" : "")}
+                    onClick={() => setExpandedIndex(isExpanded ? null : idx)}
+                  >
+                    <div className="flex items-center justify-between font-bold text-base">
+                      <span>{item.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span>{item.totalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })} ฿</span>
+                        {isExpanded ? <ChevronUp className="w-5 h-5 opacity-60" /> : <ChevronDown className="w-5 h-5 opacity-60" />}
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>{item.rateLabel}:</span>
-                      <span>{item.rate} ฿</span>
+                    
+                    <div className="grid grid-cols-2 gap-2 mt-1 text-sm font-medium opacity-80 border-t border-black/5 pt-2">
+                      <div className="flex justify-between">
+                        <span>จำนวน:</span>
+                        <span>{item.totalUnits} {item.unitLabel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{item.rateLabel}:</span>
+                        <span>{item.rate} ฿</span>
+                      </div>
                     </div>
+
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-black/10 text-sm space-y-1.5 animate-in slide-in-from-top-2 fade-in duration-200">
+                        <p className="font-bold opacity-80 mb-2">รายละเอียดเวร (คลิกเพื่อย่อ):</p>
+                        {item.relevantShifts.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((s, i) => (
+                          <div key={i} className="flex justify-between items-center py-1.5 px-3 bg-white/40 rounded-lg">
+                            <span>
+                              <span className="font-semibold">{format(new Date(s.date), 'dd')}</span> {format(new Date(s.date), 'MMM', { locale: th })} {s.shift_type} {getDeptName(s) ? (
+                                s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position && (s.position === 'D/C' || s.position === 'Cont')
+                                  ? `(${getDeptName(s)} ${s.position})`
+                                  : `(${getDeptName(s)})`
+                              ) : ''}
+                            </span>
+                            <span className="font-semibold opacity-80">+{item.getValue()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
              <div className="flex flex-col items-center justify-center h-40 text-center opacity-60">

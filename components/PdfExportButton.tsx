@@ -93,10 +93,11 @@ export function PdfExportButton({ targetId, filename }: PdfExportButtonProps) {
     <button
       onClick={handleExport}
       disabled={loading}
-      className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white text-sm font-semibold shadow-md shadow-red-500/25 hover:shadow-red-500/40 transition-all duration-200"
+      className="bg-red-100 text-red-700 hover:bg-red-200 hover:text-red-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
     >
       {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-      Export PDF
+      <span className="hidden sm:inline">Export PDF</span>
+      <span className="sm:hidden">PDF</span>
     </button>
   );
 }

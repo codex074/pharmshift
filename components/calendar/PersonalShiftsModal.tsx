@@ -44,6 +44,9 @@ export function PersonalShiftsModal({
 
   // Local helper to get department name from shift position
   const getDeptName = (s: Shift): string => {
+    const dept = s.department?.name || (s as any).department_name;
+    if (dept) return dept;
+    
     if (!s.position) return 'ไม่ระบุ';
     if (s.position.includes('โครงการ')) return 'โครงการ';
     if (s.position.includes('Surg')) return 'Surg';
@@ -117,7 +120,11 @@ export function PersonalShiftsModal({
                           {shift.shift_type}
                         </span>
                         <span className="text-sm font-semibold text-gray-900 truncate">
-                          แผนก {getDeptName(shift)}
+                          {getDeptName(shift) !== 'ไม่ระบุ' ? (
+                            shift.shift_type === 'เช้า' && getDeptName(shift) === 'MED' && shift.position && (shift.position === 'D/C' || shift.position === 'Cont') 
+                              ? `${getDeptName(shift)} (${shift.position})` 
+                              : getDeptName(shift)
+                          ) : ''}
                         </span>
                       </div>
                       <p className="text-[13px] text-gray-500 flex items-center gap-1.5 mt-1.5">
