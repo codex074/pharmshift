@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, Moon, Sun } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -27,6 +27,8 @@ function statusBadge(status: string) {
 export function NotificationsPanel({
   swapRequests, currentUser, pendingCount, onAccept, onReject, onOpen, onClose,
 }: NotificationsPanelProps) {
+
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // Mark requester results as read when panel opens
   useEffect(() => {
@@ -82,7 +84,7 @@ export function NotificationsPanel({
               <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือน</p>
             </div>
           ) : (
-            swapRequests.map((req) => {
+            swapRequests.slice(0, visibleCount).map((req) => {
               const shift = req.shift as any;
               const requester = req.requester as any;
               const targetUser = req.target_user as any;
@@ -161,6 +163,14 @@ export function NotificationsPanel({
                 </div>
               );
             })
+          )}
+          {swapRequests.length > visibleCount && (
+            <button
+              onClick={() => setVisibleCount(c => c + 10)}
+              className="w-full py-2 text-xs text-violet-600 font-medium hover:text-violet-800 hover:bg-violet-50 rounded-lg transition-colors border border-violet-100"
+            >
+              โหลดเพิ่มเติม ({swapRequests.length - visibleCount} รายการ)
+            </button>
           )}
         </div>
       </div>

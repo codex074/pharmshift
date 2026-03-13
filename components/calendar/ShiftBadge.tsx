@@ -23,13 +23,30 @@ export function ShiftBadge({ shift, isMyShift, onClick, compact }: ShiftBadgePro
                    (shift.user as { name: string })?.name || '—';
   const shiftStyle = SHIFT_STYLES[shift.shift_type];
 
+  if (isMyShift) {
+    return (
+      <button
+        onClick={() => onClick?.(shift)}
+        className={cn(
+          'w-full text-left flex items-center gap-1 rounded-md font-bold transition-colors',
+          'bg-violet-600 hover:bg-violet-700 text-white shadow-sm shadow-violet-300/50',
+          compact ? 'text-[10px] py-0.5 px-1.5' : 'text-xs py-1 px-2'
+        )}
+        title={`${userName} — ${deptName} (${shift.shift_type})`}
+      >
+        <span>{shiftStyle?.icon}</span>
+        {!compact && <span className="opacity-75 text-[10px]">{deptName}</span>}
+        <span className="truncate">{userName}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       onClick={() => onClick?.(shift)}
       className={cn(
         'shift-badge w-full text-left',
         deptClass(deptName),
-        isMyShift && 'ring-2 ring-violet-500/40 font-semibold',
         compact ? 'text-[10px] py-0.5 px-1.5' : ''
       )}
       title={`${userName} — ${deptName} (${shift.shift_type})`}

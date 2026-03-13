@@ -17,6 +17,7 @@ interface ShiftLogsModalProps {
 export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
   const [logs, setLogs] = useState<ShiftLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [visibleCount, setVisibleCount] = useState(10);
 
   // For Admin, toggle to see ALL history vs OWN history
   const [viewAll, setViewAll] = useState(false);
@@ -55,7 +56,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
             performer:users!shift_logs_performed_by_fkey(id, name, nickname)
           `)
           .order('created_at', { ascending: false })
-          .limit(100);
+          .limit(200);
 
         if (currentUser?.role !== 'admin' || !viewAll) {
           query = query.or(`old_user_id.eq.${currentUser?.id},new_user_id.eq.${currentUser?.id}`);
@@ -73,6 +74,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
     }
 
     fetchLogs();
+    setVisibleCount(10);
   }, [currentUser, viewAll]);
 
   function renderActionIcon(action: string) {
@@ -157,7 +159,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
               <p className="text-[10px] text-gray-400 mt-1">ยังไม่มีการแก้ไขหรือแลกเวรในช่วงที่ผ่านมา</p>
             </div>
           ) : (
-            logs.map((log) => {
+            logs.slice(0, visibleCount).map((log) => {
               const shiftDate = log.shift?.date ? new Date(log.shift.date + 'T00:00:00') : null;
               const deptName = (log.shift?.department as any)?.name || '';
               
@@ -230,8 +232,16 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
               );
             })
           )}
+          {logs.length > visibleCount && (
+            <button
+              onClick={() => setVisibleCount(c => c + 10)}
+              className="w-full py-2.5 text-xs text-indigo-600 font-medium hover:text-indigo-800 hover:bg-indigo-50 rounded-xl transition-colors border border-indigo-100"
+            >
+              โหลดเพิ่มเติม ({logs.length - visibleCount} รายการ)
+            </button>
+          )}
         </div>
-        
+
         {/* Footer */}
         <div className="p-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl">
           <button

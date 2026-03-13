@@ -108,22 +108,22 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                   {/* Shifts List */}
                   <div className="space-y-1 mt-1 flex flex-col justify-center h-full">
                     {day.shifts.map((shift, i) => {
-                      const cfg = SHIFT_CONFIG[shift.shift_type] || { icon: '•', color: 'bg-gray-100 text-gray-700' };
+                      const cfg = SHIFT_CONFIG[shift.shift_type] || { icon: '•', color: '#9ca3af' };
                       const deptName = getDeptName(shift);
                       const deptColor = DEPT_COLORS[deptName as keyof typeof DEPT_COLORS] || '#cbd5e1';
-                      
+
                       return (
-                        <div 
-                          key={i} 
-                          className="flex items-center justify-between text-[11px] p-1.5 rounded-md border border-gray-100 shadow-sm transition-all hover:shadow bg-white overflow-hidden [.exporting-pdf_&]:overflow-visible"
+                        <div
+                          key={i}
+                          className="flex items-center justify-between text-xs p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
                         >
-                          <div className="flex items-center gap-1.5 font-medium min-w-0 pr-1">
+                          <div className="flex items-center gap-1.5 font-bold min-w-0 pr-1 text-white">
                             <span>{cfg.icon}</span>
                             <span className="truncate">{shift.shift_type}</span>
                           </div>
-                          <div className="flex items-center gap-1 shrink-0 bg-gray-50 px-1.5 py-0.5 rounded text-[10px] min-w-0">
-                            <span className="w-1.5 h-1.5 shrink-0 rounded-full" style={{ backgroundColor: deptColor }} />
-                            <span className="font-semibold text-gray-600 truncate">{deptName}</span>
+                          <div className="flex items-center gap-1 shrink-0 bg-white/20 px-1.5 py-0.5 rounded-full text-[10px] min-w-0">
+                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-white/80" style={{ backgroundColor: deptColor }} />
+                            <span className="font-bold text-white truncate">{deptName}</span>
                           </div>
                         </div>
                       );
