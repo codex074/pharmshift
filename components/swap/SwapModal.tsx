@@ -4,9 +4,9 @@ import { useState, useEffect } from 'react';
 import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import type { Shift, User as UserType, UserRole } from '@/lib/types';
+import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
 import { DEPT_STYLES, ROLE_LABELS } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, shiftsOverlap } from '@/lib/utils';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -67,17 +67,18 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         // ===== SWAP MODE: คลิกชื่อตัวเอง → เลือกคนอื่นเพื่อแลก =====
         if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ปลายทาง`);
 
-        // Check collision: target user already has same shift type on same date
-        const { data: collision } = await supabase
+        // Check collision: target user has any overlapping shift on same date
+        const { data: targetShifts } = await supabase
           .from('shifts')
-          .select('id')
+          .select('id, shift_type')
           .eq('user_id', selectedUser.id)
-          .eq('date', shift.date)
-          .eq('shift_type', shift.shift_type)
-          .maybeSingle();
+          .eq('date', shift.date);
 
-        if (collision) {
-          throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากมีเวรประเภทเดียวกันในวันดังกล่าวอยู่แล้ว (Shift Collision)");
+        const hasCollision = (targetShifts || []).some(s =>
+          shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
+        );
+        if (hasCollision) {
+          throw new Error(`ไม่สามารถดำเนินการได้ เนื่องจาก${selectedUser.name || selectedUser.nickname || 'ปลายทาง'}มีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว`);
         }
 
         const { error } = await supabase.from('swap_requests').insert({
@@ -94,17 +95,18 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
       } else {
         // ===== BUY MODE: คลิกชื่อคนอื่น → ขอซื้อเวร =====
 
-        // Check collision: I already have same shift type on same date
-        const { data: collision } = await supabase
+        // Check collision: I already have any overlapping shift on same date
+        const { data: myShifts } = await supabase
           .from('shifts')
-          .select('id')
+          .select('id, shift_type')
           .eq('user_id', currentUser.id)
-          .eq('date', shift.date)
-          .eq('shift_type', shift.shift_type)
-          .maybeSingle();
+          .eq('date', shift.date);
 
-        if (collision) {
-          throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากคุณมีเวรประเภทเดียวกันในวันดังกล่าวอยู่แล้ว (Shift Collision)");
+        const hasCollision = (myShifts || []).some(s =>
+          shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
+        );
+        if (hasCollision) {
+          throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากคุณมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
         }
 
         const { error } = await supabase.from('swap_requests').insert({

@@ -1,7 +1,7 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth, isToday } from 'date-fns';
-import type { CalendarDay, Shift } from './types';
+import type { CalendarDay, Shift, ShiftType } from './types';
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -45,6 +45,43 @@ export function formatThaiMonth(year: number, month: number): string {
 /** Map JS Date month to Buddhist era string "YYYY-MM" */
 export function toMonthYear(year: number, month: number): string {
   return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+// ─── Shift Overlap Detection ─────────────────────────────────────────────────
+
+/** Time range in minutes from midnight */
+const SHIFT_MINUTES: Record<ShiftType, { start: number; end: number }> = {
+  'เช้า':    { start: 8 * 60 + 30,  end: 16 * 60 + 30 },
+  'บ่าย':    { start: 16 * 60 + 30, end: 23 * 60 + 59 },
+  'ดึก':     { start: 0,            end: 8 * 60 + 30  },
+  'รุ่งอรุณ': { start: 7 * 60,       end: 8 * 60 + 30  },
+  'smc':     { start: 16 * 60 + 30, end: 20 * 60 + 30 },
+};
+
+/**
+ * Returns true if shift types a and b overlap in actual clock time.
+ * Same type always returns true. Uses strict overlap (touching endpoints = false).
+ */
+export function shiftsOverlap(a: ShiftType, b: ShiftType): boolean {
+  if (a === b) return true;
+  const ta = SHIFT_MINUTES[a];
+  const tb = SHIFT_MINUTES[b];
+  if (!ta || !tb) return false;
+  return ta.start < tb.end && tb.start < ta.end;
+}
+
+/**
+ * From a list of existing shifts, return those that time-overlap with the given shift type.
+ * Optionally exclude a specific shift ID (e.g. the shift being replaced).
+ */
+export function findConflictingShifts(
+  existingShifts: Shift[],
+  newShiftType: ShiftType,
+  excludeShiftId?: string,
+): Shift[] {
+  return existingShifts.filter(
+    s => s.id !== excludeShiftId && shiftsOverlap(s.shift_type as ShiftType, newShiftType),
+  );
 }
 
 /** Determine avatar initials from a name */
