@@ -146,8 +146,8 @@ export function Header({
                 title="แก้ไขข้อมูลส่วนตัว"
                 className="flex items-center gap-2 px-2 sm:px-3 py-1.5 min-h-[40px] bg-violet-50 hover:bg-violet-100 transition-colors rounded-xl border border-violet-100 shadow-sm"
               >
-                <div className="w-7 h-7 flex-shrink-0 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold shadow-inner border border-violet-400">
-                  {currentUser.profile_image === 'female' ? '♀' : '♂'}
+                <div className="w-7 h-7 flex-shrink-0 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white shadow-inner border border-violet-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                 </div>
                 {/* Name: only on sm+ */}
                 <span className="hidden sm:block text-sm font-bold text-violet-800 max-w-28 lg:max-w-40 truncate leading-tight py-0.5">

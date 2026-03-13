@@ -168,10 +168,26 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
+  /* ── My shift — solid violet pill, star prefix, white text ── */
+  if (isMe) {
+    return (
+      <span
+        key={s.id}
+        className="block text-center w-full leading-[1.1] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
+        onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      >
+        <span className="inline-flex items-center gap-0.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-bold text-xs rounded-md px-1.5 py-0.5 shadow-md shadow-violet-300/60 transition-colors [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none">
+          {displayName}
+        </span>
+      </span>
+    );
+  }
+
+  /* ── Other people's shifts ── */
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm cursor-pointer hover:ring-2 hover:ring-violet-400 hover:bg-violet-100' : 'text-slate-800 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50')}
+      className={cn(nameTextStyle, 'text-slate-700 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50 rounded-sm')}
       onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
     >
       {displayName}

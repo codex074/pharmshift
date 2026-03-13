@@ -105,7 +105,7 @@ export function useSwapRequests(userId?: string) {
       `)
       .or(`requester_id.eq.${userId},target_user_id.eq.${userId}`)
       .order('created_at', { ascending: false })
-      .limit(20);
+      .limit(50);
 
     if (data) {
       setSwapRequests(data as SwapRequest[]);
