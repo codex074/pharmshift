@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
-import { Loader2, X, AlertCircle } from 'lucide-react';
-import type { Shift, User } from '@/lib/types';
+import { Loader2, X, AlertCircle, AlertTriangle } from 'lucide-react';
+import type { Shift, ShiftType, User } from '@/lib/types';
+import { shiftsOverlap } from '@/lib/utils';
 import type { PendingAdd } from './AdminAddShiftModal';
 
 interface AdminConfirmModalProps {
@@ -27,6 +28,41 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     shift: allShifts.find(s => s.id === id) as Shift,
     newUser: pendingEdits[id],
   })).filter(e => e.shift && e.newUser);
+
+  /** Check if a pending-add conflicts with existing shifts or other pending adds */
+  function getPendingAddConflicts(add: PendingAdd, addIdx: number): string[] {
+    const conflicts: string[] = [];
+    // Against already-loaded shifts
+    const existing = allShifts.filter(
+      s => s.user_id === add.user.id &&
+           s.date === add.date &&
+           shiftsOverlap(s.shift_type as ShiftType, add.shift_type)
+    );
+    for (const s of existing) {
+      conflicts.push(`${s.shift_type}${(s as any).department_name ? ` (${(s as any).department_name})` : ''}`);
+    }
+    // Against other pending adds for the same user/date
+    pendingAdds.forEach((other, i) => {
+      if (i !== addIdx && other.user.id === add.user.id && other.date === add.date &&
+          shiftsOverlap(other.shift_type, add.shift_type)) {
+        conflicts.push(`${other.shift_type} (${other.department}) [รายการที่ ${i + 1}]`);
+      }
+    });
+    return conflicts;
+  }
+
+  /** Check if a pending-edit would give the new user a conflicting shift */
+  function getPendingEditConflicts(shiftId: string, newUser: User): string[] {
+    const shift = allShifts.find(s => s.id === shiftId);
+    if (!shift) return [];
+    const conflicts = allShifts.filter(
+      s => s.user_id === newUser.id &&
+           s.date === shift.date &&
+           s.id !== shiftId &&
+           shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
+    );
+    return conflicts.map(s => `${s.shift_type}${(s as any).department_name ? ` (${(s as any).department_name})` : ''}`);
+  }
 
   async function handleConfirm() {
     if (!password || password !== passwordConfirm) {
@@ -149,14 +185,25 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             <div className="space-y-2">
               <h3 className="font-semibold text-green-800 border-b pb-1">รายการเพิ่มเวรใหม่ ({pendingAdds.length})</h3>
               <ul className="space-y-1 text-sm">
-                {pendingAdds.map((add, idx) => (
-                  <li key={idx} className="flex flex-col p-2 bg-green-50 rounded text-green-900 border border-green-100">
-                    <span className="font-medium">{add.date} | {add.shift_type} | {add.department}{add.position ? ` (${add.position})` : ''}</span>
-                    <span className="text-xs">
-                      ผู้มีเวร: <span className="font-bold">{add.user.name} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>
-                    </span>
-                  </li>
-                ))}
+                {pendingAdds.map((add, idx) => {
+                  const addConflicts = getPendingAddConflicts(add, idx);
+                  return (
+                    <li key={idx} className={`flex flex-col p-2 rounded border ${addConflicts.length > 0 ? 'bg-yellow-50 border-yellow-300 text-yellow-900' : 'bg-green-50 border-green-100 text-green-900'}`}>
+                      <span className="font-medium flex items-center gap-1">
+                        {addConflicts.length > 0 && <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 shrink-0" />}
+                        {add.date} | {add.shift_type} | {add.department}{add.position ? ` (${add.position})` : ''}
+                      </span>
+                      <span className="text-xs">
+                        ผู้มีเวร: <span className="font-bold">{add.user.name} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>
+                      </span>
+                      {addConflicts.length > 0 && (
+                        <span className="text-xs text-yellow-700 mt-0.5">
+                          ⚠️ ซ้อนทับกับเวรที่มีอยู่: {addConflicts.join(', ')}
+                        </span>
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           )}
@@ -167,13 +214,22 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
               <ul className="space-y-1 text-sm">
                 {edits.map((e, idx) => {
                   const shiftName = (e.shift as any).user_name || e.shift.user?.name || e.shift.user_id;
+                  const editConflicts = getPendingEditConflicts(e.shift.id, e.newUser);
                   return (
-                    <li key={idx} className="flex flex-col p-2 bg-indigo-50 rounded text-indigo-900 border border-indigo-100">
-                      <span className="font-medium">{e.shift.date} | {e.shift.shift_type} | {(e.shift as any).department_name || ''}</span>
+                    <li key={idx} className={`flex flex-col p-2 rounded border ${editConflicts.length > 0 ? 'bg-yellow-50 border-yellow-300 text-yellow-900' : 'bg-indigo-50 border-indigo-100 text-indigo-900'}`}>
+                      <span className="font-medium flex items-center gap-1">
+                        {editConflicts.length > 0 && <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 shrink-0" />}
+                        {e.shift.date} | {e.shift.shift_type} | {(e.shift as any).department_name || ''}
+                      </span>
                       <span className="text-xs">
                         จาก : <span className="line-through text-gray-400 mr-2">{shiftName}</span>
                         ไปหา : <span className="font-bold">{e.newUser.name}</span>
                       </span>
+                      {editConflicts.length > 0 && (
+                        <span className="text-xs text-yellow-700 mt-0.5">
+                          ⚠️ {e.newUser.name} มีเวรซ้อนทับในวันนั้นอยู่แล้ว: {editConflicts.join(', ')}
+                        </span>
+                      )}
                     </li>
                   )
                 })}

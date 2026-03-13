@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Shift, SwapRequest, User, Holiday } from '@/lib/types';
-import { toMonthYear } from '@/lib/utils';
+import type { Shift, ShiftType, SwapRequest, User, Holiday } from '@/lib/types';
+import { toMonthYear, shiftsOverlap } from '@/lib/utils';
 
 export function useShifts(year: number, month: number) {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -138,42 +138,51 @@ export function useSwapRequests(userId?: string) {
     
     // Determine the actual shifts involved and who receives them
     if (req.request_type === 'swap' && req.target_shift && req.shift) {
-      // Requester receives `target_shift`
+      // Fetch requester's shifts on target_shift's date (excluding the shift they give away)
       checks.push(
-        supabase.from('shifts').select('id')
+        supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.requester_id)
           .eq('date', req.target_shift.date)
-          .eq('shift_type', req.target_shift.shift_type)
-          .neq('id', req.shift.id) // exclude the shift they give away
-          .maybeSingle()
+          .neq('id', req.shift.id)
       );
-      // Target User receives `shift`
+      // Fetch target_user's shifts on shift's date (excluding the shift they give away)
       checks.push(
-        supabase.from('shifts').select('id')
+        supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.target_user_id)
           .eq('date', req.shift.date)
-          .eq('shift_type', req.shift.shift_type)
-          .neq('id', req.target_shift.id) // exclude the shift they give away
-          .maybeSingle()
+          .neq('id', req.target_shift.id)
       );
     } else if (req.request_type === 'transfer' && req.shift) {
-      // The new owner is whoever is currently NOT the owner
       const currentOwnerId = req.shift.user_id;
       const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
       checks.push(
-        supabase.from('shifts').select('id')
+        supabase.from('shifts').select('id, shift_type')
           .eq('user_id', newUserId)
           .eq('date', req.shift.date)
-          .eq('shift_type', req.shift.shift_type)
-          .maybeSingle()
       );
     }
-    
-    // Execute checks
+
+    // Execute checks and validate overlap
     const checkResults = await Promise.all(checks);
-    for (const res of checkResults) {
-      if (res.data) {
-        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากมีเวรประเภทเดียวกันในวันดังกล่าวอยู่แล้ว (Shift Collision)");
+
+    if (req.request_type === 'swap' && req.target_shift && req.shift) {
+      const [requesterOtherShifts, targetOtherShifts] = checkResults;
+      if ((requesterOtherShifts.data || []).some(s =>
+        shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
+      )) {
+        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากผู้ขอแลกมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+      }
+      if ((targetOtherShifts.data || []).some(s =>
+        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
+      )) {
+        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+      }
+    } else if (req.request_type === 'transfer' && req.shift) {
+      const [newUserShifts] = checkResults;
+      if ((newUserShifts.data || []).some(s =>
+        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
+      )) {
+        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
       }
     }
     

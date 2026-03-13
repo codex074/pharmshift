@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, X, Search, Plus } from 'lucide-react';
 import type { User, ShiftType } from '@/lib/types';
-import { cn } from '@/lib/utils';
-import { toastError } from '@/lib/swal';
+import { cn, shiftsOverlap } from '@/lib/utils';
+import { toastError, confirmAction } from '@/lib/swal';
 
 export interface PendingAdd {
   date: string;           // ISO date: "YYYY-MM-DD"
@@ -56,6 +56,32 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
   }, [roleGroup]);
 
   async function handleSelectUser(user: User) {
+    // Check for conflicting shifts on the same date
+    const { data: existingShifts } = await supabase
+      .from('shifts')
+      .select('id, shift_type, department:departments(name), position')
+      .eq('user_id', user.id)
+      .eq('date', context.date);
+
+    if (existingShifts && existingShifts.length > 0) {
+      const conflicts = existingShifts.filter(s =>
+        shiftsOverlap(s.shift_type as ShiftType, context.shift_type)
+      );
+      if (conflicts.length > 0) {
+        const conflictDesc = conflicts
+          .map(s => `${s.shift_type}${(s as any).department?.name ? ` (${(s as any).department.name}${(s as any).position ? `/${(s as any).position}` : ''})` : ''}`)
+          .join(', ');
+        const ok = await confirmAction({
+          title: 'พบเวรซ้อนทับ!',
+          text: `${user.name} มีเวรที่ทับซ้อนกันในวันที่ ${context.date} อยู่แล้ว: ${conflictDesc}\n\nต้องการเพิ่มเวรซ้อนทับหรือไม่?`,
+          confirmText: 'เพิ่มต่อไป',
+          cancelText: 'ยกเลิก',
+          isDanger: true,
+        });
+        if (!ok) return;
+      }
+    }
+
     // Fetch department_id from DB
     const { data: dept } = await supabase
       .from('departments')
