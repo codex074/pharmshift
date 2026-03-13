@@ -22,6 +22,7 @@ import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
 import { CompensationModal } from '@/components/calendar/CompensationModal';
 import { DeployModal } from '@/components/calendar/DeployModal';
 import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
+import { AdminUserManagementModal } from '@/components/calendar/AdminUserManagementModal';
 import { Header } from '@/components/layout/Header';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -44,6 +45,7 @@ export default function CalendarPage() {
   const [showCompensationModal, setShowCompensationModal] = useState(false);
   const [personalShiftsFilter, setPersonalShiftsFilter] = useState<ShiftType | 'all'>('all');
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
+  const [showUserManagement, setShowUserManagement] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
   
@@ -239,6 +241,16 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">จัดการวันหยุด</span>
               </button>
             )}
+            {currentUser?.role === 'admin' && (
+              <button
+                onClick={() => setShowUserManagement(true)}
+                className="bg-teal-100 text-teal-700 hover:bg-teal-200 hover:text-teal-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <span>👥</span>
+                <span className="sm:hidden">ผู้ใช้</span>
+                <span className="hidden sm:inline">จัดการผู้ใช้</span>
+              </button>
+            )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
             {currentUser && (
                <button
@@ -246,6 +258,7 @@ export default function CalendarPage() {
                  className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
                >
                  <span>💰</span>
+                 <span className="sm:hidden">ค่าตอบแทน</span>
                  <span className="hidden sm:inline">ค่าตอบแทน</span>
                </button>
             )}
@@ -483,6 +496,13 @@ export default function CalendarPage() {
           onSuccess={() => refetch()}
         />
       )}
+      {/* Admin User Management Modal */}
+      {showUserManagement && (
+        <AdminUserManagementModal
+          onClose={() => setShowUserManagement(false)}
+        />
+      )}
+
       {/* Admin Replace Modal */}
       {editingSubsShift && isEditMode && (
         <AdminShiftSubstituteModal

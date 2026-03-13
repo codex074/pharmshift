@@ -5,7 +5,14 @@
       "mcp__Claude_Preview__preview_start",
       "Bash(npx tsc:*)",
       "Bash(lsof -i :3000)",
-      "Bash(kill 6124 6125)"
+      "Bash(kill 6124 6125)",
+      "Bash(npx next build)",
+      "Bash(lsof -ti :3000)",
+      "Bash(xargs kill -9)",
+      "Bash(npm ls sharp)",
+      "Bash(node scripts/generate-icons.mjs)",
+      "Bash(fc-list :lang=th)",
+      "Bash(system_profiler SPFontsDataType)"
     ]
   }
 }

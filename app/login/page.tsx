@@ -62,15 +62,12 @@ export default function LoginPage() {
         <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-violet-500/10 border border-white">
 
           {/* Header */}
-          <div className="flex flex-col items-center text-center mb-10">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-tr from-violet-600 to-purple-500 shadow-xl shadow-violet-500/30 flex items-center justify-center mb-6 transform transition-transform hover:scale-105 duration-300">
-              <Pill className="w-10 h-10 text-white" strokeWidth={2.5} />
+          <div className="flex flex-col items-center text-center mb-8">
+            <div className="w-36 h-36 rounded-[2rem] shadow-xl shadow-violet-500/30 flex items-center justify-center mb-4 transform transition-transform hover:scale-105 duration-300 overflow-hidden bg-white">
+              <img src="/icon.png" alt="Logo" className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight mb-2">
-              เวรดี๊ดี
-            </h1>
             <p className="text-gray-500 font-medium text-sm">
-              ระบบจัดการตารางเวรกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
+              ระบบจัดการตารางเวร
             </p>
           </div>
 
