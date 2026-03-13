@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
+import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
 const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
@@ -24,6 +25,9 @@ interface CalendarGridProps {
   pendingEdits?: Record<string, User>;
   onToggleDelete?: (id: string) => void;
   onEditShift?: (shift: Shift) => void;
+  pendingAdds?: PendingAdd[];
+  onAddShift?: (ctx: AddShiftContext) => void;
+  onRemovePendingAdd?: (index: number) => void;
 }
 
 function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
@@ -61,11 +65,12 @@ function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holi
 
 export function OfficeCalendarGrid({ 
   year, month, shifts, holidays, currentUser, onDayClick, onShiftClick, viewMode,
-  isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift 
+  isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift,
+  pendingAdds, onAddShift, onRemovePendingAdd
 }: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
 
-  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick };
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -125,6 +130,9 @@ interface RenderContext {
   onToggleDelete?: (id: string) => void;
   onEditShift?: (s: Shift) => void;
   onShiftClick?: (shift: Shift) => void;
+  pendingAdds?: PendingAdd[];
+  onAddShift?: (ctx: AddShiftContext) => void;
+  onRemovePendingAdd?: (index: number) => void;
 }
 
 function renderShiftBadge(s: Shift, ctx: RenderContext) {
@@ -183,6 +191,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string | u
 
 function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
+  const dateStr = format(day.date, 'yyyy-MM-dd');
   const dow = day.date.getDay(); // 0=Sun,1=Mon,...,5=Fri,6=Sat
   const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
@@ -200,6 +209,22 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   );
   const empty = (extra?: string) => cn('bg-white', rowH, bb, extra);
 
+  const renderAddBtn = (shiftType: ShiftType, dept: string) => {
+    if (!ctx.isEditMode || !ctx.onAddShift) return null;
+    return (
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          ctx.onAddShift!({ date: dateStr, shift_type: shiftType, department: dept, position: '' });
+        }}
+        className="w-6 h-6 rounded-full bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-900 flex items-center justify-center text-base font-bold transition-all pointer-events-auto border border-green-300 shadow-[0_2px_0_0_rgba(34,197,94,1)] active:shadow-[0_0_0_0_rgba(34,197,94,1)] active:translate-y-[2px] -translate-y-[1px]"
+        title="เพิ่มเวร"
+      >
+        +
+      </button>
+    );
+  };
+
   /** Sorted shift list for a given type + optional dept */
   const getList = (shiftType: ShiftType, dept?: string): Shift[] => {
     const list = day.shifts.filter(s =>
@@ -215,6 +240,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     return (
       <div className={cn(nameCell(), cls)}>
         {s && renderShiftBadge(s, ctx)}
+        {!s && dept && renderAddBtn(shiftType, dept)}
       </div>
     );
   };
@@ -265,6 +291,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer flex-1', cls)}>
           {s && renderShiftBadge(s, ctx)}
+          {!s && dept && renderAddBtn(shiftType, dept)}
         </div>
       );
     };
@@ -277,6 +304,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
+          {!s && dept && renderAddBtn(shiftType, dept)}
         </div>
       );
     };
