@@ -12,7 +12,9 @@
       "Bash(npm ls sharp)",
       "Bash(node scripts/generate-icons.mjs)",
       "Bash(fc-list :lang=th)",
-      "Bash(system_profiler SPFontsDataType)"
+      "Bash(system_profiler SPFontsDataType)",
+      "Bash(npm run build)",
+      "Bash(git stash)"
     ]
   }
 }

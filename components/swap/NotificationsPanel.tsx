@@ -54,12 +54,14 @@ export function NotificationsPanel({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-end p-4 pt-16">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:justify-end p-0 sm:p-4 sm:pt-16">
       {/* Backdrop */}
-      <div className="absolute inset-0" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/30 sm:bg-transparent" onClick={onClose} />
 
       {/* Panel */}
-      <div className="relative glass-card rounded-2xl shadow-2xl w-full max-w-sm animate-slide-in max-h-[80vh] flex flex-col">
+      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm animate-slide-up sm:animate-slide-in max-h-[85vh] sm:max-h-[80vh] flex flex-col">
+        {/* Mobile drag indicator */}
+        <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b border-gray-100">
           <div className="flex items-center gap-2">

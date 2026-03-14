@@ -169,10 +169,9 @@ export function Header({
           </div>
         </div>
 
-        {/* ── Row 2 (mobile only): Month navigator + View toggle ─────── */}
+        {/* ── Row 2 (mobile only): Month navigator centered ─────── */}
         <div className="md:hidden border-t border-gray-100 bg-white/70 backdrop-blur-sm">
-          <div className="flex items-center justify-between px-4 py-2 gap-3">
-            {/* Month Navigator */}
+          <div className="flex items-center justify-center px-4 py-1.5">
             <div className="flex items-center gap-1">
               <button
                 onClick={prevMonth}
@@ -190,34 +189,6 @@ export function Header({
                 aria-label="เดือนถัดไป"
               >
                 <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
-              <button
-                onClick={() => onViewModeChange('all')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
-                  viewMode === 'all'
-                    ? 'bg-white text-violet-700 shadow-sm'
-                    : 'text-gray-500'
-                )}
-              >
-                <Users className="w-3.5 h-3.5" />
-                ทุกเวร
-              </button>
-              <button
-                onClick={() => onViewModeChange('mine')}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200',
-                  viewMode === 'mine'
-                    ? 'bg-white text-violet-700 shadow-sm'
-                    : 'text-gray-500'
-                )}
-              >
-                <User className="w-3.5 h-3.5" />
-                เวรของฉัน
               </button>
             </div>
           </div>
