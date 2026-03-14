@@ -376,8 +376,10 @@ export default function CalendarPage() {
               }}
               className={cn(`rounded-xl border p-2 sm:p-3 transition-transform ${color}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
             >
-              <p className="text-lg sm:text-xl font-bold">{value}</p>
-              <p className="text-[9px] sm:text-[10px] font-medium opacity-70 leading-tight">{label}</p>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <p className="text-lg sm:text-xl font-bold">{value}</p>
+                <p className="text-xs sm:text-sm font-semibold opacity-80">{label}</p>
+              </div>
             </div>
           ))}
         </div>
