@@ -61,10 +61,11 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
       <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80">
         {THAI_DAYS.map((day, i) => (
           <div key={day} className={cn(
-            'py-3 text-center text-sm font-semibold',
+            'py-2 sm:py-3 text-center text-[10px] sm:text-sm font-semibold',
             i === 0 ? 'text-red-500' : i === 6 ? 'text-indigo-500' : 'text-gray-600'
           )}>
-            {day}
+            <span className="sm:hidden">{day.charAt(0)}</span>
+            <span className="hidden sm:inline">{day}</span>
           </div>
         ))}
       </div>
@@ -83,24 +84,24 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                   key={di} 
                   onClick={() => onDayClick(day)}
                   className={cn(
-                    'min-h-[120px] p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
+                    'min-h-[80px] sm:min-h-[120px] p-1.5 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
                     !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
                     day.isCurrentMonth && 'hover:bg-violet-50/30 cursor-pointer text-gray-700',
                     day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 [.exporting-pdf_&]:ring-0 ring-inset z-20'
                   )}
                 >
                   {/* Day Number */}
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-1 sm:mb-2">
                     <span className={cn(
-                      'text-sm font-medium w-7 h-7 flex items-center justify-center rounded-full',
+                      'text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full',
                       day.isToday && 'bg-violet-600 text-white shadow-sm',
                       !day.isToday && isWeekend && day.isCurrentMonth && 'text-red-500'
                     )}>
                       {dayNum}
                     </span>
                     {hasShifts && (
-                      <span className="text-[10px] font-medium text-violet-600 bg-violet-100 px-1.5 py-0.5 rounded-full">
-                        {day.shifts.length} เวร
+                      <span className="text-[9px] sm:text-[10px] font-medium text-violet-600 bg-violet-100 px-1 sm:px-1.5 py-0.5 rounded-full">
+                        {day.shifts.length}
                       </span>
                     )}
                   </div>
@@ -115,7 +116,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                       return (
                         <div
                           key={i}
-                          className="flex items-center justify-between text-xs p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
+                          className="flex items-center justify-between text-[10px] sm:text-xs p-1 sm:p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
                         >
                           <div className="flex items-center gap-1.5 font-bold min-w-0 pr-1 text-white">
                             <span>{cfg.icon}</span>

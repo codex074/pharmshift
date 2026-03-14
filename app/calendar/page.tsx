@@ -1,14 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser } from '@/hooks/useShifts';
+import { useIsMobile } from '@/hooks/useIsMobile';
+import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
 import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
+import { MobileCalendarList } from '@/components/calendar/MobileCalendarList';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
@@ -26,6 +29,8 @@ import { DeployModal } from '@/components/calendar/DeployModal';
 import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
 import { AdminUserManagementModal } from '@/components/calendar/AdminUserManagementModal';
 import { Header } from '@/components/layout/Header';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
@@ -59,6 +64,9 @@ export default function CalendarPage() {
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
   const [addingShiftContext, setAddingShiftContext] = useState<AddShiftContext | null>(null);
+
+  const isMobile = useIsMobile();
+  const [isProfileModalFromNav, setIsProfileModalFromNav] = useState(false);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
@@ -147,6 +155,21 @@ export default function CalendarPage() {
   const duekCount = sourceShiftsForStats.filter((s) => s.shift_type === 'ดึก').length;
   const rungCount = sourceShiftsForStats.filter((s) => s.shift_type === 'รุ่งอรุณ').length;
 
+  const handleSwipeLeft = useCallback(() => {
+    const d = new Date(year, month);
+    handleMonthChange(d.getFullYear(), d.getMonth() + 1);
+  }, [year, month]);
+
+  const handleSwipeRight = useCallback(() => {
+    const d = new Date(year, month - 2);
+    handleMonthChange(d.getFullYear(), d.getMonth() + 1);
+  }, [year, month]);
+
+  const swipeRef = useSwipeGesture<HTMLDivElement>({
+    onSwipeLeft: handleSwipeLeft,
+    onSwipeRight: handleSwipeRight,
+  });
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center gradient-header">
@@ -172,7 +195,7 @@ export default function CalendarPage() {
         onViewModeChange={setViewMode}
       />
 
-      <main className="w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5">
+      <main className={cn("w-full max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-5", isMobile && "pb-24")}>
         {/* Personal Shifts Modal */}
       <PersonalShiftsModal
         isOpen={showPersonalShiftsModal}
@@ -199,7 +222,8 @@ export default function CalendarPage() {
             </h1>
             <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
           </div>
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Desktop action buttons (hidden on mobile — mobile uses FAB menu) */}
+        <div className={cn("flex items-center gap-2 flex-wrap", isMobile && "hidden")}>
             {currentUser?.role === 'admin' && (
               <>
                 {isEditMode ? (
@@ -283,8 +307,18 @@ export default function CalendarPage() {
             {currentUser?.role === 'admin' && (
               <ExcelExportButton year={year} month={month} />
             )}
-
           </div>
+
+          {/* Mobile: compensation button for non-admin users */}
+          {isMobile && currentUser && currentUser.role !== 'admin' && (
+            <button
+              onClick={() => setShowCompensationModal(true)}
+              className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
+            >
+              <span>💰</span>
+              <span>ค่าตอบแทน</span>
+            </button>
+          )}
         </div>
 
         {/* Admin: role group tab switcher */}
@@ -375,8 +409,8 @@ export default function CalendarPage() {
           )}
 
           {/* Calendar */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-2 sm:p-3 overflow-x-auto">
-            <div className="min-w-[360px]">
+          <div ref={isMobile ? swipeRef : undefined} className={cn("bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto", isMobile ? "p-0 border-0 shadow-none bg-transparent" : "p-2 sm:p-3")}>
+            <div className={cn(!isMobile && "min-w-[360px]")}>
             {shiftsLoading ? (
               <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -394,6 +428,15 @@ export default function CalendarPage() {
                 shifts={myShifts}
                 holidays={holidays}
                 onDayClick={handleDayClick}
+              />
+            ) : isMobile ? (
+              <MobileCalendarList
+                year={year}
+                month={month}
+                shifts={shifts}
+                holidays={holidays}
+                currentUser={currentUser}
+                onShiftClick={handleShiftClick}
               />
             ) : effectiveRoleGroup === 'pharmacy_technician' ? (
               <PharmacyTechCalendarGrid
@@ -565,6 +608,31 @@ export default function CalendarPage() {
           roleGroup={effectiveRoleGroup}
           onClose={() => setAddingShiftContext(null)}
           onAdd={handleConfirmAdd}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {isMobile && (
+        <MobileBottomNav
+          viewMode={viewMode}
+          onViewModeChange={setViewMode}
+          onBellClick={() => setShowNotifications(true)}
+          pendingCount={pendingCount}
+          onProfileClick={() => setIsProfileModalFromNav(true)}
+        />
+      )}
+
+      {/* Mobile Admin FAB Menu */}
+      {isMobile && currentUser?.role === 'admin' && (
+        <MobileAdminMenu
+          isEditMode={isEditMode}
+          onEditMode={handleToggleEditMode}
+          onShowConfirm={() => setShowAdminConfirm(true)}
+          onDeploy={() => setShowDeployModal(true)}
+          onUpload={() => setShowUploadModal(true)}
+          onHolidays={() => setShowHolidaysModal(true)}
+          onUserManagement={() => setShowUserManagement(true)}
+          onCompensation={() => setShowCompensationModal(true)}
         />
       )}
     </>

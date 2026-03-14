@@ -134,7 +134,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
   const isValidSubmit = isOwnShift ? !!selectedUser : true;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
@@ -142,7 +142,9 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
       />
 
       {/* Modal */}
-      <div className="relative glass-card rounded-2xl shadow-2xl w-full max-w-md animate-fade-in max-h-[90vh] flex flex-col">
+      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] flex flex-col">
+        {/* Mobile drag indicator */}
+        <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
