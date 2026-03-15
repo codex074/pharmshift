@@ -62,7 +62,7 @@ export function MobileBottomNav({
             >
               <div className="relative">
                 <Icon className={cn('w-5 h-5', tab.active && 'stroke-[2.5]')} />
-                {tab.badge && tab.badge > 0 && (
+                {!!tab.badge && tab.badge > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </div>
