@@ -11,7 +11,8 @@ import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
 import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
-import { MobileCalendarList } from '@/components/calendar/MobileCalendarList';
+import { MobileCalendarGrid } from '@/components/calendar/MobileCalendarGrid';
+import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
@@ -67,6 +68,7 @@ export default function CalendarPage() {
 
   const isMobile = useIsMobile();
   const [isProfileModalFromNav, setIsProfileModalFromNav] = useState(false);
+  const [mobileDaySelected, setMobileDaySelected] = useState<CalendarDay | null>(null);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
@@ -96,12 +98,16 @@ export default function CalendarPage() {
   }
 
   function handleDayClick(_day: CalendarDay) {
-    // Day click no longer opens DayDetailModal
-    // Only used for MyCalendarGrid compatibility
+    // No-op for desktop grids (MyCalendarGrid compatibility)
+  }
+
+  function handleMobileDayClick(day: CalendarDay) {
+    setMobileDaySelected(day);
   }
 
   function handleShiftClick(shift: Shift) {
     if (isEditMode) return; // Don't open swap modal in edit mode
+    setMobileDaySelected(null); // close day detail modal if open
     setSelectedShift(shift);
   }
 
@@ -432,13 +438,12 @@ export default function CalendarPage() {
                 onDayClick={handleDayClick}
               />
             ) : isMobile ? (
-              <MobileCalendarList
+              <MobileCalendarGrid
                 year={year}
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
-                currentUser={currentUser}
-                onShiftClick={handleShiftClick}
+                onDayClick={handleMobileDayClick}
               />
             ) : effectiveRoleGroup === 'pharmacy_technician' ? (
               <PharmacyTechCalendarGrid
@@ -610,6 +615,20 @@ export default function CalendarPage() {
           roleGroup={effectiveRoleGroup}
           onClose={() => setAddingShiftContext(null)}
           onAdd={handleConfirmAdd}
+        />
+      )}
+
+      {/* Mobile Day Detail Modal */}
+      {mobileDaySelected && (
+        <DayDetailModal
+          day={mobileDaySelected}
+          currentUser={currentUser}
+          roleGroup={effectiveRoleGroup}
+          onClose={() => setMobileDaySelected(null)}
+          onSwapClick={(shift) => {
+            setMobileDaySelected(null);
+            handleShiftClick(shift);
+          }}
         />
       )}
 
