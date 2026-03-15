@@ -3,6 +3,7 @@
 import { format } from 'date-fns';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { THAI_MONTHS, THAI_DAYS as UTILS_THAI_DAYS } from '@/lib/utils';
 import type { CalendarDay, Shift, User, ShiftType } from '@/lib/types';
 import { getSlotsForDate, DEPT_COLORS, SHIFT_CONFIG } from '@/lib/types';
 
@@ -15,41 +16,61 @@ interface DayDetailModalProps {
   onSwapClick: (shift: Shift) => void;
 }
 
-const THAI_DAYS = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์'];
 const SHIFT_ORDER: ShiftType[] = ['เช้า', 'บ่าย', 'ดึก', 'รุ่งอรุณ'];
 
 export function DayDetailModal({ day, currentUser, roleGroup, onClose, onSwapClick }: DayDetailModalProps) {
   const dayNumber = format(day.date, 'd');
-  const dayOfWeek = THAI_DAYS[day.date.getDay()];
-  const isWeekend = day.date.getDay() === 0 || day.date.getDay() === 6;
+  const dayOfWeek = UTILS_THAI_DAYS[day.date.getDay()];
+  const dow = day.date.getDay();
+  const isWeekend = dow === 0 || dow === 6;
+
+  // Thai Buddhist date string e.g. "วันอาทิตย์ที่ 1 กุมภาพันธ์ 2569"
+  const buddhistYear = day.date.getFullYear() + 543;
+  const thaiMonthName = THAI_MONTHS[day.date.getMonth()];
+  const thaiFullDate = `วัน${dayOfWeek}ที่ ${dayNumber} ${thaiMonthName} ${buddhistYear}`;
 
   const isPharmacist = !roleGroup || roleGroup === 'pharmacist';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
+    /* Bottom sheet on mobile, centered modal on sm+ */
+    <div
+      className="fixed inset-0 z-50 flex flex-col justify-end sm:items-center sm:justify-center p-0 sm:p-4 bg-black/40 backdrop-blur-sm animate-fade-in"
+      onClick={onClose}
+    >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-slide-up"
+        className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg overflow-hidden animate-slide-up"
         onClick={e => e.stopPropagation()}
       >
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-3 pb-1">
+          <div className="w-10 h-1 bg-gray-300 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="gradient-header px-6 py-4 flex items-center justify-between">
+        <div className="gradient-header px-5 py-4 flex items-center justify-between">
           <div>
             <div className="flex items-baseline gap-2">
               <span className="text-3xl font-bold text-white">{dayNumber}</span>
               <span className="text-white/80 text-sm font-medium">{dayOfWeek}</span>
-              {isWeekend && (
-                <span className="text-[10px] text-amber-300 bg-white/20 px-2 py-0.5 rounded-full font-medium">วันหยุด</span>
+              {(isWeekend || day.isHoliday) && (
+                <span className="text-[10px] text-amber-300 bg-white/20 px-2 py-0.5 rounded-full font-medium">
+                  {day.isHoliday ? 'วันหยุด' : 'วันหยุด'}
+                </span>
+              )}
+              {day.isToday && (
+                <span className="text-[10px] text-violet-200 bg-white/20 px-2 py-0.5 rounded-full font-medium">วันนี้</span>
               )}
             </div>
-            <p className="text-white/60 text-xs mt-0.5">{format(day.date, 'MMMM yyyy')}</p>
+            {/* Thai full date */}
+            <p className="text-white/70 text-[11px] mt-0.5 font-medium">{thaiFullDate}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 text-white/80 transition-all">
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-white/20 text-white/80 transition-all flex-shrink-0">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
+        <div className="px-4 sm:px-5 py-4 space-y-3 max-h-[65vh] overflow-y-auto">
           {isPharmacist ? (
             <PharmacistView day={day} currentUser={currentUser} onSwapClick={onSwapClick} />
           ) : (
@@ -59,12 +80,12 @@ export function DayDetailModal({ day, currentUser, roleGroup, onClose, onSwapCli
 
         {/* Footer */}
         <div className="border-t px-5 py-3 bg-gray-50 flex items-center justify-between">
-          <p className="text-[10px] text-gray-400">คลิกชื่อเพื่อขอแลกเวร</p>
+          <p className="text-[10px] text-gray-400">แตะชื่อเพื่อขอแลกเวร</p>
           <span className={cn(
             'text-[10px] font-medium px-2 py-0.5 rounded-full',
             day.isToday ? 'bg-violet-100 text-violet-700' : 'bg-gray-100 text-gray-500'
           )}>
-            {day.isToday ? 'วันนี้' : format(day.date, 'dd/MM/yyyy')}
+            {day.shifts.length > 0 ? `${day.shifts.length} เวร` : 'ไม่มีเวร'}
           </span>
         </div>
       </div>
