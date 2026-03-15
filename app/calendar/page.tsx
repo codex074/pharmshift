@@ -363,27 +363,31 @@ export default function CalendarPage() {
         )}
 
         {/* Stats cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 pdf-hide">
+        <div className="grid grid-cols-5 gap-1 sm:gap-2 pdf-hide">
           {[
-            { id: 'all', label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50  text-gray-700  border-gray-100' },
-            { id: 'เช้า', label: '🌅 เช้า',   value: chaoCount,     color: 'bg-amber-50 text-amber-700 border-amber-100' },
-            { id: 'บ่าย', label: '☀️ บ่าย',   value: baiCount,      color: 'bg-cyan-50  text-cyan-700  border-cyan-100' },
-            { id: 'ดึก', label: '🌙 ดึก',    value: duekCount,     color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-            { id: 'รุ่งอรุณ', label: '🌄 รุ่งอรุณ', value: rungCount,   color: 'bg-orange-50 text-orange-700 border-orange-100' },
-          ].map(({ id, label, value, color }) => (
-            <div 
-              key={id} 
+            { id: 'all',      emoji: '',   label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50   text-gray-700   border-gray-100'   },
+            { id: 'เช้า',     emoji: '🌅', label: 'เช้า',     value: chaoCount,  color: 'bg-amber-50  text-amber-700  border-amber-100'  },
+            { id: 'บ่าย',     emoji: '☀️', label: 'บ่าย',     value: baiCount,   color: 'bg-cyan-50   text-cyan-700   border-cyan-100'   },
+            { id: 'ดึก',      emoji: '🌙', label: 'ดึก',      value: duekCount,  color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+            { id: 'รุ่งอรุณ', emoji: '🌄', label: 'รุ่งอรุณ', value: rungCount,  color: 'bg-orange-50 text-orange-700 border-orange-100' },
+          ].map(({ id, emoji, label, value, color }) => (
+            <div
+              key={id}
               onClick={() => {
                 if (currentUser) {
                   setPersonalShiftsFilter(id as ShiftType | 'all');
                   setShowPersonalShiftsModal(true);
                 }
               }}
-              className={cn(`rounded-xl border p-2 sm:p-3 transition-transform ${color}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
+              className={cn(`rounded-xl border p-1.5 sm:p-3 transition-transform ${color}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
             >
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <p className="text-lg sm:text-xl font-bold">{value}</p>
-                <p className="text-xs sm:text-sm font-semibold opacity-80">{label}</p>
+              {/* Mobile: stacked vertically; sm+: side by side */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+                <p className="text-base sm:text-xl font-bold leading-none">{value}</p>
+                <p className="text-[9px] sm:text-sm font-semibold opacity-80 leading-tight mt-0.5 sm:mt-0 truncate">
+                  <span className="sm:hidden">{emoji || label.slice(0, 2)}</span>
+                  <span className="hidden sm:inline">{emoji} {label}</span>
+                </p>
               </div>
             </div>
           ))}
