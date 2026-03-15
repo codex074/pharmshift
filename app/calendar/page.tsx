@@ -67,7 +67,6 @@ export default function CalendarPage() {
   const [addingShiftContext, setAddingShiftContext] = useState<AddShiftContext | null>(null);
 
   const isMobile = useIsMobile();
-  const [isProfileModalFromNav, setIsProfileModalFromNav] = useState(false);
   const [mobileDaySelected, setMobileDaySelected] = useState<CalendarDay | null>(null);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
@@ -97,8 +96,8 @@ export default function CalendarPage() {
     setMonth(m);
   }
 
-  function handleDayClick(_day: CalendarDay) {
-    // No-op for desktop grids (MyCalendarGrid compatibility)
+  function handleDayClick(day: CalendarDay) {
+    if (isMobile) setMobileDaySelected(day);
   }
 
   function handleMobileDayClick(day: CalendarDay) {
@@ -639,7 +638,7 @@ export default function CalendarPage() {
           onViewModeChange={setViewMode}
           onBellClick={() => setShowNotifications(true)}
           pendingCount={pendingCount}
-          onProfileClick={() => setIsProfileModalFromNav(true)}
+          onHistoryClick={() => setShowSwapHistory(true)}
         />
       )}
 
