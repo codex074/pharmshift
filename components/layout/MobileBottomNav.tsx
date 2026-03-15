@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, User, Bell, UserCircle } from 'lucide-react';
+import { Users, User, Bell, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
@@ -8,11 +8,11 @@ interface MobileBottomNavProps {
   onViewModeChange: (mode: 'all' | 'mine') => void;
   onBellClick: () => void;
   pendingCount: number;
-  onProfileClick: () => void;
+  onHistoryClick: () => void;
 }
 
 export function MobileBottomNav({
-  viewMode, onViewModeChange, onBellClick, pendingCount, onProfileClick,
+  viewMode, onViewModeChange, onBellClick, pendingCount, onHistoryClick,
 }: MobileBottomNavProps) {
   const tabs = [
     {
@@ -38,10 +38,10 @@ export function MobileBottomNav({
       badge: pendingCount,
     },
     {
-      id: 'profile' as const,
-      label: 'โปรไฟล์',
-      icon: UserCircle,
-      action: onProfileClick,
+      id: 'history' as const,
+      label: 'ประวัติ',
+      icon: History,
+      action: onHistoryClick,
       active: false,
     },
   ];
@@ -63,9 +63,7 @@ export function MobileBottomNav({
               <div className="relative">
                 <Icon className={cn('w-5 h-5', tab.active && 'stroke-[2.5]')} />
                 {tab.badge && tab.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
-                    {tab.badge > 99 ? '99+' : tab.badge}
-                  </span>
+                  <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full" />
                 )}
               </div>
               <span className={cn(
