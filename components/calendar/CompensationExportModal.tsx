@@ -31,7 +31,7 @@ export function CompensationExportModal({ onClose, defaultMonth, defaultYear }: 
         .select(`
           *,
           department:departments(id, name),
-          user:users(id, name, nickname, prefix, profile_image, role, pha_id, salary_number)
+          user:users(id, f_name, l_name, nickname, prefix, profile_image, role, pha_id, salary_number)
         `)
         .eq('month_year', monthYear)
         .order('date', { ascending: true });
