@@ -357,7 +357,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="h-[60%] flex flex-col border-b border-gray-400/60">
             <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">รุ่งอรุณ</div>
             <div className="flex-1">
-              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" deptName="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
             </div>
           </div>
           {/* smc - 2 slots (h-40%) */}

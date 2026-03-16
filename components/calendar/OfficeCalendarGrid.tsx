@@ -209,13 +209,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   );
   const empty = (extra?: string) => cn('bg-white', rowH, bb, extra);
 
-  const renderAddBtn = (shiftType: ShiftType, dept: string) => {
+  const renderAddBtn = (shiftType: ShiftType, dept: string, position: string = '') => {
     if (!ctx.isEditMode || !ctx.onAddShift) return null;
     return (
       <button
         onClick={(e) => {
           e.stopPropagation();
-          ctx.onAddShift!({ date: dateStr, shift_type: shiftType, department: dept, position: '' });
+          ctx.onAddShift!({ date: dateStr, shift_type: shiftType, department: dept, position });
         }}
         className="w-6 h-6 rounded-full bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-900 flex items-center justify-center text-base font-bold transition-all pointer-events-auto border border-green-300 shadow-[0_2px_0_0_rgba(34,197,94,1)] active:shadow-[0_0_0_0_rgba(34,197,94,1)] active:translate-y-[2px] -translate-y-[1px]"
         title="เพิ่มเวร"
@@ -441,20 +441,19 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     );
   };
 
-  const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, posPrefix: string, cls: string) => {
-    const list = getList(shiftType, dept).filter(s => (s.position || '').toLowerCase().startsWith(posPrefix.toLowerCase()));
-    
+  const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string, cls: string) => {
+    const list = getList(shiftType, dept).filter(s => (s.position || '') === position);
+
     return (
       <div className={cn(nameCell(), cls)}>
         <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
-          {list.map((s, idx) => {
-            return (
-              <div key={idx} className="flex items-center w-full">
-                {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
-                {renderShiftBadge(s, ctx)}
-              </div>
-            );
-          })}
+          {list.map((s, idx) => (
+            <div key={idx} className="flex items-center w-full">
+              {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
+              {renderShiftBadge(s, ctx)}
+            </div>
+          ))}
+          {list.length === 0 && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       </div>
     );
@@ -522,8 +521,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="grid grid-cols-[1fr_2fr] flex-1">
              {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
              <div className={cn(br, 'grid grid-rows-2')}>
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รo', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รe', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              {/* ดึก ER */}
              <div className="grid grid-rows-2">
@@ -544,8 +543,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="grid grid-cols-3 flex-1">
              {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
              <div className={cn(br, 'grid grid-rows-2')}>
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รo', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'รe', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              
              {/* SMC Column - 2 rows */}
