@@ -171,9 +171,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       
       let userRow = userMap.get(s.user_id);
       if (!userRow) {
-        const targetName = s.user?.name || s.user_name || '';
         const prefix = s.user?.prefix || s.user_prefix || '';
-        const generatedFullName = `${prefix}${targetName}`.trim() || s.user?.nickname || s.user_nickname || 'ไม่ทราบชื่อ';
+        const fName = s.user?.f_name || (s as any).user_f_name || '';
+        const lName = s.user?.l_name || (s as any).user_l_name || '';
+        const generatedFullName = `${prefix}${fName} ${lName}`.trim() || s.user?.nickname || s.user_nickname || 'ไม่ทราบชื่อ';
         const salaryNumber = s.user?.salary_number || '';
         
         const role = s.user?.role || 'pharmacist';

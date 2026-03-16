@@ -368,11 +368,11 @@ export default function CalendarPage() {
         {/* Stats cards */}
         <div className="grid grid-cols-5 gap-1 sm:gap-2 pdf-hide">
           {[
-            { id: 'all',      emoji: '',   label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50   text-gray-700   border-gray-100'   },
-            { id: 'เช้า',     emoji: '🌅', label: 'เช้า',     value: chaoCount,  color: 'bg-amber-50  text-amber-700  border-amber-100'  },
-            { id: 'บ่าย',     emoji: '☀️', label: 'บ่าย',     value: baiCount,   color: 'bg-cyan-50   text-cyan-700   border-cyan-100'   },
-            { id: 'ดึก',      emoji: '🌙', label: 'ดึก',      value: duekCount,  color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-            { id: 'รุ่งอรุณ', emoji: '🌄', label: 'รุ่งอรุณ', value: rungCount,  color: 'bg-orange-50 text-orange-700 border-orange-100' },
+            { id: 'all',      emoji: '',  label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50   text-gray-700   border-gray-100'   },
+            { id: 'เช้า',     emoji: '',  label: 'เช้า',     value: chaoCount,  color: 'bg-amber-50  text-amber-700  border-amber-100'  },
+            { id: 'บ่าย',     emoji: '',  label: 'บ่าย',     value: baiCount,   color: 'bg-cyan-50   text-cyan-700   border-cyan-100'   },
+            { id: 'ดึก',      emoji: '',  label: 'ดึก',      value: duekCount,  color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
+            { id: 'รุ่งอรุณ', emoji: '',  label: 'รุ่งอรุณ', value: rungCount,  color: 'bg-orange-50 text-orange-700 border-orange-100' },
           ].map(({ id, emoji, label, value, color }) => (
             <div
               key={id}
@@ -388,8 +388,8 @@ export default function CalendarPage() {
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                 <p className="text-base sm:text-xl font-bold leading-none">{value}</p>
                 <p className="text-[9px] sm:text-sm font-semibold opacity-80 leading-tight mt-0.5 sm:mt-0 truncate">
-                  <span className="sm:hidden">{emoji || label.slice(0, 2)}</span>
-                  <span className="hidden sm:inline">{emoji} {label}</span>
+                  <span className="sm:hidden">{label.slice(0, 2)}</span>
+                  <span className="hidden sm:inline">{label}</span>
                 </p>
               </div>
             </div>

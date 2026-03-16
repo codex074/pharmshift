@@ -115,7 +115,7 @@ export function OfficeCalendarGrid({
 // ─── UTILS ──────────────────────────────────────────────────────────
 
 function getUserName(shift: Shift): string {
-  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.name || (shift as any).user_name || '';
+  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.f_name || (shift as any).user_f_name || '';
 }
 
 function getDeptName(shift: Shift): string {
@@ -139,8 +139,8 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
   const isPendingDelete = ctx.pendingDeletes?.has(s.id);
   const pendingSub = ctx.pendingEdits?.[s.id];
-  
-  const displayName = pendingSub ? pendingSub.name : getUserName(s);
+
+  const displayName = pendingSub ? pendingSub.f_name : getUserName(s);
 
   if (ctx.isEditMode) {
     return (
@@ -463,7 +463,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             return (
               <div key={gIdx} className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto">
                 <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
-                  {pa.user.nickname || pa.user.name}
+                  {pa.user.nickname || pa.user.f_name}
                 </span>
                 <button
                   onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(gIdx); }}

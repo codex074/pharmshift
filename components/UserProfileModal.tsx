@@ -15,7 +15,9 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
-    fullname: currentUser.fullname || '',
+    prefix: currentUser.prefix || '',
+    f_name: currentUser.f_name || '',
+    l_name: currentUser.l_name || '',
     nickname: currentUser.nickname || '',
     salary_number: currentUser.salary_number || '',
     password: '',
@@ -27,7 +29,7 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
   };
 
   const handleSave = async () => {
-    if (!formData.nickname.trim() || !formData.fullname.trim()) {
+    if (!formData.nickname.trim() || !formData.f_name.trim()) {
       toast.error('กรุณากรอกชื่อจริงและชื่อเล่นให้ครบถ้วน');
       return;
     }
@@ -44,7 +46,9 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           nickname: formData.nickname.trim(),
-          fullname: formData.fullname.trim(),
+          prefix: formData.prefix.trim(),
+          f_name: formData.f_name.trim(),
+          l_name: formData.l_name.trim(),
           salary_number: formData.salary_number.trim(),
           password: formData.password || undefined,
         }),
@@ -84,14 +88,44 @@ export function UserProfileModal({ currentUser, onClose, onSuccess }: UserProfil
         <div className="p-6 space-y-6">
           <div className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-gray-700">ชื่อ-นามสกุลจริง *</label>
+              <label className="block text-sm font-medium text-gray-700">คำนำหน้า</label>
               <div className="relative">
                 <input
                   type="text"
-                  name="fullname"
-                  value={formData.fullname}
+                  name="prefix"
+                  value={formData.prefix}
                   onChange={handleChange}
-                  placeholder="เช่น สมปอง ใจดี"
+                  placeholder="เช่น ภก. / ภญ."
+                  className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+                />
+                <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">ชื่อ *</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="f_name"
+                  value={formData.f_name}
+                  onChange={handleChange}
+                  placeholder="เช่น สมปอง"
+                  className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
+                />
+                <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="l_name"
+                  value={formData.l_name}
+                  onChange={handleChange}
+                  placeholder="เช่น ใจดี"
                   className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
                 />
                 <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

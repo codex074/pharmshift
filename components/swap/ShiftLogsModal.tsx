@@ -52,9 +52,9 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
           .select(`
             *,
             shift:shifts(id, date, shift_type, department:departments(id, name)),
-            old_user:users!shift_logs_old_user_id_fkey(id, name, nickname),
-            new_user:users!shift_logs_new_user_id_fkey(id, name, nickname),
-            performer:users!shift_logs_performed_by_fkey(id, name, nickname)
+            old_user:users!shift_logs_old_user_id_fkey(id, f_name, nickname),
+            new_user:users!shift_logs_new_user_id_fkey(id, f_name, nickname),
+            performer:users!shift_logs_performed_by_fkey(id, f_name, nickname)
           `)
           .order('created_at', { ascending: false })
           .limit(200);
@@ -166,9 +166,9 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
               const shiftDate = log.shift?.date ? new Date(log.shift.date + 'T00:00:00') : null;
               const deptName = (log.shift?.department as any)?.name || '';
               
-              const oldUserLabel = log.old_user?.nickname || log.old_user?.name || '-';
-              const newUserLabel = log.new_user?.nickname || log.new_user?.name || '-';
-              const performerLabel = log.performer?.nickname || log.performer?.name || '-';
+              const oldUserLabel = log.old_user?.nickname || log.old_user?.f_name || '-';
+              const newUserLabel = log.new_user?.nickname || log.new_user?.f_name || '-';
+              const performerLabel = log.performer?.nickname || log.performer?.f_name || '-';
 
               return (
                 <div key={log.id} className="rounded-xl border border-gray-100 bg-white p-3 space-y-2 shadow-[0_2px_8px_-4px_rgba(0,0,0,0.05)] transition-all hover:border-indigo-100 hover:shadow-md">

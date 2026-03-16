@@ -22,7 +22,7 @@ export default function ChangePasswordPage() {
         if (res.ok) {
           const { user } = await res.json();
           if (user) {
-            setUserName(`${user.prefix || ''}${user.name}`);
+            setUserName(`${user.prefix || ''}${user.f_name || ''} ${user.l_name || ''}`.trim());
           }
         }
       } catch (e) {

@@ -12,8 +12,8 @@ export async function GET() {
     const supabase = createSupabaseServer();
     const { data, error } = await supabase
       .from('users')
-      .select('id, pha_id, name, fullname, nickname, prefix, role, is_sub_admin, profile_image, salary_number, must_change_password, created_at')
-      .order('name', { ascending: true });
+      .select('id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, profile_image, salary_number, must_change_password, created_at')
+      .order('f_name', { ascending: true });
 
     if (error) throw error;
 
@@ -32,7 +32,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { userId, fullname, nickname, salary_number, role, is_sub_admin } = body;
+    const { userId, prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
@@ -41,7 +41,9 @@ export async function PUT(req: NextRequest) {
     const supabase = createSupabaseServer();
 
     const updatePayload: Record<string, any> = {};
-    if (fullname !== undefined) updatePayload.fullname = fullname || null;
+    if (prefix !== undefined) updatePayload.prefix = prefix || null;
+    if (f_name !== undefined) updatePayload.f_name = f_name;
+    if (l_name !== undefined) updatePayload.l_name = l_name;
     if (nickname !== undefined) updatePayload.nickname = nickname || null;
     if (salary_number !== undefined) updatePayload.salary_number = salary_number || null;
     if (role !== undefined) updatePayload.role = role;

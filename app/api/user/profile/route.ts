@@ -10,16 +10,18 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { fullname, nickname, password, salary_number } = body;
+    const { prefix, f_name, l_name, nickname, password, salary_number } = body;
 
-    if (!fullname || !nickname) {
-      return NextResponse.json({ error: 'Missing required fields (fullname, nickname)' }, { status: 400 });
+    if (!f_name || !l_name || !nickname) {
+      return NextResponse.json({ error: 'Missing required fields (f_name, l_name, nickname)' }, { status: 400 });
     }
 
     const supabase = createSupabaseServer();
 
     const updatePayload: any = {
-      fullname,
+      prefix: prefix || null,
+      f_name,
+      l_name,
       nickname,
       salary_number: salary_number || null,
     };

@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, CalendarDay, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth, isToday } from 'date-fns';
-import { SHIFT_CONFIG, DEPT_COLORS } from '@/lib/types';
+
 
 interface MyCalendarGridProps {
   year: number;
@@ -109,23 +109,33 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                   {/* Shifts List */}
                   <div className="space-y-1 mt-1 flex flex-col justify-center h-full">
                     {day.shifts.map((shift, i) => {
-                      const cfg = SHIFT_CONFIG[shift.shift_type] || { icon: '•', color: '#9ca3af' };
                       const deptName = getDeptName(shift);
-                      const deptColor = DEPT_COLORS[deptName as keyof typeof DEPT_COLORS] || '#cbd5e1';
+                      const position = (shift as any).position;
+
+                      // Build short display label
+                      let shiftLabel: string;
+                      if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
+                        shiftLabel = `MED ${position}`;
+                      } else if (shift.shift_type === 'เช้า' && deptName === 'SURG') {
+                        shiftLabel = 'SURG';
+                      } else if (deptName === 'Chemo') {
+                        shiftLabel = 'Chemo';
+                      } else if (shift.shift_type === 'บ่าย' && deptName === 'SMC') {
+                        shiftLabel = 'SMC';
+                      } else if (shift.shift_type === 'ดึก' && deptName === 'ER') {
+                        shiftLabel = 'ดึก';
+                      } else if (deptName === 'โครงการ') {
+                        shiftLabel = 'โครงการ';
+                      } else {
+                        shiftLabel = `${shift.shift_type} ${deptName}`;
+                      }
 
                       return (
                         <div
                           key={i}
-                          className="flex items-center justify-between text-[10px] sm:text-xs p-1 sm:p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
+                          className="flex items-center justify-center text-[10px] sm:text-xs p-1 sm:p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
                         >
-                          <div className="flex items-center gap-1.5 font-bold min-w-0 pr-1 text-white">
-                            <span>{cfg.icon}</span>
-                            <span className="truncate">{shift.shift_type}</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0 bg-white/20 px-1.5 py-0.5 rounded-full text-[10px] min-w-0">
-                            <span className="w-1.5 h-1.5 shrink-0 rounded-full bg-white/80" style={{ backgroundColor: deptColor }} />
-                            <span className="font-bold text-white truncate">{deptName}</span>
-                          </div>
+                          <span className="font-bold text-white truncate">{shiftLabel}</span>
                         </div>
                       );
                     })}

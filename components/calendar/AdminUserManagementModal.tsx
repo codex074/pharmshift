@@ -7,7 +7,7 @@ import {
   ChevronLeft, Shield, Hash,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
-import { ROLE_LABELS, STAFF_ROLES } from '@/lib/types';
+import { ROLE_LABELS, STAFF_ROLES, userFullName } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface AdminUserManagementModalProps {
@@ -30,7 +30,9 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
 
   // Edit form state
   const [formData, setFormData] = useState({
-    fullname: '',
+    prefix: '',
+    f_name: '',
+    l_name: '',
     nickname: '',
     salary_number: '',
     role: '' as UserRole,
@@ -58,7 +60,9 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   function openEdit(user: User) {
     setEditingUser(user);
     setFormData({
-      fullname: user.fullname || '',
+      prefix: user.prefix || '',
+      f_name: user.f_name || '',
+      l_name: user.l_name || '',
       nickname: user.nickname || '',
       salary_number: user.salary_number || '',
       role: user.role,
@@ -82,7 +86,9 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: editingUser.id,
-          fullname: formData.fullname.trim(),
+          prefix: formData.prefix.trim(),
+          f_name: formData.f_name.trim(),
+          l_name: formData.l_name.trim(),
           nickname: formData.nickname.trim(),
           salary_number: formData.salary_number.trim(),
           role: formData.role,
@@ -107,7 +113,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
 
   async function handleResetPassword() {
     if (!editingUser) return;
-    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${editingUser.fullname || editingUser.name}?\n\nรหัสผ่านใหม่จะถูกตั้งเป็น "1234" และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
+    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${userFullName(editingUser)}?\n\nรหัสผ่านใหม่จะถูกตั้งเป็น "1234" และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
       return;
     }
 
@@ -140,8 +146,8 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
     const q = search.toLowerCase();
     const matchSearch =
       !q ||
-      (u.name || '').toLowerCase().includes(q) ||
-      (u.fullname || '').toLowerCase().includes(q) ||
+      (u.f_name || '').toLowerCase().includes(q) ||
+      (u.l_name || '').toLowerCase().includes(q) ||
       (u.nickname || '').toLowerCase().includes(q) ||
       (u.pha_id || '').toLowerCase().includes(q);
     return matchRole && matchSearch;
@@ -179,7 +185,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {view === 'list' ? 'จัดการผู้ใช้' : `แก้ไขข้อมูล — ${editingUser?.fullname || editingUser?.name}`}
+                {view === 'list' ? 'จัดการผู้ใช้' : `แก้ไขข้อมูล — ${editingUser ? userFullName(editingUser) : ''}`}
               </h2>
               <p className="text-sm text-gray-500">
                 {view === 'list'
@@ -274,7 +280,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900 truncate">
-                          {user.fullname || user.name}
+                          {userFullName(user)}
                           {user.nickname ? ` (${user.nickname})` : ''}
                         </p>
                         <div className="flex items-center gap-2 mt-0.5">
@@ -300,15 +306,45 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
           ) : (
             /* Edit view */
             <div className="space-y-5">
-              {/* Fullname */}
+              {/* Prefix */}
               <div className="space-y-1.5">
-                <label className="block text-sm font-medium text-gray-700">ชื่อ-นามสกุล</label>
+                <label className="block text-sm font-medium text-gray-700">คำนำหน้า</label>
                 <div className="relative">
                   <input
                     type="text"
-                    value={formData.fullname}
-                    onChange={(e) => setFormData((p) => ({ ...p, fullname: e.target.value }))}
-                    placeholder="เช่น สมปอง ใจดี"
+                    value={formData.prefix}
+                    onChange={(e) => setFormData((p) => ({ ...p, prefix: e.target.value }))}
+                    placeholder="เช่น ภก. / ภญ."
+                    className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm"
+                  />
+                  <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* First name */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">ชื่อ</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.f_name}
+                    onChange={(e) => setFormData((p) => ({ ...p, f_name: e.target.value }))}
+                    placeholder="เช่น สมปอง"
+                    className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm"
+                  />
+                  <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+
+              {/* Last name */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">นามสกุล</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={formData.l_name}
+                    onChange={(e) => setFormData((p) => ({ ...p, l_name: e.target.value }))}
+                    placeholder="เช่น ใจดี"
                     className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm"
                   />
                   <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />

@@ -33,8 +33,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 
 interface ParsedUser {
   nickname: string;
-  name: string;
   prefix: string;
+  f_name: string;
+  l_name: string;
   profile_image: string;
 }
 
@@ -65,7 +66,7 @@ async function main() {
   // 1. Fetch existing users (with nicknames)
   const { data: existingUsers, error: usersError } = await supabase
     .from('users')
-    .select('id, nickname, name');
+    .select('id, nickname, f_name');
 
   if (usersError) {
     console.error('❌ Failed to fetch users:', usersError.message);
@@ -84,9 +85,10 @@ async function main() {
       const { data: newUser, error } = await supabase
         .from('users')
         .insert({
-          name: u.name,
-          nickname: u.nickname,
           prefix: u.prefix,
+          f_name: u.f_name,
+          l_name: u.l_name,
+          nickname: u.nickname,
           profile_image: u.profile_image,
           role: 'pharmacist',
         })
