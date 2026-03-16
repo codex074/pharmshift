@@ -107,7 +107,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
 
   async function handleResetPassword() {
     if (!editingUser) return;
-    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${editingUser.fullname || editingUser.name}?\n\nรหัสผ่านใหม่จะถูกตั้งเป็น "${editingUser.pha_id}" และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
+    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${editingUser.fullname || editingUser.name}?\n\nรหัสผ่านใหม่จะถูกตั้งเป็น "1234" และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
       return;
     }
 
@@ -422,10 +422,10 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                   ) : (
                     <KeyRound className="w-4 h-4" />
                   )}
-                  รีเซ็ตรหัสผ่าน (ตั้งเป็นรหัสพนักงาน)
+                  รีเซ็ตรหัสผ่าน (ตั้งเป็น 1234)
                 </button>
                 <p className="text-xs text-gray-400 mt-1.5 text-center">
-                  รหัสผ่านจะถูกตั้งเป็นรหัสพนักงาน ({editingUser?.pha_id}) และผู้ใช้ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป
+                  รหัสผ่านจะถูกตั้งเป็น 1234 และผู้ใช้ต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป
                 </p>
               </div>
 

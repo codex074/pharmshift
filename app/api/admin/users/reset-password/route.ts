@@ -18,18 +18,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = createSupabaseServer();
 
-    // Get the user's pha_id to use as default password
-    const { data: user, error: fetchError } = await supabase
-      .from('users')
-      .select('pha_id')
-      .eq('id', userId)
-      .single();
-
-    if (fetchError || !user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const defaultPassword = user.pha_id || 'password123';
+    const defaultPassword = '1234';
 
     const { error } = await supabase
       .from('users')
