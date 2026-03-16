@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 interface MobileAdminMenuProps {
   isEditMode: boolean;
+  isSubAdmin?: boolean;
   onEditMode: () => void;
   onShowConfirm: () => void;
   onDeploy: () => void;
@@ -16,7 +17,7 @@ interface MobileAdminMenuProps {
 }
 
 export function MobileAdminMenu({
-  isEditMode, onEditMode, onShowConfirm, onDeploy, onUpload, onHolidays, onUserManagement, onCompensation,
+  isEditMode, isSubAdmin, onEditMode, onShowConfirm, onDeploy, onUpload, onHolidays, onUserManagement, onCompensation,
 }: MobileAdminMenuProps) {
   const [open, setOpen] = useState(false);
 
@@ -29,8 +30,10 @@ export function MobileAdminMenu({
         { icon: '✏️', label: 'โหมดแก้ไข', action: onEditMode, color: 'bg-blue-100 text-blue-700' },
         { icon: '📢', label: 'ประกาศตารางเวร', action: onDeploy, color: 'bg-green-100 text-green-700' },
         { icon: '📂', label: 'เพิ่มเวร (CSV)', action: onUpload, color: 'bg-violet-100 text-violet-700' },
-        { icon: '🗓️', label: 'จัดการวันหยุด', action: onHolidays, color: 'bg-orange-100 text-orange-700' },
-        { icon: '👥', label: 'จัดการผู้ใช้', action: onUserManagement, color: 'bg-teal-100 text-teal-700' },
+        ...(!isSubAdmin ? [
+          { icon: '🗓️', label: 'จัดการวันหยุด', action: onHolidays, color: 'bg-orange-100 text-orange-700' },
+          { icon: '👥', label: 'จัดการผู้ใช้', action: onUserManagement, color: 'bg-teal-100 text-teal-700' },
+        ] : []),
         { icon: '💰', label: 'ค่าตอบแทน', action: onCompensation, color: 'bg-amber-100 text-amber-700' },
       ];
 

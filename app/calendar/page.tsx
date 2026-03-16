@@ -35,7 +35,7 @@ import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
-import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES } from '@/lib/types';
+import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -72,9 +72,12 @@ export default function CalendarPage() {
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
 
-  // For admin: use viewRoleGroup selector; for staff: use own role
+  const userIsAdmin = isAdmin(currentUser);
+  const userIsAdminLike = isAdminLike(currentUser);
+
+  // For admin: use viewRoleGroup selector; for staff/sub-admin: use own role
   const effectiveRoleGroup: UserRole =
-    currentUser?.role === 'admin'
+    userIsAdmin
       ? viewRoleGroup
       : (currentUser?.role as UserRole) ?? 'pharmacist';
 
@@ -229,7 +232,7 @@ export default function CalendarPage() {
           </div>
         {/* Desktop action buttons (hidden on mobile — mobile uses FAB menu) */}
         <div className={cn("flex items-center gap-2 flex-wrap", isMobile && "hidden")}>
-            {currentUser?.role === 'admin' && (
+            {userIsAdminLike && (
               <>
                 {isEditMode ? (
                   <>
@@ -268,7 +271,7 @@ export default function CalendarPage() {
                 </button>
               </>
             )}
-            {currentUser?.role === 'admin' && (
+            {userIsAdminLike && (
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
@@ -278,7 +281,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">เพิ่มเวร (CSV)</span>
               </button>
             )}
-            {currentUser?.role === 'admin' && (
+            {userIsAdmin && (
               <button
                 onClick={() => setShowHolidaysModal(true)}
                 className="bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
@@ -288,7 +291,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">จัดการวันหยุด</span>
               </button>
             )}
-            {currentUser?.role === 'admin' && (
+            {userIsAdmin && (
               <button
                 onClick={() => setShowUserManagement(true)}
                 className="bg-teal-100 text-teal-700 hover:bg-teal-200 hover:text-teal-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
@@ -309,13 +312,13 @@ export default function CalendarPage() {
                  <span className="hidden sm:inline">ค่าตอบแทน</span>
                </button>
             )}
-            {currentUser?.role === 'admin' && (
+            {userIsAdminLike && (
               <ExcelExportButton year={year} month={month} />
             )}
           </div>
 
           {/* Mobile: compensation button for non-admin users */}
-          {isMobile && currentUser && currentUser.role !== 'admin' && (
+          {isMobile && currentUser && !userIsAdminLike && (
             <button
               onClick={() => setShowCompensationModal(true)}
               className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
@@ -327,7 +330,7 @@ export default function CalendarPage() {
         </div>
 
         {/* Admin: role group tab switcher */}
-        {currentUser?.role === 'admin' && (
+        {userIsAdmin && (
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
             <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm w-max min-w-full sm:w-auto">
               {STAFF_ROLES.map((role) => {
@@ -356,7 +359,7 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {!publishedRoles[effectiveRoleGroup] && currentUser?.role === 'admin' && (
+        {!publishedRoles[effectiveRoleGroup] && userIsAdminLike && (
           <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-center gap-2">
             ⚠️ ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด &ldquo;ประกาศตารางเวร&rdquo; เมื่อพร้อม
           </div>
@@ -427,7 +430,7 @@ export default function CalendarPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
                 <span className="text-sm">กำลังโหลดตารางเวร...</span>
               </div>
-            ) : !publishedRoles[effectiveRoleGroup] && currentUser?.role !== 'admin' ? (
+            ) : !publishedRoles[effectiveRoleGroup] && !userIsAdminLike ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <p className="text-lg font-medium text-gray-600">ตารางเวรตำแหน่งนี้ประจำเดือน {formatThaiMonth(year, month)} ยังไม่ถูกประกาศ</p>
                 <p className="text-sm">กรุณารอการประกาศตารางเวรจากผู้ดูแลระบบ</p>
@@ -647,9 +650,10 @@ export default function CalendarPage() {
       )}
 
       {/* Mobile Admin FAB Menu */}
-      {isMobile && currentUser?.role === 'admin' && (
+      {isMobile && userIsAdminLike && (
         <MobileAdminMenu
           isEditMode={isEditMode}
+          isSubAdmin={!userIsAdmin && currentUser?.is_sub_admin === true}
           onEditMode={handleToggleEditMode}
           onShowConfirm={() => setShowAdminConfirm(true)}
           onDeploy={() => setShowDeployModal(true)}

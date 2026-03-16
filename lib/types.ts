@@ -21,11 +21,35 @@ export interface User {
   nickname?: string;
   prefix?: string; // ภก. or ภญ.
   role: UserRole;
+  is_sub_admin?: boolean;      // sub-admin: can manage shifts for own role group
   profile_image?: 'male' | 'female';
   password?: string;           // plain-text copy stored in DB
   must_change_password?: boolean;
   salary_number?: string;
   created_at?: string;
+}
+
+// ─── Sub-Admin Helpers ─────────────────────────────────────────────────────────
+
+/** True if user is full admin */
+export function isAdmin(user: Pick<User, 'role'> | null | undefined): boolean {
+  return user?.role === 'admin';
+}
+
+/** True if user is full admin OR a sub-admin staff member */
+export function isAdminLike(user: Pick<User, 'role' | 'is_sub_admin'> | null | undefined): boolean {
+  return user?.role === 'admin' || user?.is_sub_admin === true;
+}
+
+/** True if user can manage the given role group's shifts */
+export function canManageRoleGroup(
+  user: Pick<User, 'role' | 'is_sub_admin'> | null | undefined,
+  roleGroup: UserRole,
+): boolean {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  if (user.is_sub_admin && user.role === roleGroup) return true;
+  return false;
 }
 
 export interface Department {

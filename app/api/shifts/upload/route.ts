@@ -98,7 +98,7 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
 export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
-    if (!session || session.role !== 'admin') {
+    if (!session || (session.role !== 'admin' && !session.is_sub_admin)) {
       return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
     }
 
@@ -139,6 +139,15 @@ export async function POST(req: NextRequest) {
       sheetRole = 'officer';
     } else if (a1Content.includes('เภสัช') || a1Content === 'pharmacist') {
       sheetRole = 'pharmacist';
+    }
+
+    // Scope check: sub-admin can only upload shifts for their own role group
+    if (session.role !== 'admin' && session.is_sub_admin) {
+      if (sheetRole !== session.role) {
+        return NextResponse.json({
+          error: `Sub-Admin สามารถอัปโหลดเวรได้เฉพาะตำแหน่ง ${session.role} เท่านั้น`,
+        }, { status: 403 });
+      }
     }
 
     // Find all users of this role to constraint the deletion/checking

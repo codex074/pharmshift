@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
-import { ROLE_LABELS, STAFF_ROLES, UserRole } from '@/lib/types';
+import { ROLE_LABELS, STAFF_ROLES, UserRole, isAdminLike } from '@/lib/types';
 
 interface DeployModalProps {
   initialYear: number;
@@ -22,12 +22,15 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
   const [errorDesc, setErrorDesc] = useState('');
   const [month, setMonth] = useState<number>(initialMonth);
   const [year, setYear] = useState<number>(initialYear);
-  const [roleGroup, setRoleGroup] = useState<UserRole | 'all'>('all');
+  const isSubAdminUser = currentUser?.is_sub_admin === true && currentUser?.role !== 'admin';
+  const [roleGroup, setRoleGroup] = useState<UserRole | 'all'>(
+    isSubAdminUser ? (currentUser.role as UserRole) : 'all'
+  );
 
   const currentYear = new Date().getFullYear();
 
   const handleDeploy = async () => {
-    if (!currentUser || currentUser.role !== 'admin') {
+    if (!currentUser || !isAdminLike(currentUser)) {
       toast.error('ไม่มีสิทธิ์ดำเนินการ');
       return;
     }
@@ -155,12 +158,19 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
             <select
               value={roleGroup}
               onChange={(e) => setRoleGroup(e.target.value as UserRole | 'all')}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all shadow-sm"
+              disabled={isSubAdminUser}
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
             >
-              <option value="all">ทุกตำแหน่ง (All Roles)</option>
-              {STAFF_ROLES.map(role => (
-                <option key={role} value={role}>{ROLE_LABELS[role]}</option>
-              ))}
+              {isSubAdminUser ? (
+                <option value={currentUser.role}>{ROLE_LABELS[currentUser.role as UserRole]}</option>
+              ) : (
+                <>
+                  <option value="all">ทุกตำแหน่ง (All Roles)</option>
+                  {STAFF_ROLES.map(role => (
+                    <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+                  ))}
+                </>
+              )}
             </select>
           </div>
 
