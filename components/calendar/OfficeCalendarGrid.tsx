@@ -444,6 +444,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string, cls: string) => {
     const list = getList(shiftType, dept).filter(s => (s.position || '') === position);
 
+    // Pending adds for this exact position — officer role only
+    const pendingForPos = ctx.pendingAdds ? ctx.pendingAdds.filter(
+      add => add.date === dateStr && add.shift_type === shiftType && (!dept || add.department === dept) && add.position === position && add.user.role === 'officer'
+    ) : [];
+
     return (
       <div className={cn(nameCell(), cls)}>
         <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
@@ -453,7 +458,23 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
               {renderShiftBadge(s, ctx)}
             </div>
           ))}
-          {list.length === 0 && dept && renderAddBtn(shiftType, dept, position)}
+          {pendingForPos.map(pa => {
+            const gIdx = ctx.pendingAdds!.indexOf(pa);
+            return (
+              <div key={gIdx} className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto">
+                <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
+                  {pa.user.nickname || pa.user.name}
+                </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(gIdx); }}
+                  className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center text-red-500 hover:text-red-700 font-bold text-[10px] leading-none"
+                >
+                  ×
+                </button>
+              </div>
+            );
+          })}
+          {list.length === 0 && pendingForPos.length === 0 && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       </div>
     );
