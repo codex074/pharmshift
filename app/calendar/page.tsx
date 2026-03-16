@@ -606,6 +606,7 @@ export default function CalendarPage() {
           onClose={() => setShowAdminConfirm(false)}
           onSuccess={() => {
             setShowAdminConfirm(false);
+            setIsEditMode(false);
             setPendingDeletes(new Set());
             setPendingEdits({});
             setPendingAdds([]);
