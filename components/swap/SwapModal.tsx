@@ -51,8 +51,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
 
   const deptName = (shift.department as { name: string })?.name || '';
   const displayDeptName = shift.position ? `${deptName} ${shift.position === 'D/C' ? 'D/D' : shift.position}` : deptName;
-  const shiftOwner = (shift.user as { name: string; nickname?: string; role?: UserRole; prefix?: string });
-  const ownerLabel = shiftOwner?.nickname || shiftOwner?.name || '—';
+  const shiftOwner = (shift.user as { f_name: string; nickname?: string; role?: UserRole; prefix?: string });
+  const ownerLabel = shiftOwner?.nickname || shiftOwner?.f_name || '—';
   const ownerRole: UserRole = shiftOwner?.role || currentUser?.role || 'pharmacist';
   const roleName = ROLE_LABELS[ownerRole] || 'เภสัชกร';
   const shiftDate = new Date(shift.date + 'T00:00:00');
@@ -78,7 +78,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
         );
         if (hasCollision) {
-          throw new Error(`ไม่สามารถดำเนินการได้ เนื่องจาก${selectedUser.name || selectedUser.nickname || 'ปลายทาง'}มีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว`);
+          throw new Error(`ไม่สามารถดำเนินการได้ เนื่องจาก${selectedUser.f_name || selectedUser.nickname || 'ปลายทาง'}มีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว`);
         }
 
         const { error } = await supabase.from('swap_requests').insert({
@@ -248,7 +248,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
                         const q = searchQuery.trim().toLowerCase();
                         return (
                           (u.nickname || '').toLowerCase().includes(q) ||
-                          (u.name || '').toLowerCase().includes(q)
+                          (u.f_name || '').toLowerCase().includes(q)
                         );
                       })
                       .map((u) => (
@@ -263,7 +263,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
                         )}
                       >
                         <p className="text-sm font-medium text-gray-800 truncate">
-                          {u.nickname || u.name}
+                          {u.nickname || u.f_name}
                         </p>
                       </button>
                     ))}

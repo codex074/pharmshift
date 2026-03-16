@@ -16,10 +16,10 @@ export interface User {
   id: string;
   auth_id?: string;
   pha_id?: string;             // e.g. 'pha208' — permanent staff ID
-  name: string;
-  fullname?: string;
+  prefix?: string;             // ภก. or ภญ.
+  f_name: string;              // ชื่อ
+  l_name: string;              // นามสกุล
   nickname?: string;
-  prefix?: string; // ภก. or ภญ.
   role: UserRole;
   is_sub_admin?: boolean;      // sub-admin: can manage shifts for own role group
   profile_image?: 'male' | 'female';
@@ -27,6 +27,18 @@ export interface User {
   must_change_password?: boolean;
   salary_number?: string;
   created_at?: string;
+}
+
+/** Build full display name: "ภก.สมชาย ใจดี" */
+export function userFullName(u: Pick<User, 'prefix' | 'f_name' | 'l_name'> | null | undefined): string {
+  if (!u) return '';
+  return `${u.prefix || ''}${u.f_name || ''} ${u.l_name || ''}`.trim();
+}
+
+/** Build short name for display: nickname first, fallback to f_name */
+export function userDisplayName(u: Pick<User, 'nickname' | 'f_name'> | null | undefined): string {
+  if (!u) return '—';
+  return u.nickname || u.f_name || '—';
 }
 
 // ─── Sub-Admin Helpers ─────────────────────────────────────────────────────────
@@ -68,8 +80,9 @@ export interface Shift {
   user_id: string;
   user?: User;
   user_nickname?: string;      // from view join
-  user_name?: string;
   user_prefix?: string;
+  user_f_name?: string;
+  user_l_name?: string;
   month_year?: string;
   created_at?: string;
 }

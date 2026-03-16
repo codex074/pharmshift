@@ -11,13 +11,14 @@ create table if not exists public.users (
   id              uuid primary key default gen_random_uuid(),
   pha_id          text unique,                  -- 'pha208' — permanent staff ID
   password        text default '1234',
-  name            text not null,
-  fullname        text,
-  nickname        text,
   prefix          text,                         -- 'ภก.' or 'ภญ.'
+  f_name          text not null default '',     -- ชื่อ
+  l_name          text not null default '',     -- นามสกุล
+  nickname        text,
   role            text not null default 'pharmacist',
   profile_image   text default 'male',         -- 'male' | 'female'
   must_change_password boolean default true,
+  salary_number   text,                         -- เลขที่รับเงินเดือน
   created_at      timestamptz default now()
 );
 
@@ -131,9 +132,10 @@ create or replace view public.shifts_full as
     d.id   as department_id,
     d.name as department_name,
     u.id   as user_id,
-    u.name as user_name,
-    u.nickname as user_nickname,
     u.prefix as user_prefix,
+    u.f_name as user_f_name,
+    u.l_name as user_l_name,
+    u.nickname as user_nickname,
     u.profile_image as user_profile_image
   from public.shifts s
   left join public.departments d on s.department_id = d.id

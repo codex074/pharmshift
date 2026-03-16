@@ -26,12 +26,12 @@ export function ExportButton({ shifts, year, month }: ExportButtonProps) {
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
         .map((s) => {
           const dept = (s.department as { name: string })?.name || '';
-          const user = s.user as { name: string; nickname?: string; prefix?: string };
+          const user = s.user as { prefix?: string; f_name: string; l_name: string; nickname?: string };
           return {
             วันที่: format(new Date(s.date + 'T00:00:00'), 'd/M/yyyy'),
             แผนก: dept,
             ประเภทเวร: s.shift_type,
-            'ชื่อ-นามสกุล': `${user?.prefix || ''}${user?.name || ''}`,
+            'ชื่อ-นามสกุล': `${user?.prefix || ''}${user?.f_name || ''} ${user?.l_name || ''}`.trim(),
             ชื่อเล่น: user?.nickname || '',
           };
         });

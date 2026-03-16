@@ -131,7 +131,7 @@ interface RenderContext {
 }
 
 function getUserName(shift: Shift): string {
-  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.name || (shift as any).user_name || '';
+  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.f_name || (shift as any).user_f_name || '';
 }
 
 function getDeptName(shift: Shift): string {
@@ -143,7 +143,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const isPendingDelete = ctx.pendingDeletes?.has(s.id);
   const pendingSub = ctx.pendingEdits?.[s.id];
   
-  const displayName = pendingSub ? pendingSub.name : getUserName(s);
+  const displayName = pendingSub ? (pendingSub.nickname || pendingSub.f_name) : getUserName(s);
 
   if (ctx.isEditMode) {
     return (
@@ -202,7 +202,7 @@ function renderPendingAddBadge(add: PendingAdd, globalIndex: number, ctx: Render
       className="flex items-center justify-between w-[90%] px-1 py-0.5 rounded border mb-0.5 bg-green-50 border-green-300 pointer-events-auto"
     >
       <span className="text-[10px] truncate max-w-[70%] text-green-800 font-bold">
-        {add.user.nickname || add.user.name}
+        {add.user.nickname || add.user.f_name}
       </span>
       <button
         onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(globalIndex); }}

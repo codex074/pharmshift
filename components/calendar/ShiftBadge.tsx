@@ -19,8 +19,8 @@ function deptClass(name?: string): string {
 
 export function ShiftBadge({ shift, isMyShift, onClick, compact }: ShiftBadgeProps) {
   const deptName = (shift.department as { name: string })?.name || '';
-  const userName = (shift.user as { nickname?: string; name: string })?.nickname ||
-                   (shift.user as { name: string })?.name || '—';
+  const userName = (shift.user as { nickname?: string; f_name: string })?.nickname ||
+                   (shift.user as { f_name: string })?.f_name || '—';
   const shiftStyle = SHIFT_STYLES[shift.shift_type];
 
   if (isMyShift) {
@@ -34,7 +34,6 @@ export function ShiftBadge({ shift, isMyShift, onClick, compact }: ShiftBadgePro
         )}
         title={`${userName} — ${deptName} (${shift.shift_type})`}
       >
-        <span>{shiftStyle?.icon}</span>
         {!compact && <span className="opacity-75 text-[10px]">{deptName}</span>}
         <span className="truncate">{userName}</span>
       </button>
@@ -51,7 +50,7 @@ export function ShiftBadge({ shift, isMyShift, onClick, compact }: ShiftBadgePro
       )}
       title={`${userName} — ${deptName} (${shift.shift_type})`}
     >
-      <span className="mr-0.5">{shiftStyle?.icon}</span>
+      {/* no emoji */}
       {!compact && (
         <span className="font-medium text-xs opacity-70 mr-1">{deptName}</span>
       )}

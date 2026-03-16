@@ -26,7 +26,7 @@ const N = "border border-gray-200 bg-white flex flex-col items-center justify-ce
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 function getUserName(s: Shift): string {
-  return (s as any).user_nickname || s.user?.nickname || s.user?.name || (s as any).user_name || '—';
+  return (s as any).user_nickname || s.user?.nickname || s.user?.f_name || (s as any).user_f_name || '—';
 }
 function getDeptName(s: Shift): string {
   return (s as any).department_name || s.department?.name || '';
@@ -334,7 +334,6 @@ function GenericRoleView({ day, currentUser, onSwapClick }: {
         return (
           <div key={type} className="rounded-xl border border-gray-100 overflow-hidden">
             <div className="px-4 py-2 flex items-center gap-2" style={{ backgroundColor: cfg.color + '10' }}>
-              <span className="text-sm">{cfg.icon}</span>
               <span className="text-sm font-bold" style={{ color: cfg.color }}>{cfg.label}</span>
               <span className="text-[10px] text-gray-400 font-mono">{cfg.time}</span>
             </div>
@@ -363,7 +362,7 @@ function GenericRoleView({ day, currentUser, onSwapClick }: {
                             : 'bg-gray-100 text-gray-700 hover:ring-violet-300',
                         )}
                       >
-                        {name}{isMe ? ' ⭐' : ''}
+                        {name}
                       </button>
                     </div>
                   </div>

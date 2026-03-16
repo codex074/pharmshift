@@ -40,7 +40,7 @@ export function useShifts(year: number, month: number) {
       .select(`
         *,
         department:departments(id, name),
-        user:users(id, name, nickname, prefix, profile_image, role)
+        user:users(id, prefix, f_name, l_name, nickname, profile_image, role)
       `)
       .eq('month_year', monthYear)
       .order('date', { ascending: true });
@@ -100,8 +100,8 @@ export function useSwapRequests(userId?: string) {
         *,
         shift:shifts!shift_id(*, department:departments(id, name)),
         target_shift:shifts!target_shift_id(*, department:departments(id, name)),
-        requester:users!requester_id(id, name, nickname),
-        target_user:users!target_user_id(id, name, nickname)
+        requester:users!requester_id(id, prefix, f_name, l_name, nickname),
+        target_user:users!target_user_id(id, prefix, f_name, l_name, nickname)
       `)
       .or(`requester_id.eq.${userId},target_user_id.eq.${userId}`)
       .order('created_at', { ascending: false })

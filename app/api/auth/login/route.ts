@@ -34,7 +34,9 @@ export async function POST(request: Request) {
     return NextResponse.json({
       user: {
         id: user.id,
-        name: user.name,
+        prefix: user.prefix,
+        f_name: user.f_name,
+        l_name: user.l_name,
         pha_id: user.pha_id,
         must_change_password: user.must_change_password,
       },

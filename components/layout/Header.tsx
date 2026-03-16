@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, History } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
+import { userFullName } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { UserProfileModal } from '@/components/UserProfileModal';
@@ -45,11 +46,7 @@ export function Header({
     onMonthChange(d.getFullYear(), d.getMonth() + 1);
   }
 
-  const displayName = currentUser?.fullname
-    ? currentUser.fullname
-    : currentUser?.prefix
-      ? `${currentUser.prefix}${currentUser.name}`
-      : currentUser?.name || '';
+  const displayName = userFullName(currentUser);
 
   return (
     <>

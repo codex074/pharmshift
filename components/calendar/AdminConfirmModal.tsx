@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { Loader2, X, AlertCircle, AlertTriangle } from 'lucide-react';
 import type { Shift, ShiftType, User } from '@/lib/types';
+import { userFullName } from '@/lib/types';
 import { shiftsOverlap } from '@/lib/utils';
 import type { PendingAdd } from './AdminAddShiftModal';
 
@@ -194,7 +195,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
                         {add.date} | {add.shift_type} | {add.department}{add.position ? ` (${add.position})` : ''}
                       </span>
                       <span className="text-xs">
-                        ผู้มีเวร: <span className="font-bold">{add.user.name} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>
+                        ผู้มีเวร: <span className="font-bold">{userFullName(add.user)} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>
                       </span>
                       {addConflicts.length > 0 && (
                         <span className="text-xs text-yellow-700 mt-0.5">
@@ -213,7 +214,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
               <h3 className="font-semibold text-gray-800 border-b pb-1">รายการเปลี่ยนคนอยู่เวร ({edits.length})</h3>
               <ul className="space-y-1 text-sm">
                 {edits.map((e, idx) => {
-                  const shiftName = (e.shift as any).user_name || e.shift.user?.name || e.shift.user_id;
+                  const shiftName = (e.shift as any).user_f_name || e.shift.user?.f_name || e.shift.user_id;
                   const editConflicts = getPendingEditConflicts(e.shift.id, e.newUser);
                   return (
                     <li key={idx} className={`flex flex-col p-2 rounded border ${editConflicts.length > 0 ? 'bg-yellow-50 border-yellow-300 text-yellow-900' : 'bg-indigo-50 border-indigo-100 text-indigo-900'}`}>
@@ -223,11 +224,11 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
                       </span>
                       <span className="text-xs">
                         จาก : <span className="line-through text-gray-400 mr-2">{shiftName}</span>
-                        ไปหา : <span className="font-bold">{e.newUser.name}</span>
+                        ไปหา : <span className="font-bold">{userFullName(e.newUser)}</span>
                       </span>
                       {editConflicts.length > 0 && (
                         <span className="text-xs text-yellow-700 mt-0.5">
-                          ⚠️ {e.newUser.name} มีเวรซ้อนทับในวันนั้นอยู่แล้ว: {editConflicts.join(', ')}
+                          ⚠️ {userFullName(e.newUser)} มีเวรซ้อนทับในวันนั้นอยู่แล้ว: {editConflicts.join(', ')}
                         </span>
                       )}
                     </li>
@@ -242,7 +243,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
               <h3 className="font-semibold text-red-800 border-b pb-1">รายการลบเวร ({deletes.length})</h3>
               <ul className="space-y-1 text-sm">
                 {deletes.map((s, idx) => {
-                  const shiftName = (s as any).user_name || s.user?.name || s.user_id;
+                  const shiftName = (s as any).user_f_name || s.user?.f_name || s.user_id;
                   return (
                     <li key={idx} className="flex flex-col p-2 bg-red-50 rounded text-red-900 border border-red-100">
                       <span className="font-medium text-red-700">{s.date} | {s.shift_type} | {(s as any).department_name || ''}</span>

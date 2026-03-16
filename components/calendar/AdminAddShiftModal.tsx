@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, X, Search, Plus } from 'lucide-react';
 import type { User, ShiftType } from '@/lib/types';
+import { userFullName } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { toastError, confirmAction } from '@/lib/swal';
 
@@ -73,7 +74,7 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
           .join(', ');
         const ok = await confirmAction({
           title: 'พบเวรซ้อนทับ!',
-          text: `${user.name} มีเวรที่ทับซ้อนกันในวันที่ ${context.date} อยู่แล้ว: ${conflictDesc}\n\nต้องการเพิ่มเวรซ้อนทับหรือไม่?`,
+          text: `${userFullName(user)} มีเวรที่ทับซ้อนกันในวันที่ ${context.date} อยู่แล้ว: ${conflictDesc}\n\nต้องการเพิ่มเวรซ้อนทับหรือไม่?`,
           confirmText: 'เพิ่มต่อไป',
           cancelText: 'ยกเลิก',
           isDanger: true,
@@ -109,9 +110,9 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
   }
 
   const filteredUsers = users.filter(usr =>
-    usr.name?.toLowerCase().includes(search.toLowerCase()) ||
+    usr.f_name?.toLowerCase().includes(search.toLowerCase()) ||
     usr.nickname?.toLowerCase().includes(search.toLowerCase()) ||
-    usr.fullname?.toLowerCase().includes(search.toLowerCase())
+    usr.l_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   // Format display
@@ -170,8 +171,7 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
                   className="w-full text-left px-4 py-3 hover:bg-green-50 transition-colors flex items-center justify-between"
                 >
                   <div>
-                    <div className="font-medium text-sm text-gray-800">{usr.name} {usr.nickname ? `(${usr.nickname})` : ''}</div>
-                    {usr.fullname && <div className="text-xs text-gray-500">{usr.fullname}</div>}
+                    <div className="font-medium text-sm text-gray-800">{userFullName(usr)} {usr.nickname ? `(${usr.nickname})` : ''}</div>
                   </div>
                   <Plus className="w-4 h-4 text-green-500" />
                 </button>

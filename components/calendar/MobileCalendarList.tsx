@@ -51,7 +51,7 @@ function buildDays(year: number, month: number, shifts: Shift[], holidays: Holid
 }
 
 function getUserName(shift: Shift): string {
-  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.name || (shift as any).user_name || '';
+  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.f_name || (shift as any).user_f_name || '';
 }
 
 function getDeptName(shift: Shift): string {
@@ -146,7 +146,6 @@ export function MobileCalendarList({
                   <div key={type}>
                     {/* Shift Type Header */}
                     <div className="flex items-center gap-2 px-4 py-1.5 bg-gray-50/50">
-                      <span className="text-xs">{config.icon}</span>
                       <span className="text-[11px] font-semibold text-gray-500">{config.label}</span>
                       <span className="text-[10px] text-gray-400">({config.time})</span>
                     </div>
@@ -193,7 +192,7 @@ export function MobileCalendarList({
                             'flex-1 text-sm truncate',
                             isMe ? 'font-bold text-violet-700' : 'text-gray-700',
                           )}>
-                            {isMe && '★ '}
+                            {/* no star emoji */}
                             {userName}
                           </span>
 

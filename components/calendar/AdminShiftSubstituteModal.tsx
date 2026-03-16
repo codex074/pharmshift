@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, X, Search } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
+import { userFullName } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toastError } from '@/lib/swal';
 
@@ -40,12 +41,12 @@ export function AdminShiftSubstituteModal({ shift, onClose, onSelectSubstitute }
   }, [currentRole]);
 
   const filteredUsers = users.filter(usr => 
-    usr.name?.toLowerCase().includes(search.toLowerCase()) || 
-    usr.nickname?.toLowerCase().includes(search.toLowerCase()) || 
-    usr.fullname?.toLowerCase().includes(search.toLowerCase())
+    usr.f_name?.toLowerCase().includes(search.toLowerCase()) ||
+    usr.nickname?.toLowerCase().includes(search.toLowerCase()) ||
+    usr.l_name?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const currentUserText = (shift as any).user_name || shift.user?.name || shift.user_id;
+  const currentUserText = (shift as any).user_f_name || shift.user?.f_name || shift.user_id;
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm animate-fade-in" onClick={onClose}>
@@ -103,8 +104,7 @@ export function AdminShiftSubstituteModal({ shift, onClose, onSelectSubstitute }
                     disabled={usr.id === shift.user_id}
                   >
                     <div>
-                      <div className="font-medium text-sm text-gray-800">{usr.name} {usr.nickname ? `(${usr.nickname})` : ''}</div>
-                      {usr.fullname && <div className="text-xs text-gray-500">{usr.fullname}</div>}
+                      <div className="font-medium text-sm text-gray-800">{userFullName(usr)} {usr.nickname ? `(${usr.nickname})` : ''}</div>
                     </div>
                     {usr.id === shift.user_id && <span className="text-[10px] text-gray-400 font-medium">ปัจจุบัน</span>}
                   </button>
