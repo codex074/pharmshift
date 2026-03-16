@@ -34,6 +34,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
     nickname: '',
     salary_number: '',
     role: '' as UserRole,
+    is_sub_admin: false,
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       nickname: user.nickname || '',
       salary_number: user.salary_number || '',
       role: user.role,
+      is_sub_admin: user.is_sub_admin ?? false,
     });
     setView('edit');
   }
@@ -84,6 +86,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
           nickname: formData.nickname.trim(),
           salary_number: formData.salary_number.trim(),
           role: formData.role,
+          is_sub_admin: STAFF_ROLES.includes(formData.role as any) ? formData.is_sub_admin : false,
         }),
       });
 
@@ -279,6 +282,11 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                           <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', roleColor[user.role])}>
                             {ROLE_LABELS[user.role]}
                           </span>
+                          {user.is_sub_admin && user.role !== 'admin' && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                              Sub-Admin
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -343,7 +351,14 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 <div className="relative">
                   <select
                     value={formData.role}
-                    onChange={(e) => setFormData((p) => ({ ...p, role: e.target.value as UserRole }))}
+                    onChange={(e) => {
+                      const newRole = e.target.value as UserRole;
+                      setFormData((p) => ({
+                        ...p,
+                        role: newRole,
+                        is_sub_admin: newRole === 'admin' ? false : p.is_sub_admin,
+                      }));
+                    }}
                     className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm appearance-none"
                   >
                     {ALL_ROLES.map((role) => (
@@ -355,6 +370,45 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                   <Shield className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 </div>
               </div>
+
+              {/* Sub-admin toggle — only for staff roles */}
+              {STAFF_ROLES.includes(formData.role as any) && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">ผู้ช่วยดูแล (Sub-Admin)</label>
+                  <div className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                    formData.is_sub_admin
+                      ? 'bg-yellow-50 border-yellow-200'
+                      : 'bg-gray-50 border-gray-200'
+                  )}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={formData.is_sub_admin}
+                      onClick={() => setFormData(p => ({ ...p, is_sub_admin: !p.is_sub_admin }))}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                        formData.is_sub_admin ? 'bg-yellow-500' : 'bg-gray-200'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform',
+                          formData.is_sub_admin ? 'translate-x-5' : 'translate-x-0'
+                        )}
+                      />
+                    </button>
+                    <div className="text-sm">
+                      <p className={cn('font-semibold', formData.is_sub_admin ? 'text-yellow-700' : 'text-gray-500')}>
+                        {formData.is_sub_admin ? 'เปิดใช้งาน' : 'ปิดอยู่'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        เมื่อเปิด ผู้ใช้สามารถอัปโหลดเวร, แก้ไข, ประกาศตารางเวรสำหรับตำแหน่ง{ROLE_LABELS[formData.role as UserRole]}ได้
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Reset password */}
               <div className="border-t border-gray-200 pt-4">

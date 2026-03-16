@@ -72,7 +72,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     
     // Minimal password check locally for safety if available, else omit
     if (currentUser?.password && currentUser.password !== password) {
-       toastError('รหัสผ่าน Admin ไม่ถูกต้อง');
+       toastError('รหัสผ่านไม่ถูกต้อง');
        return;
     }
 
@@ -257,7 +257,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           <div className="space-y-3 pt-4 border-t border-gray-100">
             <div className="bg-orange-50 text-orange-800 p-2.5 rounded-lg text-xs flex gap-2">
                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-               <span>กรุณายืนยันการเปลี่ยนแปลงด้วยรหัสผ่านผู้ดูแลระบบ 2 รอบ (เพื่อป้องกันข้อผิดพลาด)</span>
+               <span>กรุณายืนยันการเปลี่ยนแปลงด้วยรหัสผ่านของคุณ 2 รอบ (เพื่อป้องกันข้อผิดพลาด)</span>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">รหัสผ่าน (รอบที่ 1)</label>
@@ -266,7 +266,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 className="w-full mt-1 border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="ป้อนรหัสผ่าน Admin"
+                placeholder="ป้อนรหัสผ่าน"
               />
             </div>
             <div>
@@ -276,7 +276,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
                 value={passwordConfirm}
                 onChange={e => setPasswordConfirm(e.target.value)}
                 className="w-full mt-1 border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="ป้อนรหัสผ่าน Admin อีกครั้ง"
+                placeholder="ป้อนรหัสผ่าน อีกครั้ง"
               />
             </div>
           </div>

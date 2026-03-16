@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { format, subDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { ShiftLog, User } from '@/lib/types';
+import { isAdminLike } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 
@@ -36,7 +37,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
           .delete()
           .lt('created_at', sixtyDaysAgo);
           
-        if (currentUser?.role !== 'admin') {
+        if (!isAdminLike(currentUser)) {
            deleteQuery = deleteQuery.or(`old_user_id.eq.${currentUser?.id},new_user_id.eq.${currentUser?.id}`);
         }
         
@@ -58,7 +59,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
           .order('created_at', { ascending: false })
           .limit(200);
 
-        if (currentUser?.role !== 'admin' || !viewAll) {
+        if (!isAdminLike(currentUser) || !viewAll) {
           query = query.or(`old_user_id.eq.${currentUser?.id},new_user_id.eq.${currentUser?.id}`);
         }
 
@@ -131,7 +132,7 @@ export function ShiftLogsModal({ currentUser, onClose }: ShiftLogsModalProps) {
           </button>
         </div>
 
-        {currentUser?.role === 'admin' && (
+        {isAdminLike(currentUser) && (
           <div className="px-4 pt-3 flex items-center justify-end">
             <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer hover:text-gray-900 transition-colors">
               <input 
