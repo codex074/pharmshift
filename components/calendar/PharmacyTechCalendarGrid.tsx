@@ -70,7 +70,7 @@ export function PharmacyTechCalendarGrid({
 }: CalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
 
-  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
+  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd, roleFilter: 'pharmacy_technician' };
 
   return (
     <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
@@ -133,6 +133,7 @@ interface RenderContext {
   pendingAdds?: PendingAdd[];
   onAddShift?: (ctx: AddShiftContext) => void;
   onRemovePendingAdd?: (index: number) => void;
+  roleFilter?: string;
 }
 
 function renderShiftBadge(s: Shift, ctx: RenderContext) {
@@ -200,9 +201,9 @@ function SlotContainer({ shifts, shiftType, deptName, count, ctx, bgColor, hover
     matching.sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
   }
   
-  // Get pending adds for this cell
+  // Get pending adds for this cell (filtered by role to prevent cross-grid contamination)
   const cellPendingAdds = dateStr && ctx.pendingAdds ? ctx.pendingAdds.filter(
-    (add, _) => add.date === dateStr && add.shift_type === shiftType && (!deptName || add.department === deptName)
+    (add) => add.date === dateStr && add.shift_type === shiftType && (!deptName || add.department === deptName) && (!ctx.roleFilter || add.user.role === ctx.roleFilter)
   ) : [];
 
   const slots = Array.from({ length: Math.max(count, matching.length + cellPendingAdds.length) });
