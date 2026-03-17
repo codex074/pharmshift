@@ -289,7 +289,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
       return (
-        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer flex-1', cls)}>
+        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer flex-1', cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && dept && renderAddBtn(shiftType, dept)}
         </div>
@@ -302,7 +302,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
       return (
-        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white hover:bg-violet-50/40 cursor-pointer', fixedRowH, bb, cls)}>
+        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && dept && renderAddBtn(shiftType, dept)}
         </div>
@@ -332,12 +332,12 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
         {/* === Rows Container === */}
         <div className="relative flex-1 flex flex-col items-stretch">
-          {/* Vertical Column Borders (z-20) to ensure continuous lines to the bottom */}
+          {/* Vertical Column Borders (z-20) — c4 ไม่มี br เพื่อไม่ให้ตัดผ่านช่องดึก */}
           <div className="absolute inset-0 pointer-events-none flex z-20">
             <div className={cn(c1, br)} />
             <div className={cn(c2, br)} />
             <div className={cn(c3, br)} />
-            <div className={cn(c4, br)} />
+            <div className={cn(c4)} />
             <div className={cn(c5, isSat ? br : '')} />
           </div>
 
@@ -346,8 +346,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {fslot('เช้า', 'โครงการ',  0, c1)}
             {fempty(c2)}
             {fempty(c3)}
-            {/* บ่ายMED: ลบ border-b เพื่อให้ดูเป็น 1 ช่อง (ไม่มีเส้นแบ่ง) */}
-            {fslot('บ่าย', 'MED',       0, cn(c4, 'border-b-0'))}
+            {/* บ่ายMED: ลบ border-b + ใส่ br โดยตรง (ย้ายออกจาก overlay) */}
+            {fslot('บ่าย', 'MED',       0, cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        0, c5)}
             {isSat && fslot('เช้า', 'ส่งยา สอ.', 0, 'flex-1')}
           </div>
@@ -357,8 +357,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {fslot('เช้า', 'โครงการ',  1, c1)}
             {fempty(c2)}
             {fempty(c3)}
-            {/* บ่ายMED empty: ลบ border-b → ให้ต่อเนื่องกับ row 0 เป็น 1 ช่อง */}
-            {fempty(cn(c4, 'border-b-0'))}
+            {/* บ่ายMED empty: ลบ border-b + ใส่ br โดยตรง */}
+            {fempty(cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        1, c5)}
             {isSat && fempty('flex-1')}
           </div>
@@ -545,11 +545,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
-             {/* ดึก ER */}
-             <div className="grid grid-rows-2">
-               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 h-full')}
-               {slot('ดึก', 'ER', 1, 'h-full border-b-0')}
-             </div>
+             {/* ดึก ER — 1 slot เดียว */}
+             {slot('ดึก', 'ER', 0, 'h-full border-b-0 flex-1')}
           </div>
         </>
       ) : (
@@ -574,11 +571,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
                {slot('บ่าย', 'SMC', 1, 'h-full border-b-0')}
              </div>
 
-             {/* ดึก ER Column - 2 rows */}
-             <div className="grid grid-rows-2">
-               {slot('ดึก', 'ER', 0, 'border-b border-gray-400/60 h-full')}
-               {slot('ดึก', 'ER', 1, 'h-full border-b-0')}
-             </div>
+             {/* ดึก ER Column - 1 slot เดียว */}
+             {slot('ดึก', 'ER', 0, 'h-full border-b-0')}
           </div>
         </>
       )}
