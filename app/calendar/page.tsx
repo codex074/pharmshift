@@ -421,6 +421,29 @@ export default function CalendarPage() {
               </div>
             </div>
           )}
+          {effectiveRoleGroup === 'pharmacy_technician' && (
+            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
+              <div className="text-red-600">
+                รุ่งอรุณ ชื่อ 1 = รุ่ง OPD, ชื่อ 2 = รุ่ง ER, ชื่อ 3 = รุ่ง HIV
+              </div>
+            </div>
+          )}
+          {effectiveRoleGroup === 'officer' && (
+            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
+              <div className="text-red-600">
+                รุ่งอรุณ ช่อง 1 = รุ่ง OPD, ช่อง 2 = รุ่ง ER
+              </div>
+              <div className="text-green-700">
+                เวรโครงการ วันหยุด ชื่อ 1 = 8.30 น., ชื่อ 2 = 9.00 น.
+              </div>
+              <div className="text-blue-700">
+                วันปกติ ชื่อ 1 = รับที่ MED, ชื่อ 2 = รับที่ OPD
+              </div>
+              <div className="text-orange-900">
+                บ่าย ER ชื่อ 1 = pre-pack, ชื่อ 2 = บ่ายห้องER
+              </div>
+            </div>
+          )}
 
           {/* Calendar */}
           <div ref={isMobile ? swipeRef : undefined} className={cn("bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto", isMobile ? "p-0 border-0 shadow-none bg-transparent" : "p-2 sm:p-3")}>
