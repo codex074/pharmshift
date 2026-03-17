@@ -5,91 +5,59 @@ import * as XLSX from 'xlsx';
 
 const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
   if (!code) return null;
-  const c = code.trim();
+  // Normalize Latin chars to lowercase; Thai chars are unchanged by toLowerCase()
+  const c = code.trim().toLowerCase();
 
-  // Generic shifts
-  switch (c) {
-    case 'smc': return { dept: 'SMC', type: 'บ่าย', position: '' };
-    case 'Ext': return { dept: 'โครงการ', type: isWeekend ? 'เช้า' : 'บ่าย', position: '' };
-    case 'S':
-    case 's':  return { dept: 'SURG', type: 'เช้า', position: '' };
-    case 'รO': return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
-    case 'รE': return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
-    case 'รH': return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
-    case 'บE': return { dept: 'ER', type: 'บ่าย', position: '' };
-    case 'ชE': return { dept: 'ER', type: 'เช้า', position: '' };
-    case 'ด':  return { dept: 'ER', type: 'ดึก', position: '' };
-    case 'chem': return { dept: 'Chemo', type: 'เช้า', position: '' };
-  }
-
-  // Pharmacist specific
+  // ── เภสัชกร ──
   if (role === 'pharmacist') {
     switch (c) {
-      case 'บM': return { dept: 'MED', type: 'บ่าย', position: '' };
-      case 'c':  return { dept: 'MED', type: 'เช้า', position: 'Cont' };
-      case 'd':  return { dept: 'MED', type: 'เช้า', position: 'D/C' };
+      case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
+      case 'd':   return { dept: 'MED',       type: 'เช้า',      position: 'D/C' };
+      case 'c':   return { dept: 'MED',       type: 'เช้า',      position: 'Cont' };
+      case 's':   return { dept: 'SURG',      type: 'เช้า',      position: '' };
+      case 'ext': return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: '' };
+      case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
+      case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
+      case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
+      case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
+      case 'รh':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
+      case 'smc': return { dept: 'SMC',       type: 'บ่าย',      position: '' };
+      case 'ch':  return { dept: 'Chemo',     type: 'เช้า',      position: '' };
+      case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
   }
 
-  // Pharmacy Technician specific
+  // ── เจ้าพนักงานเภสัชกรรม ──
   if (role === 'pharmacy_technician') {
-    if (c === 'ชM' || c === 'ชM1' || c === 'ชM2' || c === 'ชM3') {
-      return { dept: 'MED', type: 'เช้า', position: c === 'ชM' ? '' : c };
+    switch (c) {
+      case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
+      case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
+      case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
+      case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
+      case 'รh':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
+      case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
-    if (c === 'บM' || c === 'บM1' || c === 'บM2') {
-      return { dept: 'MED', type: 'บ่าย', position: c === 'บM' ? '' : c };
-    }
+    if (/^m[1-3]$/.test(c))   return { dept: 'MED',  type: 'เช้า',  position: c };
+    if (/^s[1-2]$/.test(c))   return { dept: 'SURG', type: 'เช้า',  position: c };
+    if (/^บm[1-2]$/.test(c))  return { dept: 'MED',  type: 'บ่าย', position: c };
+    if (/^smc[1-2]$/.test(c)) return { dept: 'SMC',  type: 'บ่าย', position: c };
   }
 
-  // Officer specific
+  // ── เจ้าหน้าที่ ──
   if (role === 'officer') {
-    const cLower = c.toLowerCase();
-    
-    // SURG (s1, s2, s3)
-    if (cLower.startsWith('s') && cLower.length <= 2) {
-      return { dept: 'SURG', type: 'เช้า', position: cLower };
+    switch (c) {
+      case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
+      case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
+      case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
+      case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
-    
-    // MED (m1, m2, m3, m4)
-    if (cLower.startsWith('m') && cLower.length <= 2) {
-      return { dept: 'MED', type: 'เช้า', position: cLower };
-    }
-    
-    // ER (e)
-    if (cLower === 'e') {
-      return { dept: 'ER', type: 'เช้า', position: 'e' };
-    }
-    
-    // บ่าย MED (บm)
-    if (cLower === 'บm') {
-      return { dept: 'MED', type: 'บ่าย', position: 'บm' };
-    }
-    
-    // บ่าย ER (บe1, บe2)
-    if (cLower.startsWith('บe') || cLower === 'บe') {
-      return { dept: 'ER', type: 'บ่าย', position: cLower };
-    }
-    
-    // รุ่งอรุณ (รe, รo1, รo2)
-    if (cLower.startsWith('รe') || cLower.startsWith('รo') || cLower === 'รe' || cLower === 'รo') {
-      return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: cLower };
-    }
-    
-    // SMC (smc1, smc2)
-    if (cLower.startsWith('smc')) {
-      return { dept: 'SMC', type: 'บ่าย', position: cLower };
-    }
-    
-    // โครงการ (ext1, ext2)
-    if (cLower.startsWith('ext')) {
-       return { dept: 'โครงการ', type: isWeekend ? 'เช้า' : 'บ่าย', position: cLower };
-    }
-    
-    // ส่งยาสอ. (สอ1, สอ2, สอ3, สอ4)
-    if (cLower.startsWith('สอ')) {
-       // Using 'ส่งยา สอ.' as the department name based on my calendar code check
-       return { dept: 'ส่งยา สอ.', type: 'เช้า', position: cLower };
-    }
+    if (/^m[1-4]$/.test(c))    return { dept: 'MED',       type: 'เช้า',  position: c };
+    if (/^s[1-3]$/.test(c))    return { dept: 'SURG',      type: 'เช้า',  position: c };
+    if (/^ext[1-2]$/.test(c))  return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: c };
+    if (/^บe[1-2]$/.test(c))   return { dept: 'ER',        type: 'บ่าย', position: c };
+    if (/^smc[1-2]$/.test(c))  return { dept: 'SMC',       type: 'บ่าย', position: c };
+    if (/^รo[1-2]$/.test(c))   return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: c };
+    if (/^ส[1-4]$/.test(c))    return { dept: 'ส่งยา สอ.', type: 'เช้า', position: c };
   }
 
   return null;
