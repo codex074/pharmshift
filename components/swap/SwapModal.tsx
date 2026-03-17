@@ -91,6 +91,20 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         });
 
         if (error) throw error;
+
+        // Push notification to target user
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: selectedUser.id,
+            title: '🔄 คำขอแลกเวรใหม่',
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอแลกเวรกับคุณ`,
+            url: '/calendar',
+            tag: 'swap-new',
+          }),
+        }).catch(() => {});
+
         toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
       } else {
         // ===== BUY MODE: คลิกชื่อคนอื่น → ขอซื้อเวร =====
@@ -119,6 +133,20 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         });
 
         if (error) throw error;
+
+        // Push notification to shift owner
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: shift.user_id,
+            title: '📩 คำขอโอนเวรใหม่',
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอซื้อเวรของคุณ`,
+            url: '/calendar',
+            tag: 'transfer-new',
+          }),
+        }).catch(() => {});
+
         toast.success('ส่งคำขอซื้อเวรเรียบร้อยแล้ว');
       }
 
