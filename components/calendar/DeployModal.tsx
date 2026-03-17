@@ -91,7 +91,31 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
 
       setSuccessMsg('ประกาศตารางเวรสำเร็จแล้ว!');
       toast.success('ประกาศตารางเวรสำเร็จแล้ว!');
-      
+
+      // Send push to all staff of the published role group(s)
+      try {
+        const rolesToNotify = roleGroup === 'all'
+          ? ['pharmacist', 'pharmacy_technician', 'officer']
+          : [roleGroup];
+        const { data: staffUsers } = await supabase
+          .from('users')
+          .select('id')
+          .in('role', rolesToNotify);
+        if (staffUsers?.length) {
+          fetch('/api/push/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              userIds: staffUsers.map(u => u.id),
+              title: '📋 ตารางเวรประกาศแล้ว',
+              body: `ตารางเวรเดือน ${monthYear} ได้ประกาศแล้ว`,
+              url: '/calendar',
+              tag: `publish-${monthYear}`,
+            }),
+          }).catch(() => {});
+        }
+      } catch {}
+
       setTimeout(() => {
         onSuccess();
         onClose();

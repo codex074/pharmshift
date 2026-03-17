@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
@@ -72,6 +72,14 @@ export default function CalendarPage() {
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
+
+  // Auto-subscribe to push notifications when user is authenticated
+  useEffect(() => {
+    if (!currentUser?.id || authLoading) return;
+    import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported }) => {
+      if (isPushSupported()) subscribeToPush(currentUser.id);
+    });
+  }, [currentUser?.id, authLoading]);
 
   const userIsAdmin = isAdmin(currentUser);
   const userIsAdminLike = isAdminLike(currentUser);

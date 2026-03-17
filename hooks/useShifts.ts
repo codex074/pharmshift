@@ -243,14 +243,46 @@ export function useSwapRequests(userId?: string) {
       });
     }
 
+    // Send push notification to requester (swap accepted)
+    fetch('/api/push/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: req.requester_id,
+        title: '✅ คำขอแลกเวรได้รับการอนุมัติ',
+        body: `คำขอ${req.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณได้รับการตอบรับแล้ว`,
+        url: '/calendar',
+        tag: `swap-${req.id}`,
+      }),
+    }).catch(() => {}); // fire-and-forget
+
     await fetchSwaps();
   };
 
   const rejectSwap = async (swapId: string) => {
+    // Get the request details for notification before updating
+    const reqData = swapRequests.find(r => r.id === swapId);
+
     await supabase
       .from('swap_requests')
       .update({ status: 'rejected', requester_read: false })
       .eq('id', swapId);
+
+    // Send push notification to requester (swap rejected)
+    if (reqData) {
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: reqData.requester_id,
+          title: '❌ คำขอแลกเวรถูกปฏิเสธ',
+          body: `คำขอ${reqData.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณถูกปฏิเสธ`,
+          url: '/calendar',
+          tag: `swap-${swapId}`,
+        }),
+      }).catch(() => {});
+    }
+
     await fetchSwaps();
   };
 
