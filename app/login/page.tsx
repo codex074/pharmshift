@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { Loader2, Pill, Eye, EyeOff, User, Lock } from 'lucide-react';
+import { Eye, EyeOff, User, Lock } from 'lucide-react';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,7 +35,7 @@ export default function LoginPage() {
         return;
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ', { description: 'กำลังพาทุกท่านเข้าสู่ระบบ...' });
+      toast.success('เข้าสู่ระบบสำเร็จ');
 
       if (data.user) {
         if (data.user.must_change_password) {
@@ -52,6 +53,9 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50/50 relative overflow-hidden font-sans selection:bg-violet-200">
+
+      {loading && <LoadingOverlay />}
+
       {/* Dynamic Background */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[20%] -right-[10%] w-[500px] h-[500px] bg-violet-200/40 rounded-full blur-3xl mix-blend-multiply opacity-70 animate-pulse" />
@@ -128,14 +132,7 @@ export default function LoginPage() {
               className="w-full mt-8 relative group overflow-hidden rounded-2xl bg-violet-600 hover:bg-violet-700 transition-all duration-300 shadow-lg shadow-violet-500/30 hover:shadow-violet-500/50"
             >
               <div className="relative flex items-center justify-center gap-2 px-6 py-4 text-white font-semibold text-base transition-all duration-300 disabled:opacity-70 disabled:cursor-not-allowed">
-                {loading ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>กำลังเข้าสู่ระบบ...</span>
-                  </>
-                ) : (
-                  <span>เข้าสู่ระบบ</span>
-                )}
+                <span>เข้าสู่ระบบ</span>
               </div>
             </button>
           </form>

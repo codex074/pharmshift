@@ -20,6 +20,7 @@ import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
 import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
 import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
 import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
+import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 import { ExcelExportButton } from '@/components/ExcelExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
@@ -179,14 +180,7 @@ export default function CalendarPage() {
   });
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center gradient-header">
-        <div className="glass-card rounded-2xl p-8 flex flex-col items-center gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
-          <p className="text-gray-600 text-sm">กำลังโหลด...</p>
-        </div>
-      </div>
-    );
+    return <LoadingOverlay variant="screen" />;
   }
 
   return (
@@ -278,7 +272,7 @@ export default function CalendarPage() {
               >
                 <span>📂</span>
                 <span className="sm:hidden">CSV</span>
-                <span className="hidden sm:inline">เพิ่มเวร (CSV)</span>
+                <span className="hidden sm:inline">เพิ่มเวร</span>
               </button>
             )}
             {userIsAdmin && (
