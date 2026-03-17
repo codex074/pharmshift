@@ -29,7 +29,7 @@ export function MobileAdminMenu({
     : [
         { icon: '✏️', label: 'โหมดแก้ไข', action: onEditMode, color: 'bg-blue-100 text-blue-700' },
         { icon: '📢', label: 'ประกาศตารางเวร', action: onDeploy, color: 'bg-green-100 text-green-700' },
-        { icon: '📂', label: 'เพิ่มเวร (CSV)', action: onUpload, color: 'bg-violet-100 text-violet-700' },
+        { icon: '📂', label: 'เพิ่มเวร', action: onUpload, color: 'bg-violet-100 text-violet-700' },
         ...(!isSubAdmin ? [
           { icon: '🗓️', label: 'จัดการวันหยุด', action: onHolidays, color: 'bg-orange-100 text-orange-700' },
           { icon: '👥', label: 'จัดการผู้ใช้', action: onUserManagement, color: 'bg-teal-100 text-teal-700' },
