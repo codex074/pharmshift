@@ -22,7 +22,7 @@ import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
 import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
-import { ExcelExportButton } from '@/components/ExcelExportButton';
+import { AdminExportModal } from '@/components/calendar/AdminExportModal';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
@@ -52,6 +52,7 @@ export default function CalendarPage() {
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showPersonalShiftsModal, setShowPersonalShiftsModal] = useState(false);
   const [showCompensationModal, setShowCompensationModal] = useState(false);
+  const [showAdminExportModal, setShowAdminExportModal] = useState(false);
   const [personalShiftsFilter, setPersonalShiftsFilter] = useState<ShiftType | 'all'>('all');
   const [showHolidaysModal, setShowHolidaysModal] = useState(false);
   const [showUserManagement, setShowUserManagement] = useState(false);
@@ -215,6 +216,14 @@ export default function CalendarPage() {
         month={month}
         year={year}
       />
+      {/* Admin Export Modal */}
+      {showAdminExportModal && (
+        <AdminExportModal
+          onClose={() => setShowAdminExportModal(false)}
+          defaultMonth={month}
+          defaultYear={year}
+        />
+      )}
       {/* Compensation Modal */}
       <CompensationModal
         isOpen={showCompensationModal}
@@ -315,7 +324,14 @@ export default function CalendarPage() {
                </button>
             )}
             {userIsAdminLike && (
-              <ExcelExportButton year={year} month={month} />
+              <button
+                onClick={() => setShowAdminExportModal(true)}
+                className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 hover:text-indigo-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+              >
+                <span>📊</span>
+                <span className="sm:hidden">Export</span>
+                <span className="hidden sm:inline">Export Excel</span>
+              </button>
             )}
           </div>
 

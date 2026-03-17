@@ -91,7 +91,83 @@ interface UserRowData {
   totalAmount: number;
 }
 
-export async function exportCompensationExcel(shifts: Shift[], year: number, month: number) {
+interface ShiftLog {
+  shift_id: string;
+  old_user_id: string;
+  action: string;
+  created_at: string;
+}
+
+/** Returns shifts with user_id replaced by the original user (before any swaps) */
+function resolveOriginalShifts(shifts: Shift[], logs: ShiftLog[]): Shift[] {
+  // Build map: shift_id → earliest old_user_id
+  const logsByShift = new Map<string, ShiftLog[]>();
+  for (const log of logs) {
+    if (!log.shift_id) continue;
+    if (!logsByShift.has(log.shift_id)) logsByShift.set(log.shift_id, []);
+    logsByShift.get(log.shift_id)!.push(log);
+  }
+  return shifts.map((s) => {
+    const shiftLogs = logsByShift.get(s.id) || [];
+    if (shiftLogs.length === 0) return s;
+    const sorted = [...shiftLogs].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    // Return shift with original user data overriding current
+    const origUserId = sorted[0].old_user_id;
+    // We need user info for origUserId - it should be in the shift's joined data if unchanged,
+    // otherwise we keep the shift but mark the user_id as original
+    return { ...s, _originalUserId: origUserId } as any;
+  });
+}
+
+export async function exportEvidenceExcel(
+  shifts: Shift[],
+  logs: ShiftLog[],
+  users: Array<{ id: string; f_name: string; l_name: string; prefix: string; role: string; pha_id: string | number; salary_number: string; nickname: string }>,
+  year: number,
+  month: number
+) {
+  // Build usersMap for quick lookup
+  const usersMap = new Map(users.map((u) => [u.id, u]));
+
+  // Resolve original user for each shift
+  const logsByShift = new Map<string, ShiftLog[]>();
+  for (const log of logs) {
+    if (!log.shift_id) continue;
+    if (!logsByShift.has(log.shift_id)) logsByShift.set(log.shift_id, []);
+    logsByShift.get(log.shift_id)!.push(log);
+  }
+
+  const resolvedShifts: Shift[] = shifts.map((s) => {
+    const shiftLogs = logsByShift.get(s.id) || [];
+    if (shiftLogs.length === 0) return s;
+    const sorted = [...shiftLogs].sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const origUserId = sorted[0].old_user_id;
+    const origUser = usersMap.get(origUserId);
+    if (!origUser) return s;
+    return {
+      ...s,
+      user_id: origUserId,
+      user: {
+        id: origUserId,
+        f_name: origUser.f_name,
+        l_name: origUser.l_name,
+        prefix: origUser.prefix,
+        role: origUser.role,
+        pha_id: origUser.pha_id,
+        salary_number: origUser.salary_number,
+        nickname: origUser.nickname,
+      } as any,
+    };
+  });
+
+  await exportCompensationExcel(resolvedShifts, year, month, true);
+}
+
+export async function exportCompensationExcel(shifts: Shift[], year: number, month: number, isEvidence = false) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'NTogether';
   workbook.created = new Date();
@@ -101,11 +177,15 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
   const daysInMonth = getDaysInMonth(year, month);
 
+  const titlePrefix = isEvidence
+    ? 'หลักฐานการจัดเจ้าหน้าที่ขึ้นปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่กลุ่มงานเภสัชกรรมโรงพยาบาลอุตรดิตถ์'
+    : 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์';
+
   // Group configurations
   const sheetConfigs = [
     {
       name: 'รุ่งอรุณ',
-      title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์ (เวรรุ่งอรุณ)',
+      title: `${titlePrefix} (เวรรุ่งอรุณ)`,
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
       getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
@@ -115,7 +195,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     },
     {
       name: 'โครงการ',
-      title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์  (เวรโครงการพิเศษ)',
+      title: `${titlePrefix}  (เวรโครงการพิเศษ)`,
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
       getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
@@ -125,7 +205,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     },
     {
       name: 'เช้า-บ่าย-ดึก',
-      title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์  (เช้า บ่าย ดึก)',
+      title: `${titlePrefix}  (เช้า บ่าย ดึก)`,
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
       getRate: (role: string) => role === 'officer' ? 330 : role === 'pharmacy_technician' ? 520 : 780,
@@ -136,7 +216,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     },
     {
       name: 'SMC',
-      title: 'หลักฐานการจ่ายเงินค่าตอบแทนของข้าราชการที่ปฏิบัติงานนอกเวลาราชการ  กลุ่มงานเภสัชกรรม   โรงพยาบาลอุตรดิตถ์ (พิเศษ SMC)',
+      title: `${titlePrefix} (พิเศษ SMC)`,
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
       getRate: (role: string) => role === 'officer' ? 375 : role === 'pharmacy_technician' ? 600 : 900,
@@ -521,6 +601,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
   // Write and download
   const buffer = await workbook.xlsx.writeBuffer();
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  saveAs(blob, `หลักฐานค่าตอบแทน_${monthName}_${bweYear}.xlsx`);
+  const filename = isEvidence
+    ? `หลักฐานการจัดตารางเวร_${monthName}_${bweYear}.xlsx`
+    : `หลักฐานค่าตอบแทน_${monthName}_${bweYear}.xlsx`;
+  saveAs(blob, filename);
 }
 
