@@ -120,7 +120,7 @@ export default function CalendarPage() {
   function handleShiftClick(shift: Shift) {
     if (isEditMode) return; // Don't open swap modal in edit mode
     if (currentUser?.is_active === false) {
-      toast.info('บัญชีของคุณถูกระงับ — ไม่สามารถแลก/ซื้อเวรได้');
+      toastError('บัญชีของคุณถูกระงับ — ไม่สามารถแลก/ซื้อเวรได้');
       return;
     }
     setMobileDaySelected(null); // close day detail modal if open
