@@ -1,22 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
-export default function LoginPage() {
-  const router = useRouter();
+// แยก component ที่ใช้ useSearchParams ออกมาเพื่อ wrap ใน Suspense
+function SessionExpiredToast() {
   const searchParams = useSearchParams();
-
-  // แสดง toast เมื่อถูก redirect เพราะ session หมดอายุ
   useEffect(() => {
-    const reason = searchParams.get('reason');
-    if (reason === 'session_expired') {
+    if (searchParams.get('reason') === 'session_expired') {
       toast.warning('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
     }
   }, [searchParams]);
+  return null;
+}
+
+function LoginForm() {
+  const router = useRouter();
   const [phaId, setPhaId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -162,5 +164,14 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <SessionExpiredToast />
+      <LoginForm />
+    </Suspense>
   );
 }
