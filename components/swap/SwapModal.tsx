@@ -36,6 +36,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
       .select('*')
       .eq('role', ownerRole)
       .neq('id', shift.user_id)
+      .neq('is_active', false)
       .order('f_name')
       .then(({ data, error }) => {
         if (!error) setUsers(data as UserType[] || []);
