@@ -76,7 +76,7 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
 
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey).buffer as ArrayBuffer,
+        applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
       });
     }
 

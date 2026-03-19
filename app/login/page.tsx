@@ -1,13 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // แสดง toast เมื่อถูก redirect เพราะ session หมดอายุ
+  useEffect(() => {
+    const reason = searchParams.get('reason');
+    if (reason === 'session_expired') {
+      toast.warning('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่');
+    }
+  }, [searchParams]);
   const [phaId, setPhaId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,6 +47,13 @@ export default function LoginPage() {
       toast.success('เข้าสู่ระบบสำเร็จ');
 
       if (data.user) {
+        // ลงทะเบียน push notification หลัง login สำเร็จ
+        if (!data.user.must_change_password) {
+          import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported }) => {
+            if (isPushSupported()) subscribeToPush(data.user.id).catch(() => {});
+          });
+        }
+
         if (data.user.must_change_password) {
           router.push('/change-password');
         } else {
