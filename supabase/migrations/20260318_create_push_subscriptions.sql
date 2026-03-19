@@ -20,6 +20,7 @@ CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user
 ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
 
 -- Policy: service role can do everything (used by API routes)
+DROP POLICY IF EXISTS "Service role full access" ON public.push_subscriptions;
 CREATE POLICY "Service role full access" ON public.push_subscriptions
   FOR ALL
   USING (true)
