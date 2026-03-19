@@ -36,9 +36,9 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
       .select('*')
       .eq('role', ownerRole)
       .neq('id', shift.user_id)
-      .order('name')
-      .then(({ data }) => {
-        setUsers(data as UserType[] || []);
+      .order('f_name')
+      .then(({ data, error }) => {
+        if (!error) setUsers(data as UserType[] || []);
         setFetchingUsers(false);
       });
   }, [shift, currentUser]);
