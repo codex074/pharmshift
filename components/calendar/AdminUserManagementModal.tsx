@@ -37,6 +37,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
     salary_number: '',
     role: '' as UserRole,
     is_sub_admin: false,
+    is_active: true,
   });
 
   useEffect(() => {
@@ -67,6 +68,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       salary_number: user.salary_number || '',
       role: user.role,
       is_sub_admin: user.is_sub_admin ?? false,
+      is_active: user.is_active !== false, // default true
     });
     setView('edit');
   }
@@ -93,6 +95,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
           salary_number: formData.salary_number.trim(),
           role: formData.role,
           is_sub_admin: STAFF_ROLES.includes(formData.role as any) ? formData.is_sub_admin : false,
+          is_active: formData.is_active,
         }),
       });
 
@@ -293,6 +296,11 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                               Sub-Admin
                             </span>
                           )}
+                          {user.is_active === false && (
+                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+                              Inactive
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -440,6 +448,47 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                       </p>
                       <p className="text-xs text-gray-500">
                         เมื่อเปิด ผู้ใช้สามารถอัปโหลดเวร, แก้ไข, ประกาศตารางเวรสำหรับตำแหน่ง{ROLE_LABELS[formData.role as UserRole]}ได้
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Active/Inactive toggle — only for staff roles */}
+              {STAFF_ROLES.includes(formData.role as any) && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">สถานะผู้ใช้</label>
+                  <div className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                    formData.is_active
+                      ? 'bg-green-50 border-green-200'
+                      : 'bg-red-50 border-red-200'
+                  )}>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={formData.is_active}
+                      onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
+                      className={cn(
+                        'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                        formData.is_active ? 'bg-green-500' : 'bg-red-400'
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform',
+                          formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                        )}
+                      />
+                    </button>
+                    <div className="text-sm">
+                      <p className={cn('font-semibold', formData.is_active ? 'text-green-700' : 'text-red-600')}>
+                        {formData.is_active ? 'Active — ใช้งานปกติ' : 'Inactive — ระงับการใช้งาน'}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {formData.is_active
+                          ? 'ผู้ใช้สามารถถูกเพิ่มเวร, แลกเวร, ซื้อขายเวรได้ตามปกติ'
+                          : 'ผู้ใช้จะไม่สามารถถูกเพิ่มเวร, แลกเวร, ซื้อขายเวรได้ ดูตารางเวรอย่างเดียว'}
                       </p>
                     </div>
                   </div>

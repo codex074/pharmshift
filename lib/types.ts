@@ -22,6 +22,7 @@ export interface User {
   nickname?: string;
   role: UserRole;
   is_sub_admin?: boolean;      // sub-admin: can manage shifts for own role group
+  is_active?: boolean;         // false = inactive, viewer-only — cannot be assigned shifts or swap
   profile_image?: 'male' | 'female';
   password?: string;           // plain-text copy stored in DB
   must_change_password?: boolean;
