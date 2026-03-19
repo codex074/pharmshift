@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, History } from 'lucide-react';
 import { toast } from 'sonner';
@@ -56,7 +57,7 @@ export function Header({
           {/* Logo */}
           <div className="flex items-center gap-2 flex-shrink-0">
             <div className="w-8 h-8 rounded-xl shadow-md overflow-hidden flex items-center justify-center bg-white">
-              <img src="/icon.png" alt="Logo" className="w-full h-full object-cover" />
+              <Image src="/icon.png" alt="Logo" width={32} height={32} className="w-full h-full object-cover" priority />
             </div>
             <span className="font-bold text-gray-900 text-lg leading-none hidden xs:block sm:block">เวรดี๊ดี</span>
           </div>

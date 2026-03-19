@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { Eye, EyeOff, User, Lock } from 'lucide-react';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
@@ -86,7 +87,7 @@ function LoginForm() {
           {/* Header */}
           <div className="flex flex-col items-center text-center mb-8">
             <div className="w-36 h-36 rounded-[2rem] shadow-xl shadow-violet-500/30 flex items-center justify-center mb-4 transform transition-transform hover:scale-105 duration-300 overflow-hidden bg-white">
-              <img src="/icon.png" alt="Logo" className="w-full h-full object-cover" />
+              <Image src="/icon.png" alt="Logo" width={144} height={144} className="w-full h-full object-cover" priority />
             </div>
             <p className="text-gray-500 font-medium text-sm">
               ระบบจัดการตารางเวร
