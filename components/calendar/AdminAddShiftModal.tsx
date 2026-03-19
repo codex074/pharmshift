@@ -44,7 +44,7 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
         .from('users')
         .select('*')
         .eq('role', roleGroup)
-        .order('name');
+        .order('f_name');
 
       if (error) {
         toastError('ค้นหารายชื่อผู้ใช้งานล้มเหลว');

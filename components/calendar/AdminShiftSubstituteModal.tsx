@@ -28,7 +28,7 @@ export function AdminShiftSubstituteModal({ shift, onClose, onSelectSubstitute }
         .from('users')
         .select('*')
         .eq('role', currentRole)
-        .order('name');
+        .order('f_name');
         
       if (error) {
         toastError('ค้นหารายชื่อผู้ใช้งานล้มเหลว');
