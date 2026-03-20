@@ -54,7 +54,7 @@ function AccordionItem({ section, isOpen, onToggle }: { section: Section; isOpen
 }
 
 export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['basic']));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['pwa']));
 
   function toggleSection(id: string) {
     setOpenSections(prev => {
@@ -65,7 +65,42 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
     });
   }
 
+  // --- section definitions (declared separately, assembled in order below) ---
   const sections: Section[] = [
+    {
+      id: 'pwa',
+      icon: <Smartphone className="w-4 h-4" />,
+      title: 'เพิ่มเว็บแอปลงหน้าจอ (PWA)',
+      content: (
+        <>
+          <div className="space-y-2">
+            <p className="font-medium text-gray-800">📱 Android</p>
+            <ol className="list-decimal list-inside space-y-1 pl-1 text-xs">
+              <li>เปิดเว็บแอปใน <strong>Chrome</strong></li>
+              <li>แตะ <strong>⋮</strong> (จุด 3 จุด) มุมขวาบน</li>
+              <li>แตะ <strong>"เพิ่มลงในหน้าจอหลัก"</strong> หรือ <strong>"ติดตั้งแอป"</strong></li>
+              <li>กด <strong>"ติดตั้ง"</strong> หรือ <strong>"เพิ่ม"</strong></li>
+              <li>ไอคอน <strong>"เวรดี๊ดี"</strong> จะปรากฏที่หน้าจอหลัก</li>
+            </ol>
+          </div>
+          <div className="space-y-2">
+            <p className="font-medium text-gray-800">🍎 iPhone / iPad</p>
+            <ol className="list-decimal list-inside space-y-1 pl-1 text-xs">
+              <li>เปิดเว็บแอปใน <strong>Safari</strong> (ต้องใช้ Safari เท่านั้น)</li>
+              <li>แตะไอคอน <strong>แชร์</strong> (กล่องมีลูกศรขึ้น) ด้านล่าง</li>
+              <li>เลื่อนลงแล้วแตะ <strong>"เพิ่มในหน้าจอโฮม"</strong></li>
+              <li>กด <strong>"เพิ่ม"</strong></li>
+              <li>เปิดจากหน้าจอหลัก — จะได้แอปแบบเต็มจอไม่มี address bar</li>
+            </ol>
+          </div>
+          <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+            <p className="text-xs text-green-700">
+              💡 <strong>เคล็ดลับ:</strong> เมื่อเพิ่มลงหน้าจอแล้ว ระบบจะเก็บ login ไว้ ไม่ต้อง login ใหม่ทุกครั้ง และจะได้รับการแจ้งเตือนแม้ปิดแอปไปแล้ว
+            </p>
+          </div>
+        </>
+      ),
+    },
     {
       id: 'basic',
       icon: <CalendarDays className="w-4 h-4" />,
@@ -73,7 +108,7 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
       content: (
         <>
           <div className="space-y-2">
-            <p className="font-medium text-gray-800">📅 มุมมองปฏิทิน</p>
+            <p className="font-medium text-gray-800">�� มุมมองปฏิทิน</p>
             <ul className="list-disc list-inside space-y-1 pl-1">
               <li>หน้าหลักจะแสดงตารางเวรเป็นรายเดือน</li>
               <li>กดปุ่ม <strong>◀ ▶</strong> เพื่อเปลี่ยนเดือน</li>
@@ -184,40 +219,6 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
       ),
     },
     {
-      id: 'pwa',
-      icon: <Smartphone className="w-4 h-4" />,
-      title: 'เพิ่มเว็บแอปลงหน้าจอ (PWA)',
-      content: (
-        <>
-          <div className="space-y-2">
-            <p className="font-medium text-gray-800">📱 Android</p>
-            <ol className="list-decimal list-inside space-y-1 pl-1 text-xs">
-              <li>เปิดเว็บแอปใน <strong>Chrome</strong></li>
-              <li>แตะ <strong>⋮</strong> (จุด 3 จุด) มุมขวาบน</li>
-              <li>แตะ <strong>"เพิ่มลงในหน้าจอหลัก"</strong> หรือ <strong>"ติดตั้งแอป"</strong></li>
-              <li>กด <strong>"ติดตั้ง"</strong> หรือ <strong>"เพิ่ม"</strong></li>
-              <li>ไอคอน <strong>"เวรดี๊ดี"</strong> จะปรากฏที่หน้าจอหลัก</li>
-            </ol>
-          </div>
-          <div className="space-y-2">
-            <p className="font-medium text-gray-800">🍎 iPhone / iPad</p>
-            <ol className="list-decimal list-inside space-y-1 pl-1 text-xs">
-              <li>เปิดเว็บแอปใน <strong>Safari</strong> (ต้องใช้ Safari เท่านั้น)</li>
-              <li>แตะไอคอน <strong>แชร์</strong> (กล่องมีลูกศรขึ้น) ด้านล่าง</li>
-              <li>เลื่อนลงแล้วแตะ <strong>"เพิ่มในหน้าจอโฮม"</strong></li>
-              <li>กด <strong>"เพิ่ม"</strong></li>
-              <li>เปิดจากหน้าจอหลัก — จะได้แอปแบบเต็มจอไม่มี address bar</li>
-            </ol>
-          </div>
-          <div className="p-3 rounded-lg bg-green-50 border border-green-200">
-            <p className="text-xs text-green-700">
-              💡 <strong>เคล็ดลับ:</strong> เมื่อเพิ่มลงหน้าจอแล้ว ระบบจะเก็บ login ไว้ ไม่ต้อง login ใหม่ทุกครั้ง และจะได้รับการแจ้งเตือนแม้ปิดแอปไปแล้ว
-            </p>
-          </div>
-        </>
-      ),
-    },
-    {
       id: 'profile',
       icon: <UserCog className="w-4 h-4" />,
       title: 'แก้ไขข้อมูลส่วนตัว / เปลี่ยนรหัสผ่าน',
@@ -248,7 +249,6 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
       ),
     },
   ];
-
   // Admin sections
   if (isAdmin) {
     sections.push(
