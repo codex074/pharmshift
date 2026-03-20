@@ -65,8 +65,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
     setSubmitError(null);
     try {
       if (isOwnShift) {
-        // ===== SWAP MODE: คลิกชื่อตัวเอง → เลือกคนอื่นเพื่อแลก =====
-        if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ปลายทาง`);
+        // ===== SWAP MODE: คลิกชื่อตัวเอง → เลือกคนอื่นเพื่อขอให้มาอยู่แทน =====
+        if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ที่ต้องการให้มาอยู่แทน`);
 
         // Check collision: target user has any overlapping shift on same date
         const { data: targetShifts } = await supabase
@@ -99,16 +99,16 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: selectedUser.id,
-            title: '🔄 คำขอแลกเวรใหม่',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอแลกเวรกับคุณ`,
+            title: '📩 มีคำขอให้อยู่เวรแทน',
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอให้คุณมาอยู่เวรแทน กรุณาตรวจสอบตารางเวร`,
             url: '/calendar',
             tag: 'swap-new',
           }),
         }).catch(() => {});
 
-        toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
+        toast.success('ส่งคำขอให้อยู่แทนเรียบร้อยแล้ว');
       } else {
-        // ===== BUY MODE: คลิกชื่อคนอื่น → ขอซื้อเวร =====
+        // ===== TRANSFER MODE: คลิกชื่อคนอื่น → ขอมาอยู่เวรแทน =====
 
         // Check collision: I already have any overlapping shift on same date
         const { data: myShifts } = await supabase
@@ -141,14 +141,14 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: shift.user_id,
-            title: '📩 คำขอโอนเวรใหม่',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอซื้อเวรของคุณ`,
+            title: '📩 มีคำขออยู่เวรแทน',
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอมาอยู่เวรแทนคุณ กรุณาตรวจสอบตารางเวร`,
             url: '/calendar',
             tag: 'transfer-new',
           }),
         }).catch(() => {});
 
-        toast.success('ส่งคำขอซื้อเวรเรียบร้อยแล้ว');
+        toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
       }
 
       onClose();
@@ -188,7 +188,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
               )}
             </div>
             <h2 className="font-semibold text-gray-900">
-              {isOwnShift ? 'แลกเวร' : 'ขอซื้อเวร'}
+              {isOwnShift ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
             </h2>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
@@ -205,8 +205,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
               : "bg-amber-50 border-amber-200 text-amber-700"
           )}>
             {isOwnShift
-              ? '📌 คุณกำลังเสนอแลกเวรนี้กับคนอื่น'
-              : `🛒 คุณกำลังขอซื้อเวรจาก ${ownerLabel}`
+              ? '📌 คุณกำลังขอให้ผู้อื่นมาอยู่เวรแทน'
+              : `🙋 คุณกำลังขอมาอยู่เวรแทน ${ownerLabel}`
             }
           </div>
 
@@ -252,7 +252,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           {isOwnShift && (
             <div className="space-y-2">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                เลือก{roleName}ที่ต้องการแลกด้วย
+                เลือก{roleName}ที่ต้องการให้มาอยู่แทน
               </h3>
               {fetchingUsers ? (
                 <div className="flex items-center justify-center py-4">
@@ -306,7 +306,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           {!isOwnShift && (
             <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
               <p className="text-sm text-amber-700">
-                คำขอซื้อเวรจะถูกส่งไปยัง <strong>{shiftOwner?.prefix}{ownerLabel}</strong> เพื่อยืนยัน
+                คำขอจะถูกส่งไปยัง <strong>{shiftOwner?.prefix}{ownerLabel}</strong> เพื่อขออนุมัติอยู่เวรแทน
               </p>
             </div>
           )}
@@ -352,7 +352,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
             )}
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : isOwnShift ? <ArrowRightLeft className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-            {isOwnShift ? 'ส่งคำขอแลกเวร' : 'ส่งคำขอซื้อเวร'}
+            {isOwnShift ? 'ส่งคำขอให้อยู่แทน' : 'ส่งคำขออยู่เวรแทน'}
           </button>
         </div>
       </div>

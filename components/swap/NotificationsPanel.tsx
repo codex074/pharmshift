@@ -47,7 +47,7 @@ export function NotificationsPanel({
   async function handleReject(req: SwapRequest) {
     try {
       await onReject(req.id);
-      toast.info('ปฏิเสธคำขอแลกเวรแล้ว');
+      toast.info('ปฏิเสธคำขอแล้ว');
     } catch {
       toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
     }
@@ -116,7 +116,7 @@ export function NotificationsPanel({
                           {targetUser?.nickname || targetUser?.f_name}
                         </p>
                         <span className="ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
-                          {req.request_type === 'swap' ? 'แลกเวร' : 'ขาย/ยกเวร'}
+                          {req.request_type === 'swap' ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
                         </span>
                       </div>
 
