@@ -244,13 +244,14 @@ export function useSwapRequests(userId?: string) {
     }
 
     // Send push notification to requester (swap accepted)
+    const acceptorName = (req.target_user as any)?.f_name || (req.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
     fetch('/api/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: req.requester_id,
         title: '✅ คำขอแลกเวรได้รับการอนุมัติ',
-        body: `คำขอ${req.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณได้รับการตอบรับแล้ว`,
+        body: `${acceptorName} ยอมรับคำขอ${req.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณแล้ว`,
         url: '/calendar',
         tag: `swap-${req.id}`,
       }),
@@ -270,13 +271,14 @@ export function useSwapRequests(userId?: string) {
 
     // Send push notification to requester (swap rejected)
     if (reqData) {
+      const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: reqData.requester_id,
           title: '❌ คำขอแลกเวรถูกปฏิเสธ',
-          body: `คำขอ${reqData.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณถูกปฏิเสธ`,
+          body: `${rejectorName} ปฏิเสธคำขอ${reqData.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณ`,
           url: '/calendar',
           tag: `swap-${swapId}`,
         }),
