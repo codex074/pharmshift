@@ -245,13 +245,16 @@ export function useSwapRequests(userId?: string) {
 
     // Send push notification to requester (swap accepted)
     const acceptorName = (req.target_user as any)?.f_name || (req.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
+    const acceptBody = req.request_type === 'swap'
+      ? `${acceptorName} ยอมรับมาอยู่เวรแทนคุณแล้ว กรุณาตรวจสอบตารางเวร`
+      : `${acceptorName} อนุมัติให้คุณอยู่เวรแทนแล้ว กรุณาตรวจสอบตารางเวร`;
     fetch('/api/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: req.requester_id,
-        title: '✅ คำขอแลกเวรได้รับการอนุมัติ',
-        body: `${acceptorName} ยอมรับคำขอ${req.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณแล้ว`,
+        title: '✅ คำขอของคุณได้รับการอนุมัติ',
+        body: acceptBody,
         url: '/calendar',
         tag: `swap-${req.id}`,
       }),
@@ -272,13 +275,16 @@ export function useSwapRequests(userId?: string) {
     // Send push notification to requester (swap rejected)
     if (reqData) {
       const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
+      const rejectBody = reqData.request_type === 'swap'
+        ? `${rejectorName} ไม่สามารถมาอยู่เวรแทนคุณได้`
+        : `${rejectorName} ปฏิเสธคำขออยู่เวรแทนของคุณ`;
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: reqData.requester_id,
-          title: '❌ คำขอแลกเวรถูกปฏิเสธ',
-          body: `${rejectorName} ปฏิเสธคำขอ${reqData.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}ของคุณ`,
+          title: '❌ คำขอของคุณถูกปฏิเสธ',
+          body: rejectBody,
           url: '/calendar',
           tag: `swap-${swapId}`,
         }),
