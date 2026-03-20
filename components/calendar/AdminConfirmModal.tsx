@@ -96,7 +96,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         if (delError) throw delError;
 
         // Notify deleted shift owners
-        const deletedOwnerIds = [...new Set(deletes.map(s => s.user_id).filter(Boolean))] as string[];
+        const deletedOwnerIds = Array.from(new Set(deletes.map(s => s.user_id).filter(Boolean))) as string[];
         pushAdminChange(
           deletedOwnerIds,
           '🗑️ เวรของคุณถูกลบ',
@@ -123,8 +123,8 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         await Promise.all(promises);
 
         // Notify old owners (shift removed) and new owners (shift assigned)
-        const oldOwnerIds = [...new Set(edits.map(e => e.shift.user_id).filter(Boolean))] as string[];
-        const newOwnerIds = [...new Set(edits.map(e => e.newUser.id).filter(Boolean))] as string[];
+        const oldOwnerIds = Array.from(new Set(edits.map(e => e.shift.user_id).filter(Boolean))) as string[];
+        const newOwnerIds = Array.from(new Set(edits.map(e => e.newUser.id).filter(Boolean))) as string[];
         pushAdminChange(
           oldOwnerIds,
           '🔄 เวรของคุณถูกเปลี่ยนแปลง',
@@ -160,7 +160,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         try { await supabase.from('shift_logs').insert(addLogs); } catch { /* ignore */ }
 
         // Notify newly assigned users
-        const addOwnerIds = [...new Set(pendingAdds.map(a => a.user.id).filter(Boolean))] as string[];
+        const addOwnerIds = Array.from(new Set(pendingAdds.map(a => a.user.id).filter(Boolean))) as string[];
         pushAdminChange(
           addOwnerIds,
           '📋 คุณได้รับมอบหมายเวรใหม่',
