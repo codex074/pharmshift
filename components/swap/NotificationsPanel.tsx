@@ -111,9 +111,14 @@ export function NotificationsPanel({
                       <div className="flex items-center gap-1.5 w-full">
                         <ArrowRightLeft className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         <p className="text-xs font-medium text-gray-800 truncate">
-                          {requester?.nickname || requester?.f_name}
+                          {/* swap: requester ยกเวรให้ targetUser / transfer: targetUser เป็นเจ้าของ requester ขอรับ */}
+                          {req.request_type === 'swap'
+                            ? requester?.nickname || requester?.f_name
+                            : targetUser?.nickname || targetUser?.f_name}
                           <span className="text-gray-400 font-normal"> → </span>
-                          {targetUser?.nickname || targetUser?.f_name}
+                          {req.request_type === 'swap'
+                            ? targetUser?.nickname || targetUser?.f_name
+                            : requester?.nickname || requester?.f_name}
                         </p>
                         <span className="ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
                           {req.request_type === 'swap' ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
