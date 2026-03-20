@@ -340,7 +340,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
         {/* Date header */}
-        <div className={cn('flex items-center justify-center font-bold text-sm h-7', dateBg, dateColor, bb)}>
+        <div className={cn('flex items-center justify-center font-bold text-[21px] h-10', dateBg, dateColor, bb)}>
           {dayNum}
         </div>
 
@@ -528,7 +528,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
       {/* Date header */}
-      <div className={cn('flex items-center justify-center font-bold text-sm h-7 bg-gray-200/60 text-gray-900', bb)}>
+      <div className={cn('flex items-center justify-center font-bold text-[21px] h-10 bg-gray-200/60 text-gray-900', bb)}>
         {dayNum}
       </div>
 

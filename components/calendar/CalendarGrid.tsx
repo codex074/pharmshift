@@ -383,7 +383,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
       <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
       <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), dateBg, 'text-sm font-extrabold')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), dateBg, 'text-[21px] font-extrabold')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 — morning / afternoon cells */}
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
@@ -431,7 +431,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 3 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-sm font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-[21px] font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
@@ -469,7 +469,7 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       {/* ROW 1 */}
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-sm font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-[21px] font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
