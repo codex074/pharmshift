@@ -3,13 +3,14 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, History } from 'lucide-react';
+import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, History, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
-import { userFullName } from '@/lib/types';
+import { userFullName, isAdminLike } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { UserProfileModal } from '@/components/UserProfileModal';
+import { HelpGuideModal } from '@/components/HelpGuideModal';
 
 interface HeaderProps {
   currentUser: UserType | null;
@@ -29,6 +30,7 @@ export function Header({
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -113,6 +115,15 @@ export function Header({
 
           {/* Right section – always visible */}
           <div className="flex items-center gap-1.5 ml-auto md:ml-0">
+            {/* Help button */}
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              title="วิธีการใช้งาน"
+              className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-all flex items-center justify-center"
+            >
+              <HelpCircle className="w-5 h-5" />
+            </button>
+
             {/* History button */}
             <button
               onClick={onHistoryClick}
@@ -201,6 +212,13 @@ export function Header({
           onSuccess={() => {
             router.refresh();
           }}
+        />
+      )}
+
+      {isHelpOpen && (
+        <HelpGuideModal
+          onClose={() => setIsHelpOpen(false)}
+          isAdmin={currentUser ? isAdminLike(currentUser) : false}
         />
       )}
     </>
