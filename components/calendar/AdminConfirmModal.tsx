@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
-import { Loader2, X, AlertTriangle } from 'lucide-react';
+import { Loader2, X, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import type { Shift, ShiftType, User } from '@/lib/types';
 import { userFullName } from '@/lib/types';
 import { shiftsOverlap } from '@/lib/utils';
@@ -31,6 +31,7 @@ interface AdminConfirmModalProps {
 
 export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, allShifts, currentUser, onClose, onSuccess }: AdminConfirmModalProps) {
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const deletes = Array.from(pendingDeletes).map(id => allShifts.find(s => s.id === id)).filter(Boolean) as Shift[];
@@ -279,15 +280,24 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">รหัสผ่านของคุณ</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleConfirm()}
-                className="w-full mt-1 border border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="ป้อนรหัสผ่าน"
-                autoFocus
-              />
+              <div className="relative mt-1">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+                  className="w-full border border-gray-300 rounded-lg text-sm px-3 py-2 pr-10 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                  placeholder="ป้อนรหัสผ่าน"
+                  autoFocus
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </div>
           </div>
         </div>
