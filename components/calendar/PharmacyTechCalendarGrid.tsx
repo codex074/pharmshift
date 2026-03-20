@@ -6,10 +6,43 @@ import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0 [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
+const BORDER = 'border-gray-300';
+const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+
+// ── Shift-time colour palettes (shared with CalendarGrid) ───────────
+const SHIFT_HDR = {
+  rung:    'bg-rose-200   text-rose-800   border-rose-300',
+  chao:    'bg-emerald-200 text-emerald-900 border-emerald-300',
+  bai:     'bg-orange-200 text-orange-900 border-orange-300',
+  duek:    'bg-indigo-200 text-indigo-800 border-indigo-300',
+  neutral: 'bg-slate-100  text-slate-700  border-slate-200',
+} as const;
+
+const CELL_BG = {
+  rung:  'bg-rose-50/70     hover:bg-rose-100/80',
+  chao:  'bg-emerald-50/70  hover:bg-emerald-100/80',
+  bai:   'bg-orange-50/70   hover:bg-orange-100/80',
+  duek:  'bg-indigo-50/70   hover:bg-indigo-100/80',
+  plain: 'bg-white          hover:bg-slate-50',
+} as const;
+
+// Per-weekday vivid colours (Sun=0 … Sat=6)
+const DOW_HDR: Record<number, string> = {
+  0: 'bg-red-600     text-white',
+  1: 'bg-yellow-400  text-gray-900',
+  2: 'bg-pink-600    text-white',
+  3: 'bg-green-600   text-white',
+  4: 'bg-orange-500  text-white',
+  5: 'bg-blue-600    text-white',
+  6: 'bg-purple-600  text-white',
+};
+
+function hdrPt(palette: keyof typeof SHIFT_HDR, extra = '') {
+  return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
+}
+
+const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0 [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
 
 interface CalendarGridProps {
   year: number;
@@ -73,15 +106,15 @@ export function PharmacyTechCalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd, roleFilter: 'pharmacy_technician' };
 
   return (
-    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
+    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-md bg-white">
       <div className="min-w-[1240px] select-none">
-        
+
         {/* Header Row */}
-        <div className="grid grid-cols-7 border-b-2 border-gray-400/60">
+        <div className="grid grid-cols-7 border-b-2 border-slate-400">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-1.5 text-center text-xs font-bold border-r-2 border-gray-400/60',
-              i === 0 ? 'text-red-600' : i === 6 ? 'text-indigo-600' : 'text-gray-800'
+              'py-2 text-center text-sm font-bold border-r-2 border-slate-400',
+              DOW_HDR[i]
             )}>
               {day}
             </div>
@@ -90,16 +123,21 @@ export function PharmacyTechCalendarGrid({
 
         {/* Days */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b-2 border-gray-400/60 h-auto">
+          <div key={wi} className="grid grid-cols-7 border-b-2 border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className="border-r-2 border-gray-400/60 bg-gray-100/50" />;
+                return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
               }
               const dow = day.date.getDay();
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
+                <div key={di} className={cn(
+                  'border-r-2 border-slate-400 relative transition-opacity',
+                  day.isToday
+                    ? 'bg-amber-50/60 z-10'
+                    : 'opacity-50 hover:opacity-80'
+                )}>
+                  {day.isToday && <div className="absolute inset-0 border-[3px] border-red-500 z-50 pointer-events-none shadow-[inset_0_0_8px_rgba(239,68,68,.25)] [.exporting-pdf_&]:hidden" />}
                   <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
                 </div>
               );
@@ -267,12 +305,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
   // Render internal borders manually in the flex layout
   if (isWeekendOrHoliday) {
+    const isSunOrHoliday = dow === 0 || day.isHoliday;
     return (
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
         {/* Row 1: Date Header */}
-        <div className="flex border-b-2 border-gray-400/60 h-6">
-          <div className="w-[50%] border-r border-gray-400/60 bg-gray-200/60"></div>
-          <div className={cn("w-[50%] flex items-center justify-center font-bold text-sm bg-gray-200/60", (dow === 0 || day.isHoliday) ? 'text-red-500' : 'text-indigo-600')}>{dayNum}</div>
+        <div className={cn("flex border-b-2 border-gray-400/60 h-6 font-bold text-sm items-center justify-center",
+          isSunOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700')}>
+          {dayNum}
         </div>
 
         {/* Column Headers + Body Wrapper */}
@@ -283,52 +322,52 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             <div className="w-[50%] flex flex-col border-r border-gray-400/60">
               {/* Surg (2 slots, h-60%) */}
               <div className="h-[60%] flex flex-col border-b border-gray-400/60">
-                <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">Surg</div>
+                <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>Surg</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} dateStr={dateStr} />
+                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
                 </div>
               </div>
               {/* ER (1 slot, h-40%) */}
               <div className="h-[40%] flex flex-col">
-                <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ER</div>
+                <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>ER</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+                  <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" dateStr={dateStr} />
                 </div>
               </div>
             </div>
             {/* MED Column (3 slots, w-50%) */}
             <div className="w-[50%] flex flex-col">
-              <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">MED</div>
+              <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>MED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} dateStr={dateStr} />
+                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
               </div>
             </div>
           </div>
 
           {/* RIGHT SECTION (w-50%) */}
           <div className="w-[50%] flex flex-col">
-            {/* Top part: บ่าย (h-60% so ดึก corresponds to the last 40% slot) */}
+            {/* Top part: บ่าย (h-60%) */}
             <div className="h-[60%] flex flex-row border-b border-gray-400/60">
-              {/* บ่ายMED (2 slots => relative to its h-60%, so each is 50%) */}
+              {/* บ่ายMED (2 slots) */}
               <div className="w-[50%] flex flex-col border-r border-gray-400/60">
-                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
+                <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายMED</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} dateStr={dateStr} />
+                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
                 </div>
               </div>
-              {/* บ่ายER (1 slot => relative to its h-60%, meaning it's 100% of this tall container) */}
+              {/* บ่ายER (1 slot) */}
               <div className="w-[50%] flex flex-col">
-                <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
+                <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายER</div>
                 <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
                 </div>
               </div>
             </div>
-            {/* Bottom part: ดึก (h-40% so it perfectly aligns with the bottom of MED) */}
+            {/* Bottom part: ดึก (h-40%) */}
             <div className="h-[40%] flex flex-col">
-              <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
-              <div className="flex-1 bg-white">
-                <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+              <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.duek)}>ดึก</div>
+              <div className="flex-1">
+                <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.duek} hoverColor="" dateStr={dateStr} />
               </div>
             </div>
           </div>
@@ -345,9 +384,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   return (
     <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
       {/* Row 1: Date Header */}
-      <div className="flex border-b-2 border-gray-400/60 h-6">
-        <div className="w-[33.333%] border-r border-gray-400/60 bg-gray-200/60"></div>
-        <div className="w-[66.666%] flex items-center justify-center font-bold text-sm bg-gray-200/60 text-gray-900">{dayNum}</div>
+      <div className="flex border-b-2 border-gray-400/60 h-6 bg-slate-100 items-center justify-center font-bold text-sm text-slate-700">
+        {dayNum}
       </div>
 
       {/* Column Headers + Body Wrapper min height to establish proportion */}
@@ -356,16 +394,16 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <div className="w-[33.333%] flex flex-col border-r border-gray-400/60">
           {/* รุ่งอรุณ (h-60%) */}
           <div className="h-[60%] flex flex-col border-b border-gray-400/60">
-            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">รุ่งอรุณ</div>
+            <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.rung)}>รุ่งอรุณ</div>
             <div className="flex-1">
-              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" deptName="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" deptName="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor={CELL_BG.rung} hoverColor="" dateStr={dateStr} />
             </div>
           </div>
           {/* smc - 2 slots (h-40%) */}
           <div className="h-[40%] flex flex-col">
-            <div className="h-6 border-b border-gray-400/60 bg-gray-200/60 text-gray-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">smc</div>
+            <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>smc</div>
             <div className="flex-1">
-               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
             </div>
           </div>
         </div>
@@ -376,24 +414,24 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="h-[60%] flex flex-row border-b border-gray-400/60">
             {/* บ่ายMED */}
             <div className="w-[50%] flex flex-col border-r border-gray-400/60">
-              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายMED</div>
+              <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายMED</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" hideInnerBorders={true} dateStr={dateStr} />
+                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
               </div>
             </div>
             {/* บ่ายER */}
             <div className="w-[50%] flex flex-col">
-              <div className="h-6 border-b border-gray-400/60 bg-[#fffbeb] text-amber-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">บ่ายER</div>
+              <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายER</div>
               <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
               </div>
             </div>
           </div>
           {/* Bottom part: ดึก (h-40%) */}
           <div className="h-[40%] flex flex-col">
-            <div className="h-6 border-b border-gray-400/60 bg-[#e0e7ff] text-indigo-800 font-bold text-[11px] xl:text-xs flex items-center justify-center">ดึก</div>
-            <div className="flex-1 bg-white">
-              <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor="bg-white" hoverColor="bg-violet-50/40" dateStr={dateStr} />
+            <div className={cn("h-6 border-b border-gray-400/60 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.duek)}>ดึก</div>
+            <div className="flex-1">
+              <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.duek} hoverColor="" dateStr={dateStr} />
             </div>
           </div>
         </div>

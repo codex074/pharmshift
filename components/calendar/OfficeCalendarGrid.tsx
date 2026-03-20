@@ -6,10 +6,29 @@ import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 min-h-[1.65rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
+const BORDER = 'border-gray-300';
+const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+
+// ── Shift-time colour palettes ───────────────────────────────────────
+const SHIFT_HDR = {
+  rung:    'bg-rose-200   text-rose-800   border-rose-300',
+  chao:    'bg-emerald-200 text-emerald-900 border-emerald-300',
+  bai:     'bg-orange-200 text-orange-900 border-orange-300',
+  duek:    'bg-indigo-200 text-indigo-800 border-indigo-300',
+  neutral: 'bg-slate-100  text-slate-700  border-slate-200',
+} as const;
+
+// Per-weekday vivid colours (Sun=0 … Sat=6)
+const DOW_HDR: Record<number, string> = {
+  0: 'bg-red-600     text-white',
+  1: 'bg-yellow-400  text-gray-900',
+  2: 'bg-pink-600    text-white',
+  3: 'bg-green-600   text-white',
+  4: 'bg-orange-500  text-white',
+  5: 'bg-blue-600    text-white',
+  6: 'bg-purple-600  text-white',
+};
 
 interface CalendarGridProps {
   year: number;
@@ -73,15 +92,15 @@ export function OfficeCalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
-    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
+    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-md bg-white">
       <div className="min-w-[1000px] select-none">
-        
+
         {/* Header Row */}
-        <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-gray-400/60">
+        <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-slate-400">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-1.5 text-center text-xs font-bold border-r-2 border-gray-400/60',
-              i === 0 ? 'text-red-600' : i === 6 ? 'text-indigo-600' : 'text-gray-800'
+              'py-2 text-center text-sm font-bold border-r-2 border-slate-400',
+              DOW_HDR[i]
             )}>
               {day}
             </div>
@@ -90,16 +109,21 @@ export function OfficeCalendarGrid({
 
         {/* Days */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-gray-400/60 h-auto">
+          <div key={wi} className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className="border-r-2 border-gray-400/60 bg-gray-100/50" />;
+                return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
               }
               const dow = day.date.getDay();
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
+                <div key={di} className={cn(
+                  'border-r-2 border-slate-400 relative transition-opacity',
+                  day.isToday
+                    ? 'bg-amber-50/60 z-10'
+                    : 'opacity-50 hover:opacity-80'
+                )}>
+                  {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none shadow-[inset_0_0_8px_rgba(239,68,68,.25)] [.exporting-pdf_&]:hidden" />}
                   <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
                 </div>
               );
@@ -199,12 +223,12 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   const bb = 'border-b border-gray-400/60';
   const rowH = 'min-h-[1.65rem]';
 
-  const subHdr = (extra?: string) => cn(
-    'flex items-center justify-center font-bold text-[10px] xl:text-[11px] tracking-tight truncate',
+  const subHdr = (shiftPalette: keyof typeof SHIFT_HDR, extra?: string) => cn(
+    `${SHIFT_HDR[shiftPalette]} flex items-center justify-center font-bold text-[10px] xl:text-[11px] tracking-tight truncate`,
     rowH, bb, extra
   );
   const nameCell = (extra?: string) => cn(
-    'bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5',
+    'bg-white hover:bg-slate-50 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5',
     rowH, bb, extra
   );
   const empty = (extra?: string) => cn('bg-white', rowH, bb, extra);
@@ -265,8 +289,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   if (isWeekendOrHoliday) {
     const isSunOrHoliday = dow === 0 || day.isHoliday;
     const isSat = dow === 6 && !day.isHoliday; // If holiday falls on Saturday, treat it like Sunday for layout
-    const dateColor = isSunOrHoliday ? 'text-red-500' : 'text-indigo-600';
-    const dateBg    = isSunOrHoliday ? 'bg-red-200'  : 'bg-[#e9d5ff]';
+    const dateColor = isSunOrHoliday ? 'text-red-600'   : 'text-indigo-700';
+    const dateBg    = isSunOrHoliday ? 'bg-red-100'     : 'bg-indigo-100';
 
     // Post-ER rows: always 1 for both Sat and Sun (removes extra MED[3] row)
     const postErRows = 1;
@@ -322,12 +346,12 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
         {/* Column sub-headers */}
         <div className="flex">
-          <div className={cn(c1, br, subHdr('bg-gray-200/60 text-gray-600'))}>โครงการ</div>
-          <div className={cn(c2, br, subHdr('bg-gray-200/60 text-gray-800'))}>Surg</div>
-          <div className={cn(c3, br, subHdr('bg-gray-200/60 text-gray-800'))}>MED</div>
-          <div className={cn(c4, br, subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายMED</div>
-          <div className={cn(c5, isSat ? br : '', subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายER</div>
-          {isSat && <div className={cn('flex-1', subHdr('bg-gray-200/60 text-gray-700'))}>ส่งยา สอ.</div>}
+          <div className={cn(c1, br, subHdr('chao', 'text-amber-800'))}>โครงการ</div>
+          <div className={cn(c2, br, subHdr('chao'))}>Surg</div>
+          <div className={cn(c3, br, subHdr('chao'))}>MED</div>
+          <div className={cn(c4, br, subHdr('bai'))}>บ่ายMED</div>
+          <div className={cn(c5, isSat ? br : '', subHdr('bai'))}>บ่ายER</div>
+          {isSat && <div className={cn('flex-1', subHdr('neutral'))}>ส่งยา สอ.</div>}
         </div>
 
         {/* === Rows Container === */}
@@ -365,12 +389,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
           {/* ER separator row (gray) */}
           <div className="flex">
-            <div className={cn(c1, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', fixedRowH)}>ER</div>
-            {/* SURG area empty string to retain border */}
+            <div className={cn(c1, bb, `${SHIFT_HDR.chao} flex items-center justify-center font-bold text-[11px]`, fixedRowH)}>ER</div>
             {fempty(c2)}
             {fempty(c3)}
-            {/* ดึก label: spans c4+c5 เท่านั้น */}
-            <div className={cn(dukW, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', fixedRowH)}>ดึก</div>
+            {/* ดึก label: spans c4+c5 */}
+            <div className={cn(dukW, bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, fixedRowH)}>ดึก</div>
             {isSat && fempty('flex-1')}
           </div>
 
@@ -511,9 +534,9 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
       {/* Column sub-headers: โครงการ | บ่ายMED | บ่าย ER */}
       <div className="flex">
-        <div className={cn(col1w, br, subHdr('bg-gray-200/60 text-gray-600'))}>โครงการ</div>
-        <div className={cn(col1w, br, subHdr('bg-[#fffbeb] text-amber-700'))}>บ่ายMED</div>
-        <div className={cn('flex-1',  subHdr('bg-[#fffbeb] text-amber-700'))}>บ่าย ER</div>
+        <div className={cn(col1w, br, subHdr('bai', 'text-orange-700'))}>โครงการ</div>
+        <div className={cn(col1w, br, subHdr('bai'))}>บ่ายMED</div>
+        <div className={cn('flex-1',  subHdr('bai'))}>บ่าย ER</div>
       </div>
 
       {/* Row 0: โครงการ[0] | บ่ายMED[0] | บ่ายER[0] */}
@@ -535,8 +558,8 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <>
           {/* Separator row: "รุ่งอรุณ" | "ดึก" */}
           <div className="flex">
-            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', rowH)}>รุ่งอรุณ</div>
-            <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-bold text-[11px]`, rowH)}>รุ่งอรุณ</div>
+            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, rowH)}>ดึก</div>
           </div>
           
           <div className="grid grid-cols-[1fr_2fr] flex-1">
@@ -553,9 +576,9 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <>
           {/* Separator row: "รุ่งอรุณ" | "SMC" | "ดึก" */}
           <div className="flex">
-            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-gray-700', rowH)}>รุ่งอรุณ</div>
-            <div className={cn(col1w, br, bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-red-500', rowH)}>SMC</div>
-            <div className={cn('flex-1', bb, 'bg-gray-200/60 flex items-center justify-center font-bold text-[11px] text-indigo-700', rowH)}>ดึก</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-bold text-[11px]`, rowH)}>รุ่งอรุณ</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.bai} flex items-center justify-center font-bold text-[11px]`, rowH)}>SMC</div>
+            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, rowH)}>ดึก</div>
           </div>
 
           <div className="grid grid-cols-3 flex-1">

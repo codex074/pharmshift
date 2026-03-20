@@ -390,12 +390,12 @@ export default function CalendarPage() {
         {/* Stats cards */}
         <div className="grid grid-cols-5 gap-1 sm:gap-2 pdf-hide">
           {[
-            { id: 'all',      emoji: '',  label: 'ทั้งหมด',  value: totalCount, color: 'bg-gray-50   text-gray-700   border-gray-100'   },
-            { id: 'เช้า',     emoji: '',  label: 'เช้า',     value: chaoCount,  color: 'bg-amber-50  text-amber-700  border-amber-100'  },
-            { id: 'บ่าย',     emoji: '',  label: 'บ่าย',     value: baiCount,   color: 'bg-cyan-50   text-cyan-700   border-cyan-100'   },
-            { id: 'ดึก',      emoji: '',  label: 'ดึก',      value: duekCount,  color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
-            { id: 'รุ่งอรุณ', emoji: '',  label: 'รุ่งอรุณ', value: rungCount,  color: 'bg-orange-50 text-orange-700 border-orange-100' },
-          ].map(({ id, emoji, label, value, color }) => (
+            { id: 'all',      label: 'ทั้งหมด',  value: totalCount, bg: 'bg-slate-100 hover:bg-slate-200',    text: 'text-slate-800',    num: 'text-slate-900'  },
+            { id: 'เช้า',     label: 'เช้า',     value: chaoCount,  bg: 'bg-amber-100  hover:bg-amber-200',    text: 'text-amber-700',    num: 'text-amber-900'  },
+            { id: 'บ่าย',     label: 'บ่าย',     value: baiCount,   bg: 'bg-orange-100 hover:bg-orange-200',   text: 'text-orange-700',   num: 'text-orange-900' },
+            { id: 'ดึก',      label: 'ดึก',      value: duekCount,  bg: 'bg-indigo-100 hover:bg-indigo-200',   text: 'text-indigo-700',   num: 'text-indigo-900' },
+            { id: 'รุ่งอรุณ', label: 'รุ่งอรุณ', value: rungCount,  bg: 'bg-rose-100   hover:bg-rose-200',     text: 'text-rose-700',     num: 'text-rose-900'   },
+          ].map(({ id, label, value, bg, text, num }) => (
             <div
               key={id}
               onClick={() => {
@@ -404,12 +404,11 @@ export default function CalendarPage() {
                   setShowPersonalShiftsModal(true);
                 }
               }}
-              className={cn(`rounded-xl border p-1.5 sm:p-3 transition-transform ${color}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
+              className={cn(`rounded-xl border-0 p-1.5 sm:p-3 transition-all duration-200 ${bg}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
             >
-              {/* Mobile: stacked vertically; sm+: side by side */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                <p className="text-base sm:text-xl font-bold leading-none">{value}</p>
-                <p className="text-[9px] sm:text-sm font-semibold opacity-80 leading-tight mt-0.5 sm:mt-0 truncate">
+                <p className={cn("text-base sm:text-xl font-extrabold leading-none", num)}>{value}</p>
+                <p className={cn("text-[9px] sm:text-sm font-semibold opacity-90 leading-tight mt-0.5 sm:mt-0 truncate", text)}>
                   <span className="sm:hidden">{label.slice(0, 2)}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </p>
@@ -431,38 +430,46 @@ export default function CalendarPage() {
 
           {/* Legend */}
           {effectiveRoleGroup === 'pharmacist' && (
-            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
-              <div className="text-green-700">
-                Med รายชื่อ1 = D/C , รายชื่อ 2 = ยา Cont
+            <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm max-w-2xl text-xs sm:text-sm font-medium">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+                <span className="text-amber-900">Med รายชื่อ 1 = D/C, รายชื่อ 2 = ยา Cont</span>
               </div>
-              <div className="text-orange-900">
-                บ่าย ชื่อ1 = บ่าย ER ,รายชื่อ 2 =บ่าย MED
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                <span className="text-orange-900">บ่าย ชื่อ 1 = บ่าย ER, ชื่อ 2 = บ่าย MED</span>
               </div>
-              <div className="text-red-600">
-                รุ่งอรุณ ชื่อ 1 = OPD ชื่อ 2 = ER ชื่อ 3 = HIV
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
+                <span className="text-rose-800">รุ่งอรุณ ชื่อ 1 = OPD, ชื่อ 2 = ER, ชื่อ 3 = HIV</span>
               </div>
             </div>
           )}
           {effectiveRoleGroup === 'pharmacy_technician' && (
-            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
-              <div className="text-red-600">
-                รุ่งอรุณ ชื่อ 1 = รุ่ง OPD, ชื่อ 2 = รุ่ง ER, ชื่อ 3 = รุ่ง HIV
+            <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm max-w-2xl text-xs sm:text-sm font-medium">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
+                <span className="text-rose-800">รุ่งอรุณ ชื่อ 1 = รุ่ง OPD, ชื่อ 2 = รุ่ง ER, ชื่อ 3 = รุ่ง HIV</span>
               </div>
             </div>
           )}
           {effectiveRoleGroup === 'officer' && (
-            <div className="flex flex-col gap-1.5 p-4 rounded-xl border border-orange-400 bg-pink-100/50 shadow-sm max-w-2xl text-sm font-medium">
-              <div className="text-red-600">
-                รุ่งอรุณ ช่อง 1 = รุ่ง OPD, ช่อง 2 = รุ่ง ER
+            <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm max-w-2xl text-xs sm:text-sm font-medium">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
+                <span className="text-rose-800">รุ่งอรุณ ช่อง 1 = รุ่ง OPD, ช่อง 2 = รุ่ง ER</span>
               </div>
-              <div className="text-green-700">
-                เวรโครงการ วันหยุด ชื่อ 1 = 8.30 น., ชื่อ 2 = 9.00 น.
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+                <span className="text-amber-900">เวรโครงการ วันหยุด ชื่อ 1 = 8.30 น., ชื่อ 2 = 9.00 น.</span>
               </div>
-              <div className="text-blue-700">
-                วันปกติ ชื่อ 1 = รับที่ MED, ชื่อ 2 = รับที่ OPD
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-indigo-400" />
+                <span className="text-indigo-900">วันปกติ ชื่อ 1 = รับที่ MED, ชื่อ 2 = รับที่ OPD</span>
               </div>
-              <div className="text-orange-900">
-                บ่าย ER ชื่อ 1 = pre-pack, ชื่อ 2 = บ่ายห้องER
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                <span className="text-orange-900">บ่าย ER ชื่อ 1 = pre-pack, ชื่อ 2 = บ่ายห้องER</span>
               </div>
             </div>
           )}
