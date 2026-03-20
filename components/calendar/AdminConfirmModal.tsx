@@ -82,6 +82,33 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     }
     setLoading(true);
     try {
+      // ── Prefetch published status for all affected month_years ──────────
+      const allMonthYears = new Set<string>();
+      deletes.forEach(s => s.month_year && allMonthYears.add(s.month_year));
+      edits.forEach(e => e.shift.month_year && allMonthYears.add(e.shift.month_year));
+      pendingAdds.forEach(a => a.month_year && allMonthYears.add(a.month_year));
+
+      const publishedMap: Record<string, any> = {};
+      if (allMonthYears.size > 0) {
+        const { data: pubData } = await supabase
+          .from('published_months')
+          .select('month_year, is_published, pharmacist_published, pharmacy_technician_published, officer_published')
+          .in('month_year', Array.from(allMonthYears));
+        (pubData || []).forEach((p: any) => { publishedMap[p.month_year] = p; });
+      }
+
+      /** ส่ง push เฉพาะเดือนที่ประกาศแล้วเท่านั้น */
+      const isPublished = (monthYear: string, role?: string): boolean => {
+        const pub = publishedMap[monthYear];
+        if (!pub) return false;
+        if (pub.is_published) return true;
+        if (role === 'pharmacist') return pub.pharmacist_published ?? false;
+        if (role === 'pharmacy_technician') return pub.pharmacy_technician_published ?? false;
+        if (role === 'officer') return pub.officer_published ?? false;
+        return false;
+      };
+      // ────────────────────────────────────────────────────────────────────
+
       // 1. Delete shifts
       if (deletes.length > 0) {
         const delIds = deletes.map(s => s.id);
@@ -96,8 +123,13 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
 
-        // Notify deleted shift owners
-        const deletedOwnerIds = Array.from(new Set(deletes.map(s => s.user_id).filter(Boolean))) as string[];
+        // Notify only if month is published
+        const deletedOwnerIds = Array.from(new Set(
+          deletes
+            .filter(s => s.month_year && isPublished(s.month_year, (s.user as any)?.role))
+            .map(s => s.user_id)
+            .filter((id): id is string => !!id)
+        ));
         pushAdminChange(
           deletedOwnerIds,
           '🗑️ เวรของคุณถูกลบ',
@@ -123,9 +155,19 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         });
         await Promise.all(promises);
 
-        // Notify old owners (shift removed) and new owners (shift assigned)
-        const oldOwnerIds = Array.from(new Set(edits.map(e => e.shift.user_id).filter(Boolean))) as string[];
-        const newOwnerIds = Array.from(new Set(edits.map(e => e.newUser.id).filter(Boolean))) as string[];
+        // Notify only if month is published (old owner uses old user's role, new owner uses new user's role)
+        const oldOwnerIds = Array.from(new Set(
+          edits
+            .filter(e => e.shift.month_year && isPublished(e.shift.month_year, (e.shift.user as any)?.role))
+            .map(e => e.shift.user_id)
+            .filter((id): id is string => !!id)
+        ));
+        const newOwnerIds = Array.from(new Set(
+          edits
+            .filter(e => e.shift.month_year && isPublished(e.shift.month_year, e.newUser.role))
+            .map(e => e.newUser.id)
+            .filter((id): id is string => !!id)
+        ));
         pushAdminChange(
           oldOwnerIds,
           '🔄 เวรของคุณถูกเปลี่ยนแปลง',
@@ -160,8 +202,13 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         }));
         try { await supabase.from('shift_logs').insert(addLogs); } catch { /* ignore */ }
 
-        // Notify newly assigned users
-        const addOwnerIds = Array.from(new Set(pendingAdds.map(a => a.user.id).filter(Boolean))) as string[];
+        // Notify only if month is published
+        const addOwnerIds = Array.from(new Set(
+          pendingAdds
+            .filter(a => isPublished(a.month_year, a.user.role))
+            .map(a => a.user.id)
+            .filter((id): id is string => !!id)
+        ));
         pushAdminChange(
           addOwnerIds,
           '📋 คุณได้รับมอบหมายเวรใหม่',
@@ -276,7 +323,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           <div className="space-y-2 pt-4 border-t border-gray-100">
             <div className="bg-amber-50 text-amber-800 p-2.5 rounded-lg text-xs flex gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-              <span>การเปลี่ยนแปลงจะมีผลทันทีและระบบจะแจ้งเตือนผู้ที่ได้รับผลกระทบ</span>
+              <span>การเปลี่ยนแปลงจะมีผลทันที — จะแจ้งเตือนผู้ที่ได้รับผลกระทบเฉพาะเดือนที่ประกาศแล้วเท่านั้น</span>
             </div>
             <div>
               <label className="text-sm font-medium text-gray-700">รหัสผ่านของคุณ</label>
