@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   X, Loader2, Save, Search, Users, UserCog, PenLine, KeyRound,
-  ChevronLeft, Shield, Hash,
+  ChevronLeft, Shield, Hash, UserPlus,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { ROLE_LABELS, STAFF_ROLES, userFullName } from '@/lib/types';
@@ -14,7 +14,7 @@ interface AdminUserManagementModalProps {
   onClose: () => void;
 }
 
-type ViewMode = 'list' | 'edit';
+type ViewMode = 'list' | 'edit' | 'add';
 
 const ALL_ROLES: UserRole[] = ['pharmacist', 'pharmacy_technician', 'officer', 'admin'];
 
@@ -28,14 +28,15 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  // Edit form state
+  // Edit/Add form state
   const [formData, setFormData] = useState({
+    pha_id: '',
     prefix: '',
     f_name: '',
     l_name: '',
     nickname: '',
     salary_number: '',
-    role: '' as UserRole,
+    role: 'pharmacist' as UserRole,
     is_sub_admin: false,
     is_active: true,
   });
@@ -61,6 +62,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   function openEdit(user: User) {
     setEditingUser(user);
     setFormData({
+      pha_id: user.pha_id || '',
       prefix: user.prefix || '',
       f_name: user.f_name || '',
       l_name: user.l_name || '',
@@ -68,14 +70,55 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       salary_number: user.salary_number || '',
       role: user.role,
       is_sub_admin: user.is_sub_admin ?? false,
-      is_active: user.is_active !== false, // default true
+      is_active: user.is_active !== false,
     });
     setView('edit');
+  }
+
+  function openAdd() {
+    setEditingUser(null);
+    setFormData({ pha_id: '', prefix: '', f_name: '', l_name: '', nickname: '', salary_number: '', role: 'pharmacist', is_sub_admin: false, is_active: true });
+    setView('add');
   }
 
   function backToList() {
     setView('list');
     setEditingUser(null);
+  }
+
+  async function handleCreate() {
+    if (!formData.f_name.trim() || !formData.l_name.trim()) {
+      toast.error('กรุณากรอกชื่อและนามสกุล');
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pha_id: formData.pha_id.trim() || null,
+          prefix: formData.prefix.trim(),
+          f_name: formData.f_name.trim(),
+          l_name: formData.l_name.trim(),
+          nickname: formData.nickname.trim(),
+          salary_number: formData.salary_number.trim(),
+          role: formData.role,
+          is_sub_admin: STAFF_ROLES.includes(formData.role as any) ? formData.is_sub_admin : false,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Create failed');
+      }
+      toast.success('เพิ่มผู้ใช้สำเร็จ — รหัสผ่านเริ่มต้น: 1234');
+      await fetchUsers();
+      backToList();
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด');
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleSave() {
@@ -175,7 +218,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-teal-50 to-white">
           <div className="flex items-center gap-3">
-            {view === 'edit' && (
+            {(view === 'edit' || view === 'add') && (
               <button
                 onClick={backToList}
                 className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors mr-1"
@@ -184,16 +227,18 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
               </button>
             )}
             <div className="p-2 bg-teal-100 text-teal-600 rounded-xl">
-              {view === 'list' ? <Users className="w-5 h-5" /> : <UserCog className="w-5 h-5" />}
+              {view === 'list' ? <Users className="w-5 h-5" /> : view === 'add' ? <UserPlus className="w-5 h-5" /> : <UserCog className="w-5 h-5" />}
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">
-                {view === 'list' ? 'จัดการผู้ใช้' : `แก้ไขข้อมูล — ${editingUser ? userFullName(editingUser) : ''}`}
+                {view === 'list' ? 'จัดการผู้ใช้' : view === 'add' ? 'เพิ่มผู้ใช้ใหม่' : `แก้ไขข้อมูล — ${editingUser ? userFullName(editingUser) : ''}`}
               </h2>
               <p className="text-sm text-gray-500">
                 {view === 'list'
                   ? `ทั้งหมด ${users.length} คน`
-                  : `รหัส: ${editingUser?.pha_id}`}
+                  : view === 'add'
+                    ? 'รหัสผ่านเริ่มต้น: 1234'
+                    : `รหัส: ${editingUser?.pha_id}`}
               </p>
             </div>
           </div>
@@ -209,6 +254,15 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
         <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50">
           {view === 'list' ? (
             <>
+              {/* Add user button */}
+              <button
+                onClick={openAdd}
+                className="w-full flex items-center justify-center gap-2 mb-4 py-2.5 px-4 bg-teal-600 hover:bg-teal-700 text-white font-semibold rounded-xl shadow-sm transition-all"
+              >
+                <UserPlus className="w-4 h-4" />
+                เพิ่มผู้ใช้ใหม่
+              </button>
+
               {/* Search */}
               <div className="relative mb-4">
                 <input
@@ -311,6 +365,100 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 </div>
               )}
             </>
+          ) : view === 'add' ? (
+            /* Add view */
+            <div className="space-y-5">
+              {/* pha_id */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">รหัสพนักงาน <span className="text-gray-400 font-normal">(ไม่บังคับ)</span></label>
+                <div className="relative">
+                  <input type="text" value={formData.pha_id} onChange={(e) => setFormData(p => ({ ...p, pha_id: e.target.value }))}
+                    placeholder="เช่น PH001" className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Prefix */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">คำนำหน้า</label>
+                <div className="relative">
+                  <input type="text" value={formData.prefix} onChange={(e) => setFormData(p => ({ ...p, prefix: e.target.value }))}
+                    placeholder="เช่น ภก. / ภญ." className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* First name */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">ชื่อ <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input type="text" value={formData.f_name} onChange={(e) => setFormData(p => ({ ...p, f_name: e.target.value }))}
+                    placeholder="เช่น สมปอง" className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Last name */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">นามสกุล <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <input type="text" value={formData.l_name} onChange={(e) => setFormData(p => ({ ...p, l_name: e.target.value }))}
+                    placeholder="เช่น ใจดี" className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <PenLine className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Nickname */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">ชื่อเล่น <span className="text-gray-400 font-normal">(แสดงบนตารางเวร)</span></label>
+                <div className="relative">
+                  <input type="text" value={formData.nickname} onChange={(e) => setFormData(p => ({ ...p, nickname: e.target.value }))}
+                    placeholder="เช่น ปอง" className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <UserCog className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Salary number */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">เลขที่รับเงินเดือน</label>
+                <div className="relative">
+                  <input type="text" value={formData.salary_number} onChange={(e) => setFormData(p => ({ ...p, salary_number: e.target.value }))}
+                    placeholder="กรอกเลขที่รับเงินเดือน" className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm" />
+                  <Hash className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Role */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">ตำแหน่ง / Role <span className="text-red-500">*</span></label>
+                <div className="relative">
+                  <select value={formData.role} onChange={(e) => { const r = e.target.value as UserRole; setFormData(p => ({ ...p, role: r, is_sub_admin: r === 'admin' ? false : p.is_sub_admin })); }}
+                    className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm appearance-none">
+                    {ALL_ROLES.map((role) => <option key={role} value={role}>{ROLE_LABELS[role]}</option>)}
+                  </select>
+                  <Shield className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                </div>
+              </div>
+              {/* Sub-admin toggle */}
+              {STAFF_ROLES.includes(formData.role as any) && (
+                <div className="space-y-1.5">
+                  <label className="block text-sm font-medium text-gray-700">ผู้ช่วยดูแล (Sub-Admin)</label>
+                  <div className={cn('flex items-center gap-3 p-3 rounded-xl border transition-colors', formData.is_sub_admin ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200')}>
+                    <button type="button" role="switch" aria-checked={formData.is_sub_admin} onClick={() => setFormData(p => ({ ...p, is_sub_admin: !p.is_sub_admin }))}
+                      className={cn('relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors', formData.is_sub_admin ? 'bg-yellow-500' : 'bg-gray-200')}>
+                      <span className={cn('pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform', formData.is_sub_admin ? 'translate-x-5' : 'translate-x-0')} />
+                    </button>
+                    <p className={cn('text-sm font-semibold', formData.is_sub_admin ? 'text-yellow-700' : 'text-gray-500')}>{formData.is_sub_admin ? 'เปิดใช้งาน' : 'ปิดอยู่'}</p>
+                  </div>
+                </div>
+              )}
+              {/* Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700">
+                🔑 รหัสผ่านเริ่มต้นจะถูกตั้งเป็น <strong>1234</strong> และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งแรก
+              </div>
+              {/* Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button onClick={backToList} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-3 px-4 rounded-xl transition-all">ยกเลิก</button>
+                <button onClick={handleCreate} disabled={saving || !formData.f_name.trim() || !formData.l_name.trim()}
+                  className="flex-1 bg-teal-600 hover:bg-teal-700 disabled:bg-teal-300 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                  {saving ? <><Loader2 className="w-5 h-5 animate-spin" />กำลังสร้าง...</> : <><UserPlus className="w-5 h-5" />เพิ่มผู้ใช้</>}
+                </button>
+              </div>
+            </div>
           ) : (
             /* Edit view */
             <div className="space-y-5">

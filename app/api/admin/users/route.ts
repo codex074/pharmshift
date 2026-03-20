@@ -25,6 +25,61 @@ export async function GET() {
   }
 }
 
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session || !session.id || session.role !== 'admin') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    const { pha_id, prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin } = body;
+
+    if (!f_name || !l_name || !role) {
+      return NextResponse.json({ error: 'กรุณากรอกชื่อ นามสกุล และตำแหน่ง' }, { status: 400 });
+    }
+
+    const supabase = createSupabaseServer();
+
+    // Check pha_id uniqueness if provided
+    if (pha_id) {
+      const { data: existing } = await supabase
+        .from('users')
+        .select('id')
+        .eq('pha_id', pha_id)
+        .maybeSingle();
+      if (existing) {
+        return NextResponse.json({ error: `รหัส ${pha_id} มีผู้ใช้งานแล้ว` }, { status: 409 });
+      }
+    }
+
+    const { data: newUser, error } = await supabase
+      .from('users')
+      .insert({
+        pha_id: pha_id || null,
+        prefix: prefix || null,
+        f_name,
+        l_name,
+        nickname: nickname || null,
+        salary_number: salary_number || null,
+        role,
+        is_sub_admin: role === 'admin' ? false : (is_sub_admin ?? false),
+        is_active: true,
+        password: '1234',
+        must_change_password: true,
+      })
+      .select('id, pha_id, f_name, l_name')
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, user: newUser });
+  } catch (error: any) {
+    console.error('Admin users POST error:', error);
+    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function PUT(req: NextRequest) {
   try {
     const session = await getSession();
