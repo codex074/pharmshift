@@ -85,9 +85,9 @@ export default function CalendarPage() {
   const userIsAdmin = isAdmin(currentUser);
   const userIsAdminLike = isAdminLike(currentUser);
 
-  // For admin: use viewRoleGroup selector; for staff/sub-admin: use own role
+  // For admin/sub-admin: use viewRoleGroup selector; for staff: use own role
   const effectiveRoleGroup: UserRole =
-    userIsAdmin
+    userIsAdminLike
       ? viewRoleGroup
       : (currentUser?.role as UserRole) ?? 'pharmacist';
 
@@ -351,8 +351,8 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* Admin: role group tab switcher */}
-        {userIsAdmin && (
+        {/* Admin/Sub-admin: role group tab switcher */}
+        {userIsAdminLike && (
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
             <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm w-max min-w-full sm:w-auto">
               {STAFF_ROLES.map((role) => {
