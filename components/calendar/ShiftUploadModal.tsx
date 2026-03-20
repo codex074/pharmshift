@@ -1,9 +1,72 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Upload, FileDown, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Eye, EyeOff } from 'lucide-react';
+import { X, Upload, FileDown, Loader2, CheckCircle2, AlertCircle, ShieldAlert, Eye, EyeOff, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+
+// ─── Shift code guide per role ────────────────────────────────────────────────
+const SHIFT_GUIDE = {
+  เภสัช: [
+    { code: 'e',   label: 'เช้า ER' },
+    { code: 'd',   label: 'เช้า MED D/C' },
+    { code: 'c',   label: 'เช้า MED Cont' },
+    { code: 's',   label: 'เช้า SURG' },
+    { code: 'ext', label: 'โครงการ' },
+    { code: 'ch',  label: 'Chemo' },
+    { code: 'smc', label: 'SMC' },
+    { code: 'บm',  label: 'บ่าย MED' },
+    { code: 'บe',  label: 'บ่าย ER' },
+    { code: 'รo',  label: 'รุ่งอรุณ OPD' },
+    { code: 'รe',  label: 'รุ่งอรุณ ER' },
+    { code: 'รh',  label: 'รุ่งอรุณ HIV' },
+    { code: 'ด',   label: 'ดึก' },
+  ],
+  จพง: [
+    { code: 'e',    label: 'เช้า ER' },
+    { code: 'm1',   label: 'เช้า MED ตำแหน่ง 1' },
+    { code: 'm2',   label: 'เช้า MED ตำแหน่ง 2' },
+    { code: 'm3',   label: 'เช้า MED ตำแหน่ง 3' },
+    { code: 's1',   label: 'SURG ตำแหน่ง 1' },
+    { code: 's2',   label: 'SURG ตำแหน่ง 2' },
+    { code: 'smc1', label: 'SMC ตำแหน่ง 1' },
+    { code: 'smc2', label: 'SMC ตำแหน่ง 2' },
+    { code: 'บm1',  label: 'บ่าย MED ตำแหน่ง 1' },
+    { code: 'บm2',  label: 'บ่าย MED ตำแหน่ง 2' },
+    { code: 'บe',   label: 'บ่าย ER' },
+    { code: 'รo',   label: 'รุ่งอรุณ OPD' },
+    { code: 'รe',   label: 'รุ่งอรุณ ER' },
+    { code: 'รh',   label: 'รุ่งอรุณ HIV' },
+    { code: 'ด',    label: 'ดึก' },
+  ],
+  จนท: [
+    { code: 'e',    label: 'เช้า ER' },
+    { code: 'm1',   label: 'เช้า MED ตำแหน่ง 1' },
+    { code: 'm2',   label: 'เช้า MED ตำแหน่ง 2' },
+    { code: 'm3',   label: 'เช้า MED ตำแหน่ง 3' },
+    { code: 'm4',   label: 'เช้า MED ตำแหน่ง 4 (อาทิตย์)' },
+    { code: 's1',   label: 'SURG ตำแหน่ง 1' },
+    { code: 's2',   label: 'SURG ตำแหน่ง 2' },
+    { code: 's3',   label: 'SURG ตำแหน่ง 3' },
+    { code: 'ext1', label: 'โครงการ ตำแหน่ง 1' },
+    { code: 'ext2', label: 'โครงการ ตำแหน่ง 2' },
+    { code: 'smc1', label: 'SMC ตำแหน่ง 1' },
+    { code: 'smc2', label: 'SMC ตำแหน่ง 2' },
+    { code: 'บm',   label: 'บ่าย MED' },
+    { code: 'บe1',  label: 'บ่าย ER ตำแหน่ง 1' },
+    { code: 'บe2',  label: 'บ่าย ER ตำแหน่ง 2' },
+    { code: 'รo1',  label: 'รุ่งอรุณ OPD ตำแหน่ง 1' },
+    { code: 'รo2',  label: 'รุ่งอรุณ OPD ตำแหน่ง 2' },
+    { code: 'รe',   label: 'รุ่งอรุณ ER' },
+    { code: 'ส1',   label: 'ส่งยา สอ. ตำแหน่ง 1' },
+    { code: 'ส2',   label: 'ส่งยา สอ. ตำแหน่ง 2' },
+    { code: 'ส3',   label: 'ส่งยา สอ. ตำแหน่ง 3' },
+    { code: 'ส4',   label: 'ส่งยา สอ. ตำแหน่ง 4' },
+    { code: 'ด',    label: 'ดึก' },
+  ],
+} as const;
+
+type RoleKey = keyof typeof SHIFT_GUIDE;
 
 interface ShiftUploadModalProps {
   onClose: () => void;
@@ -26,6 +89,8 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
   const [showPassword1, setShowPassword1] = useState(false);
   const [showPassword2, setShowPassword2] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
+  const [guideRole, setGuideRole] = useState<RoleKey>('เภสัช');
 
   const currentYear = new Date().getFullYear();
 
@@ -156,6 +221,54 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
                 ดาวน์โหลด Excel
               </a>
             </div>
+          </div>
+
+          {/* Shift code guide */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowGuide(v => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-semibold text-gray-700"
+            >
+              <span>📋 ตัวย่อเวรแต่ละตำแหน่ง</span>
+              {showGuide ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
+            </button>
+
+            {showGuide && (
+              <div className="p-4 space-y-3">
+                {/* Role tabs */}
+                <div className="flex gap-1.5">
+                  {(Object.keys(SHIFT_GUIDE) as RoleKey[]).map(role => (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => setGuideRole(role)}
+                      className={cn(
+                        'flex-1 py-1.5 rounded-lg text-xs font-bold transition-all',
+                        guideRole === role
+                          ? role === 'เภสัช' ? 'bg-emerald-500 text-white' : role === 'จพง' ? 'bg-violet-600 text-white' : 'bg-sky-500 text-white'
+                          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      )}
+                    >
+                      {role}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Code list */}
+                <div className="grid grid-cols-2 gap-1">
+                  {SHIFT_GUIDE[guideRole].map(({ code, label }) => (
+                    <div key={code} className="flex items-center gap-2 py-1 px-2 bg-gray-50 rounded-lg">
+                      <span className="font-mono text-[11px] font-bold text-violet-700 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5 flex-shrink-0">
+                        {code}
+                      </span>
+                      <span className="text-[11px] text-gray-600 leading-tight">{label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[10px] text-gray-400">ใส่ได้หลายเวรต่อวันโดยคั่นด้วย , เช่น <span className="font-mono font-bold text-gray-500">e,s</span></p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
