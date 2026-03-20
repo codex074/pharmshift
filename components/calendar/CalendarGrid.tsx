@@ -7,10 +7,51 @@ import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns
 import { DEPT_COLORS } from '@/lib/types';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
-const cellStyle = "border-r border-b border-gray-400/50 flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium";
-const headerStyle = "bg-gray-200/60 font-bold border-r border-b border-gray-400/60 flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight";
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r border-gray-400/50 flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center";
+// ── Shared border / layout helpers ─────────────────────────────────
+const BORDER = 'border-gray-300';
+const BORDER2 = 'border-slate-400';
+const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+
+// ── Shift-time colour palettes ─────────────────────────────────
+// รุ่งอรุณ  → rose / pink-purple
+// เช้า      → amber / warm yellow
+// บ่าย      → orange
+// ดึก       → indigo / deep blue
+const SHIFT_HDR = {
+  rung:     'bg-rose-200    text-rose-800   border-rose-300',
+  chao:     'bg-emerald-200 text-emerald-900 border-emerald-300',
+  bai:      'bg-orange-200  text-orange-900 border-orange-300',
+  duek:     'bg-indigo-200  text-indigo-800 border-indigo-300',
+  neutral:  'bg-slate-100   text-slate-700  border-slate-200',
+} as const;
+
+const CELL_BG = {
+  rung:  'bg-rose-50/70     hover:bg-rose-100/80',
+  chao:  'bg-emerald-50/70  hover:bg-emerald-100/80',
+  bai:   'bg-orange-50/70   hover:bg-orange-100/80',
+  duek:  'bg-indigo-50/70   hover:bg-indigo-100/80',
+  plain: 'bg-white          hover:bg-slate-50',
+} as const;
+
+// Per-weekday header colours (Sun=0 … Sat=6)
+const DOW_HDR: Record<number, string> = {
+  0: 'bg-red-600     text-white',   // อา.
+  1: 'bg-yellow-400  text-gray-900', // จ.
+  2: 'bg-pink-600    text-white',   // อ.
+  3: 'bg-green-600   text-white',   // พ.
+  4: 'bg-orange-500  text-white',   // พฤ.
+  5: 'bg-blue-600    text-white',   // ศ.
+  6: 'bg-purple-600  text-white',   // ส.
+};
+
+function hdr(palette: keyof typeof SHIFT_HDR, extra = '') {
+  return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
+}
+
+function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
+  return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
+}
 
 interface CalendarGridProps {
   year: number;
@@ -74,15 +115,15 @@ export function CalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
-    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-gray-400/60 shadow-sm bg-white">
+    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-md bg-white">
       <div className="min-w-[1000px] select-none">
-        
-        {/* Header Row */}
-        <div className="grid grid-cols-7 border-b-2 border-gray-400/60">
+
+        {/* Header Row — day names */}
+        <div className="grid grid-cols-7 border-b-2 border-slate-400">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-1.5 text-center text-xs font-bold border-r-2 border-gray-400/60',
-              i === 0 ? 'text-red-600' : i === 6 ? 'text-indigo-600' : 'text-gray-800'
+              'py-2 text-center text-sm font-bold border-r-2 border-slate-400',
+              DOW_HDR[i]
             )}>
               {day}
             </div>
@@ -91,17 +132,22 @@ export function CalendarGrid({
 
         {/* Days */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b-2 border-gray-400/60 h-auto">
+          <div key={wi} className="grid grid-cols-7 border-b-2 border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className="border-r-2 border-gray-400/60 bg-gray-100/50" />;
+                return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
               }
               const dow = day.date.getDay();
               const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
               return (
-                <div key={di} className={cn('border-r-2 border-gray-400/60 relative')}>
-                  {day.isToday && <div className="absolute inset-0 border-4 border-red-500 z-50 pointer-events-none [.exporting-pdf_&]:hidden" />}
+                <div key={di} className={cn(
+                  'border-r-2 border-slate-400 relative transition-opacity',
+                  day.isToday
+                    ? 'bg-amber-50/60 z-10'
+                    : 'opacity-50 hover:opacity-80'
+                )}>
+                  {day.isToday && <div className="absolute inset-0 border-[3px] border-red-500 z-50 pointer-events-none shadow-[inset_0_0_8px_rgba(239,68,68,.25)] [.exporting-pdf_&]:hidden" />}
                   { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
                     (dow === 5) ? <FridayGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
                     <MonThuGrid day={day} onDayClick={onDayClick} ctx={ctx} />
@@ -304,7 +350,7 @@ function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext) {
       {positions.map((pos, idx) => {
         const matchingShifts = day.shifts.filter(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
         return (
-          <div key={idx} className="flex-1 border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible gap-1">
+          <div key={idx} className={cn(nameCell('rung'), 'flex-wrap gap-1')}>
             {matchingShifts.map((s, i) => <div key={i}>{renderPersonalShift(s, ctx)}</div>)}
             {renderPendingAddsForCell(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
             {renderAddButton(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
@@ -322,48 +368,52 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const dateStr = format(day.date, 'yyyy-MM-dd');
   const dow = day.date.getDay();
   const isSundayOrHoliday = dow === 0 || day.isHoliday;
+  const isSat = dow === 6 && !day.isHoliday;
 
   const chemoShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'Chemo');
 
+  // Weekend bg tint
+  const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
+
   return (
     <div className="grid grid-cols-5 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
-      
-      {/* ROW 1 */}
-      <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 4 / 2 / 5', backgroundColor: '#fffbeb' }}>บ่าย</div>
-      <div className={cn(headerStyle, isSundayOrHoliday ? 'text-red-500' : 'text-indigo-600', 'text-sm')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
-      {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={cn(nameCellStyle, 'border-r-2 border-r-gray-400/60')} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx, undefined, dateStr)}</div>
-      <div className={cn(nameCellStyle, 'border-r-2 border-r-gray-400/60')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+      {/* ROW 1 — section labels + date number */}
+      <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
+      <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), dateBg, 'text-sm font-extrabold')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
-      {/* ROW 4 */}
-      <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
-      <div className={headerStyle} style={{ gridArea: '4 / 2 / 5 / 3' }}>Chemo</div>
-      <div className={headerStyle} style={{ gridArea: '4 / 3 / 5 / 6', backgroundColor: '#e0e7ff' }}>ดึก</div>
+      {/* ROW 2 & 3 — morning / afternoon cells */}
+      <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx, undefined, dateStr)}</div>
+      <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
-      {/* ROW 5-7 */}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
-      
+      {/* ROW 4 — ER / Chemo / ดึก labels */}
+      <div className={hdr('chao')} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
+      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>Chemo</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 6' }}>ดึก</div>
+
+      {/* ROW 5-7 — night / ER / Chemo cells */}
+      <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
+
       <div className="grid grid-rows-2" style={{ gridArea: '5 / 2 / 8 / 3' }}>
-        <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-col items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
+        <div className={cn(nameCell('chao'), 'flex-col')}>
           {renderPersonalShift(chemoShifts[0], ctx)}
           {!chemoShifts[0] && renderPendingAddsForCell(dateStr, 'เช้า', 'Chemo', ctx)}
           {!chemoShifts[0] && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
         </div>
-        <div className="border-r border-b border-gray-400/50 bg-white hover:bg-violet-50/40 cursor-pointer flex flex-col items-center justify-center p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible">
+        <div className={cn(nameCell('chao'), 'flex-col')}>
           {renderPersonalShift(chemoShifts[1], ctx)}
           {!chemoShifts[1] && renderPendingAddsForCell(dateStr, 'เช้า', 'Chemo', ctx)}
           {!chemoShifts[1] && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
         </div>
       </div>
 
-      <div className={nameCellStyle} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
@@ -376,35 +426,35 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
 
   return (
     <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
-      
+
       {/* ROW 1 */}
-      <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 3 / 2 / 4', backgroundColor: '#fffbeb' }}>บ่าย</div>
-      <div className={cn(headerStyle, 'text-gray-900 text-sm')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 3 / 2 / 4' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-sm font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 3' }}>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
         {renderPersonalShift(smcShifts[0], ctx)}
         {!smcShifts[0] && renderPendingAddsForCell(dateStr, 'บ่าย', 'SMC', ctx)}
         {!smcShifts[0] && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
       </div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 3' }}>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
         {renderPersonalShift(smcShifts[1], ctx)}
         {!smcShifts[1] && renderPendingAddsForCell(dateStr, 'บ่าย', 'SMC', ctx)}
         {!smcShifts[1] && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
       </div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
       {/* ROW 4 */}
-      <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
-      <div className={headerStyle} style={{ gridArea: '4 / 2 / 5 / 5', backgroundColor: '#e0e7ff' }}>ดึก</div>
+      <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
       {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
@@ -415,24 +465,24 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
   const dateStr = format(day.date, 'yyyy-MM-dd');
   return (
     <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
-      
+
       {/* ROW 1 */}
-      <div className={headerStyle} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={headerStyle} style={{ gridArea: '1 / 2 / 2 / 4', backgroundColor: '#fffbeb' }}>บ่าย</div>
-      <div className={cn(headerStyle, 'text-gray-900 text-sm')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 4' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-sm font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCellStyle} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCellStyle} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
       {/* ROW 4 */}
-      <div className={headerStyle} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
-      <div className={headerStyle} style={{ gridArea: '4 / 2 / 5 / 5', backgroundColor: '#e0e7ff' }}>ดึก</div>
+      <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
       {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCellStyle} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
