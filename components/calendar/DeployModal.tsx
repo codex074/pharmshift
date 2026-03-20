@@ -22,10 +22,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
   const [errorDesc, setErrorDesc] = useState('');
   const [month, setMonth] = useState<number>(initialMonth);
   const [year, setYear] = useState<number>(initialYear);
-  const isSubAdminUser = currentUser?.is_sub_admin === true && currentUser?.role !== 'admin';
-  const [roleGroup, setRoleGroup] = useState<UserRole | 'all'>(
-    isSubAdminUser ? (currentUser.role as UserRole) : 'all'
-  );
+  const [roleGroup, setRoleGroup] = useState<UserRole | 'all'>('all');
 
   const currentYear = new Date().getFullYear();
 
@@ -182,19 +179,12 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
             <select
               value={roleGroup}
               onChange={(e) => setRoleGroup(e.target.value as UserRole | 'all')}
-              disabled={isSubAdminUser}
-              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all shadow-sm disabled:bg-gray-100 disabled:text-gray-500"
+              className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-green-500/50 focus:border-green-500 transition-all shadow-sm"
             >
-              {isSubAdminUser ? (
-                <option value={currentUser.role}>{ROLE_LABELS[currentUser.role as UserRole]}</option>
-              ) : (
-                <>
-                  <option value="all">ทุกตำแหน่ง (All Roles)</option>
-                  {STAFF_ROLES.map(role => (
-                    <option key={role} value={role}>{ROLE_LABELS[role]}</option>
-                  ))}
-                </>
-              )}
+              <option value="all">ทุกตำแหน่ง (All Roles)</option>
+              {STAFF_ROLES.map(role => (
+                <option key={role} value={role}>{ROLE_LABELS[role]}</option>
+              ))}
             </select>
           </div>
 
