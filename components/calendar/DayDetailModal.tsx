@@ -24,7 +24,7 @@ function getDeptName(s: Shift): string {
 }
 
 // Shift display order (chronological)
-const TIMELINE_ORDER: ShiftType[] = ['ดึก', 'รุ่งอรุณ', 'เช้า', 'smc', 'บ่าย'];
+const TIMELINE_ORDER: ShiftType[] = ['รุ่งอรุณ', 'เช้า', 'smc', 'บ่าย', 'ดึก'];
 
 // ─── Timeline view ─────────────────────────────────────────────────────────────
 function TimelineView({
