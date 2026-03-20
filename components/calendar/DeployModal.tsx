@@ -105,7 +105,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
             body: JSON.stringify({
               userIds: staffUsers.map(u => u.id),
               title: '📋 ตารางเวรประกาศแล้ว',
-              body: `ตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} ได้ประกาศแล้ว`,
+              body: `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} แล้ว`,
               url: '/calendar',
               tag: `publish-${monthYear}`,
             }),

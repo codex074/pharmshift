@@ -101,7 +101,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         pushAdminChange(
           deletedOwnerIds,
           '🗑️ เวรของคุณถูกลบ',
-          `Admin ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
+          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
         );
       }
 
@@ -129,12 +129,12 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         pushAdminChange(
           oldOwnerIds,
           '🔄 เวรของคุณถูกเปลี่ยนแปลง',
-          `Admin ได้เปลี่ยนชื่อผู้อยู่เวรของคุณ กรุณาตรวจสอบตารางเวร`,
+          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เปลี่ยนชื่อผู้อยู่เวรของคุณ กรุณาตรวจสอบตารางเวร`,
         );
         pushAdminChange(
           newOwnerIds,
           '📋 คุณได้รับมอบหมายเวรใหม่',
-          `Admin ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
+          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
       }
 
@@ -165,7 +165,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         pushAdminChange(
           addOwnerIds,
           '📋 คุณได้รับมอบหมายเวรใหม่',
-          `Admin ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
+          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
       }
 
