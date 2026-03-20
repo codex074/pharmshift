@@ -133,6 +133,26 @@ export function useSwapRequests(userId?: string) {
   }, [userId, fetchSwaps]);
 
   const acceptSwap = async (req: SwapRequest) => {
+    // Verify the request is still pending (prevent race condition)
+    const { data: freshReq } = await supabase
+      .from('swap_requests')
+      .select('status')
+      .eq('id', req.id)
+      .single();
+    if (freshReq?.status !== 'pending') {
+      throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า');
+    }
+
+    // Verify the shift still belongs to the original owner
+    const { data: freshShift } = await supabase
+      .from('shifts')
+      .select('user_id')
+      .eq('id', req.shift_id)
+      .single();
+    if (freshShift && req.shift && freshShift.user_id !== req.shift.user_id) {
+      throw new Error('เวรนี้ถูกเปลี่ยนเจ้าของไปแล้ว กรุณารีเฟรชหน้า');
+    }
+
     // PRE-ACCEPTANCE VALIDATION TO PREVENT COLLISION
     const checks = [];
     
@@ -259,6 +279,49 @@ export function useSwapRequests(userId?: string) {
         tag: `swap-${req.id}`,
       }),
     }).catch(() => {}); // fire-and-forget
+
+    // Auto-cancel other pending requests for the same shift(s)
+    const shiftIdsToCancel = [req.shift_id];
+    if (req.target_shift_id) shiftIdsToCancel.push(req.target_shift_id);
+
+    const { data: otherPending } = await supabase
+      .from('swap_requests')
+      .select('id, requester_id, target_user_id')
+      .in('shift_id', shiftIdsToCancel)
+      .eq('status', 'pending')
+      .neq('id', req.id);
+
+    if (otherPending?.length) {
+      // Cancel all other pending requests
+      await supabase
+        .from('swap_requests')
+        .update({ status: 'rejected', requester_read: false })
+        .in('id', otherPending.map(r => r.id));
+
+      // Notify affected users (exclude parties already involved)
+      const involvedIds = new Set([req.requester_id, req.target_user_id]);
+      const notifyIds = Array.from(
+        new Set(
+          otherPending
+            .flatMap(r => [r.requester_id, r.target_user_id])
+            .filter(id => !involvedIds.has(id))
+        )
+      );
+
+      if (notifyIds.length) {
+        fetch('/api/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userIds: notifyIds,
+            title: '⚠️ คำขอถูกยกเลิกอัตโนมัติ',
+            body: 'เวรนี้ได้ถูกดำเนินการแล้ว คำขอของคุณจึงถูกยกเลิกโดยอัตโนมัติ',
+            url: '/calendar',
+            tag: `swap-auto-cancel-${req.shift_id}`,
+          }),
+        }).catch(() => {});
+      }
+    }
 
     await fetchSwaps();
   };
