@@ -30,6 +30,7 @@ interface AdminConfirmModalProps {
 }
 
 export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, allShifts, currentUser, onClose, onSuccess }: AdminConfirmModalProps) {
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const deletes = Array.from(pendingDeletes).map(id => allShifts.find(s => s.id === id)).filter(Boolean) as Shift[];
@@ -74,6 +75,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
   }
 
   async function handleConfirm() {
+    if (!password) { toastError('กรุณากรอกรหัสผ่าน'); return; }
+    if (currentUser?.password && currentUser.password !== password) {
+      toastError('รหัสผ่านไม่ถูกต้อง'); return;
+    }
     setLoading(true);
     try {
       // 1. Delete shifts
@@ -267,10 +272,22 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             </div>
           )}
 
-          <div className="pt-4 border-t border-gray-100">
+          <div className="space-y-2 pt-4 border-t border-gray-100">
             <div className="bg-amber-50 text-amber-800 p-2.5 rounded-lg text-xs flex gap-2">
               <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
               <span>การเปลี่ยนแปลงจะมีผลทันทีและระบบจะแจ้งเตือนผู้ที่ได้รับผลกระทบ</span>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700">รหัสผ่านของคุณ</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleConfirm()}
+                className="w-full mt-1 border border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
+                placeholder="ป้อนรหัสผ่าน"
+                autoFocus
+              />
             </div>
           </div>
         </div>
@@ -284,7 +301,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading}
+            disabled={loading || !password}
             className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
