@@ -3,11 +3,21 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
-import { Loader2, X, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
 import type { Shift, ShiftType, User } from '@/lib/types';
 import { userFullName } from '@/lib/types';
 import { shiftsOverlap } from '@/lib/utils';
 import type { PendingAdd } from './AdminAddShiftModal';
+
+async function pushAdminChange(userIds: string[], title: string, body: string) {
+  const ids = userIds.filter(Boolean);
+  if (!ids.length) return;
+  fetch('/api/push/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userIds: ids, title, body, url: '/calendar', tag: 'admin-shift-change' }),
+  }).catch(() => {});
+}
 
 interface AdminConfirmModalProps {
   pendingDeletes: Set<string>;
@@ -20,8 +30,6 @@ interface AdminConfirmModalProps {
 }
 
 export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, allShifts, currentUser, onClose, onSuccess }: AdminConfirmModalProps) {
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [loading, setLoading] = useState(false);
 
   const deletes = Array.from(pendingDeletes).map(id => allShifts.find(s => s.id === id)).filter(Boolean) as Shift[];
@@ -66,24 +74,11 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
   }
 
   async function handleConfirm() {
-    if (!password || password !== passwordConfirm) {
-      toastError('รหัสผ่านไม่ตรงกัน หรือยังไม่ได้กรอก');
-      return;
-    }
-    
-    // Minimal password check locally for safety if available, else omit
-    if (currentUser?.password && currentUser.password !== password) {
-       toastError('รหัสผ่านไม่ถูกต้อง');
-       return;
-    }
-
     setLoading(true);
-
     try {
       // 1. Delete shifts
       if (deletes.length > 0) {
         const delIds = deletes.map(s => s.id);
-
         const logs = deletes.map(s => ({
           shift_id: s.id,
           action: 'admin_delete',
@@ -92,31 +87,49 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           details: `Admin deleted shift: ${s.date} ${s.shift_type}`,
         }));
         await supabase.from('shift_logs').insert(logs);
-
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
+
+        // Notify deleted shift owners
+        const deletedOwnerIds = [...new Set(deletes.map(s => s.user_id).filter(Boolean))] as string[];
+        pushAdminChange(
+          deletedOwnerIds,
+          '🗑️ เวรของคุณถูกลบ',
+          `Admin ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
+        );
       }
 
-      // 2. Edit shifts & trigger notifications if applicable
+      // 2. Edit shifts (change owner)
       if (edits.length > 0) {
-        // Run updates in parallel
         const promises = edits.map(async (e) => {
-           const { error } = await supabase.from('shifts')
-               .update({ user_id: e.newUser.id })
-               .eq('id', e.shift.id);
-           if (error) throw error;
-           
-           // Log edit
-           await supabase.from('shift_logs').insert({
-             shift_id: e.shift.id,
-             action: 'admin_edit',
-             old_user_id: e.shift.user_id,
-             new_user_id: e.newUser.id,
-             performed_by: currentUser?.id,
-             details: 'Admin changed shift owner',
-           });
+          const { error } = await supabase.from('shifts')
+            .update({ user_id: e.newUser.id })
+            .eq('id', e.shift.id);
+          if (error) throw error;
+          await supabase.from('shift_logs').insert({
+            shift_id: e.shift.id,
+            action: 'admin_edit',
+            old_user_id: e.shift.user_id,
+            new_user_id: e.newUser.id,
+            performed_by: currentUser?.id,
+            details: 'Admin changed shift owner',
+          });
         });
         await Promise.all(promises);
+
+        // Notify old owners (shift removed) and new owners (shift assigned)
+        const oldOwnerIds = [...new Set(edits.map(e => e.shift.user_id).filter(Boolean))] as string[];
+        const newOwnerIds = [...new Set(edits.map(e => e.newUser.id).filter(Boolean))] as string[];
+        pushAdminChange(
+          oldOwnerIds,
+          '🔄 เวรของคุณถูกเปลี่ยนแปลง',
+          `Admin ได้เปลี่ยนชื่อผู้อยู่เวรของคุณ กรุณาตรวจสอบตารางเวร`,
+        );
+        pushAdminChange(
+          newOwnerIds,
+          '📋 คุณได้รับมอบหมายเวรใหม่',
+          `Admin ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
+        );
       }
 
       // 3. Insert new shifts
@@ -129,30 +142,29 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           user_id: add.user.id,
           month_year: add.month_year,
         }));
-
         const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
         if (insertError) throw insertError;
 
-        // Log each addition
         const addLogs = pendingAdds.map(add => ({
-          shift_id: null as any, // shift doesn't have an id yet
+          shift_id: null as any,
           action: 'admin_edit',
           new_user_id: add.user.id,
           performed_by: currentUser?.id,
           details: `Admin added new shift: ${add.date} ${add.shift_type} ${add.department}`,
         }));
-        // Only insert logs that are valid (shift_id can be null for new shifts)
-        // Use shift_logs without shift_id reference since we don't have the new shift id
-        try {
-          await supabase.from('shift_logs').insert(addLogs);
-        } catch {
-          // ignore log errors — not critical
-        }
+        try { await supabase.from('shift_logs').insert(addLogs); } catch { /* ignore */ }
+
+        // Notify newly assigned users
+        const addOwnerIds = [...new Set(pendingAdds.map(a => a.user.id).filter(Boolean))] as string[];
+        pushAdminChange(
+          addOwnerIds,
+          '📋 คุณได้รับมอบหมายเวรใหม่',
+          `Admin ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
+        );
       }
 
       toastSuccess('บันทึกการเปลี่ยนแปลงสำเร็จ');
       onSuccess();
-
     } catch (err: any) {
       console.error(err);
       toastError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
@@ -255,30 +267,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             </div>
           )}
 
-          <div className="space-y-3 pt-4 border-t border-gray-100">
-            <div className="bg-orange-50 text-orange-800 p-2.5 rounded-lg text-xs flex gap-2">
-               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-               <span>กรุณายืนยันการเปลี่ยนแปลงด้วยรหัสผ่านของคุณ 2 รอบ (เพื่อป้องกันข้อผิดพลาด)</span>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">รหัสผ่าน (รอบที่ 1)</label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                className="w-full mt-1 border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="ป้อนรหัสผ่าน"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-gray-700">ยืนยันรหัสผ่าน (รอบที่ 2)</label>
-              <input
-                type="password"
-                value={passwordConfirm}
-                onChange={e => setPasswordConfirm(e.target.value)}
-                className="w-full mt-1 border-gray-300 rounded-lg text-sm px-3 py-2 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all"
-                placeholder="ป้อนรหัสผ่าน อีกครั้ง"
-              />
+          <div className="pt-4 border-t border-gray-100">
+            <div className="bg-amber-50 text-amber-800 p-2.5 rounded-lg text-xs flex gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <span>การเปลี่ยนแปลงจะมีผลทันทีและระบบจะแจ้งเตือนผู้ที่ได้รับผลกระทบ</span>
             </div>
           </div>
         </div>
@@ -292,7 +284,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           </button>
           <button
             onClick={handleConfirm}
-            disabled={loading || !password || !passwordConfirm}
+            disabled={loading}
             className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center gap-2"
           >
             {loading && <Loader2 className="w-4 h-4 animate-spin" />}
