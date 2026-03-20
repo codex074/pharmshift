@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search } from 'lucide-react';
+import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
@@ -24,6 +24,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
   const [fetchingUsers, setFetchingUsers] = useState(true);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [collisionWarning, setCollisionWarning] = useState<string | null>(null);
+  const [collisionConfirmed, setCollisionConfirmed] = useState(false);
 
   const isOwnShift = currentUser && shift ? currentUser.id === shift.user_id : false;
 
@@ -46,6 +48,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
 
   useEffect(() => {
     setSubmitError(null);
+    setCollisionWarning(null);
+    setCollisionConfirmed(false);
   }, [selectedUser]);
 
   if (!shift || !currentUser) return null;
@@ -75,12 +79,18 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           .eq('user_id', selectedUser.id)
           .eq('date', shift.date);
 
-        const hasCollision = (targetShifts || []).some(s =>
+        const collidingShifts = (targetShifts || []).filter(s =>
           shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
         );
-        if (hasCollision) {
-          throw new Error(`ไม่สามารถดำเนินการได้ เนื่องจาก${selectedUser.f_name || selectedUser.nickname || 'ปลายทาง'}มีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว`);
+
+        if (collidingShifts.length > 0 && !collisionConfirmed) {
+          const targetName = selectedUser.f_name || selectedUser.nickname || 'ปลายทาง';
+          setCollisionWarning(`${targetName} มีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?`);
+          setLoading(false);
+          return;
         }
+
+        const hasCollision = collidingShifts.length > 0;
 
         const { error } = await supabase.from('swap_requests').insert({
           shift_id: shift.id,
@@ -94,13 +104,14 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         if (error) throw error;
 
         // Push notification to target user
+        const collisionNote = hasCollision ? ' ⚠️ (มีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: selectedUser.id,
             title: '📩 มีคำขอให้อยู่เวรแทน',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอให้คุณมาอยู่เวรแทน กรุณาตรวจสอบตารางเวร`,
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอให้คุณมาอยู่เวรแทน${collisionNote}`,
             url: '/calendar',
             tag: 'swap-new',
           }),
@@ -117,12 +128,17 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           .eq('user_id', currentUser.id)
           .eq('date', shift.date);
 
-        const hasCollision = (myShifts || []).some(s =>
+        const collidingShifts = (myShifts || []).filter(s =>
           shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
         );
-        if (hasCollision) {
-          throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากคุณมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+
+        if (collidingShifts.length > 0 && !collisionConfirmed) {
+          setCollisionWarning('คุณมีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?');
+          setLoading(false);
+          return;
         }
+
+        const hasCollision = collidingShifts.length > 0;
 
         const { error } = await supabase.from('swap_requests').insert({
           shift_id: shift.id,
@@ -136,13 +152,14 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         if (error) throw error;
 
         // Push notification to shift owner
+        const collisionNote = hasCollision ? ' ⚠️ (ผู้ขอมีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: shift.user_id,
             title: '📩 มีคำขออยู่เวรแทน',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอมาอยู่เวรแทนคุณ กรุณาตรวจสอบตารางเวร`,
+            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอมาอยู่เวรแทนคุณ${collisionNote}`,
             url: '/calendar',
             tag: 'transfer-new',
           }),
@@ -158,6 +175,13 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleConfirmCollision() {
+    setCollisionConfirmed(true);
+    setCollisionWarning(null);
+    // Re-trigger submit
+    setTimeout(() => handleSubmit(), 50);
   }
 
   const isValidSubmit = isOwnShift ? !!selectedUser : true;
@@ -213,7 +237,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           {/* Shift Info */}
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-3">
             <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              {isOwnShift ? 'เวรของคุณ' : 'เวรที่ต้องการซื้อ'}
+              {isOwnShift ? 'เวรของคุณ' : 'เวรที่ต้องการอยู่แทน'}
             </h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
@@ -311,6 +335,35 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
             </div>
           )}
 
+          {/* Collision Warning */}
+          {collisionWarning && (
+            <div className="p-3 rounded-xl bg-amber-50 border-2 border-amber-400 animate-fade-in">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div className="space-y-2 flex-1">
+                  <p className="text-sm font-medium text-amber-800">{collisionWarning}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        setCollisionWarning(null);
+                        setCollisionConfirmed(false);
+                      }}
+                      className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      onClick={handleConfirmCollision}
+                      className="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all"
+                    >
+                      ยืนยันส่งคำขอ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Inline error */}
           {submitError && (
             <div className="p-3 rounded-xl bg-red-50 border border-red-200">
@@ -343,7 +396,7 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !isValidSubmit}
+            disabled={loading || !isValidSubmit || !!collisionWarning}
             className={cn(
               "flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
               isOwnShift

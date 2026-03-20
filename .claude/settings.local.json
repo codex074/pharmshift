@@ -14,7 +14,18 @@
       "Bash(fc-list :lang=th)",
       "Bash(system_profiler SPFontsDataType)",
       "Bash(npm run build)",
-      "Bash(git stash)"
+      "Bash(git stash)",
+      "Bash(grep -r \"swap_requests\\\\|shift_logs\" /Users/codex074/Desktop/My-Web-App/pharmshift/app/api --include=*.ts)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"fix: แก้ .order\\(''name''\\) → .order\\(''f_name''\\) หลัง rename column:*)",
+      "Bash(git push:*)",
+      "Bash(find /Users/codex074/Desktop/My-Web-App/pharmshift/app/api -name *.ts -type f)",
+      "Bash(git commit -m \"feat: sub-admin เห็นและแก้ไขตารางเวรทุกตำแหน่งได้:*)",
+      "Bash(git commit -m \"fix: ลดรหัสผ่านยืนยันเหลือรอบเดียว + กด Enter ได้:*)",
+      "Bash(git commit -m \"fix: แก้ Set spread → Array.from\\(\\) แก้ TypeScript build error:*)",
+      "Bash(node /tmp/create_excel.js)",
+      "Bash(git commit -m \"feat: เพิ่มคู่มือตัวย่อเวรใน modal + อัปเดต Excel ตัวอย่างครบ 3 ตำแหน่ง:*)",
+      "Bash(git commit:*)"
     ]
   }
 }

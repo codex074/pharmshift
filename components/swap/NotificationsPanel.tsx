@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, Moon, Sun } from 'lucide-react';
+import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, Moon, Sun, AlertTriangle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ interface NotificationsPanelProps {
   swapRequests: SwapRequest[];
   currentUser: User | null;
   pendingCount: number;
-  onAccept: (req: SwapRequest) => Promise<void>;
+  onAccept: (req: SwapRequest, force?: boolean) => Promise<{ collision?: string } | void>;
   onReject: (swapId: string) => Promise<void>;
   onOpen?: () => void;
   onClose: () => void;
@@ -29,27 +29,62 @@ export function NotificationsPanel({
 }: NotificationsPanelProps) {
 
   const [visibleCount, setVisibleCount] = useState(10);
+  const [collisionReqId, setCollisionReqId] = useState<string | null>(null);
+  const [collisionMsg, setCollisionMsg] = useState('');
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   // Mark requester results as read when panel opens
   useEffect(() => {
     if (onOpen) onOpen();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function handleAccept(req: SwapRequest) {
+  async function handleAccept(req: SwapRequest, force = false) {
+    setProcessingId(req.id);
     try {
-      await onAccept(req);
+      const result = await onAccept(req, force);
+      if (result && 'collision' in result && result.collision) {
+        // Collision detected — show confirm in-place
+        setCollisionReqId(req.id);
+        setCollisionMsg(result.collision);
+        setProcessingId(null);
+        return;
+      }
+      setCollisionReqId(null);
+      setCollisionMsg('');
       toast.success('ยอมรับคำขอเรียบร้อย');
-    } catch {
-      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setProcessingId(null);
+    }
+  }
+
+  async function handleForceAccept(req: SwapRequest) {
+    setProcessingId(req.id);
+    try {
+      await onAccept(req, true);
+      setCollisionReqId(null);
+      setCollisionMsg('');
+      toast.success('ยอมรับคำขอเรียบร้อย');
+      toast.warning('⚠️ มีเวรทับซ้อนในช่วงเวลาเดียวกัน กรุณาจัดการเวรที่ซ้อนกัน', {
+        duration: 8000,
+      });
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setProcessingId(null);
     }
   }
 
   async function handleReject(req: SwapRequest) {
+    setProcessingId(req.id);
     try {
       await onReject(req.id);
       toast.info('ปฏิเสธคำขอแล้ว');
     } catch {
       toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setProcessingId(null);
     }
   }
 
@@ -94,6 +129,16 @@ export function NotificationsPanel({
               const shiftDate = shift?.date ? new Date(shift.date + 'T00:00:00') : null;
               const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
               const isUnreadResult = req.requester_id === currentUser?.id && (req.status === 'accepted' || req.status === 'rejected') && req.requester_read === false;
+              const isProcessing = processingId === req.id;
+              const showCollisionConfirm = collisionReqId === req.id;
+
+              // Determine arrow direction: เจ้าของเวรเดิม → คนใหม่
+              const leftName = req.request_type === 'swap'
+                ? (requester?.nickname || requester?.f_name)   // swap: requester เป็นเจ้าของเวร ขอให้ target มาแทน
+                : (targetUser?.nickname || targetUser?.f_name); // transfer: target เป็นเจ้าของเวร requester ขอรับ
+              const rightName = req.request_type === 'swap'
+                ? (targetUser?.nickname || targetUser?.f_name)
+                : (requester?.nickname || requester?.f_name);
 
               return (
                 <div
@@ -111,14 +156,9 @@ export function NotificationsPanel({
                       <div className="flex items-center gap-1.5 w-full">
                         <ArrowRightLeft className="w-3 h-3 text-gray-400 flex-shrink-0" />
                         <p className="text-xs font-medium text-gray-800 truncate">
-                          {/* swap: requester ยกเวรให้ targetUser / transfer: targetUser เป็นเจ้าของ requester ขอรับ */}
-                          {req.request_type === 'swap'
-                            ? requester?.nickname || requester?.f_name
-                            : targetUser?.nickname || targetUser?.f_name}
+                          {leftName}
                           <span className="text-gray-400 font-normal"> → </span>
-                          {req.request_type === 'swap'
-                            ? targetUser?.nickname || targetUser?.f_name
-                            : requester?.nickname || requester?.f_name}
+                          {rightName}
                         </p>
                         <span className="ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
                           {req.request_type === 'swap' ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
@@ -150,18 +190,52 @@ export function NotificationsPanel({
                     {statusBadge(req.status)}
                   </div>
 
+                  {/* Collision Confirm Dialog */}
+                  {showCollisionConfirm && (
+                    <div className="p-2.5 rounded-lg bg-amber-50 border-2 border-amber-400 animate-fade-in space-y-2">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                        <p className="text-xs font-medium text-amber-800">
+                          ⚠️ {collisionMsg} — ยืนยันรับคำขอหรือไม่?
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setCollisionReqId(null);
+                            setCollisionMsg('');
+                          }}
+                          disabled={isProcessing}
+                          className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+                        >
+                          ยกเลิก
+                        </button>
+                        <button
+                          onClick={() => handleForceAccept(req)}
+                          disabled={isProcessing}
+                          className="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                          ยืนยันรับ (มีเวรซ้อน)
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Action buttons — only for incoming, pending requests */}
-                  {isIncoming && (
+                  {isIncoming && !showCollisionConfirm && (
                     <div className="flex gap-2 pt-1">
                       <button
                         onClick={() => handleAccept(req)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-all"
+                        disabled={isProcessing}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
                       >
-                        <Check className="w-3 h-3" /> ยอมรับ
+                        {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} ยอมรับ
                       </button>
                       <button
                         onClick={() => handleReject(req)}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all"
+                        disabled={isProcessing}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
                       >
                         <Ban className="w-3 h-3" /> ปฏิเสธ
                       </button>
