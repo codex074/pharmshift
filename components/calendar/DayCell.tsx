@@ -37,7 +37,7 @@ export function DayCell({ day, currentUser, onClick, viewMode }: DayCellProps) {
       {/* Day number */}
       <div className="flex items-center justify-between mb-0.5">
         <span className={cn(
-          'inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-bold',
+          'inline-flex items-center justify-center w-7 h-7 rounded-full text-[15px] font-bold',
           day.isToday
             ? 'bg-violet-600 text-white'
             : isWeekend && day.isCurrentMonth

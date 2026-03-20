@@ -93,7 +93,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                   {/* Day Number */}
                   <div className="flex items-center justify-between mb-1 sm:mb-2">
                     <span className={cn(
-                      'text-xs sm:text-sm font-medium w-6 h-6 sm:w-7 sm:h-7 flex items-center justify-center rounded-full',
+                      'text-sm sm:text-base font-medium w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full',
                       day.isToday && 'bg-violet-600 text-white shadow-sm',
                       !day.isToday && isWeekend && day.isCurrentMonth && 'text-red-500'
                     )}>

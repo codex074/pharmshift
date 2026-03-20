@@ -108,7 +108,7 @@ export function MobileCalendarList({
             )}>
               <div className="flex items-center gap-3">
                 <div className={cn(
-                  'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg',
+                  'w-14 h-14 rounded-xl flex items-center justify-center font-bold text-[27px]',
                   day.isToday ? 'bg-violet-600 text-white shadow-sm' :
                   dow === 0 || day.isHoliday ? 'bg-red-100 text-red-600' :
                   dow === 6 ? 'bg-indigo-100 text-indigo-600' :

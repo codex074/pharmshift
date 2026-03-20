@@ -82,7 +82,7 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, onDayClick }
               {/* Day number circle */}
               <span
                 className={cn(
-                  'w-8 h-8 flex items-center justify-center rounded-full text-[13px] font-semibold mb-0.5',
+                  'w-10 h-10 flex items-center justify-center rounded-full text-[19px] font-semibold mb-0.5',
                   day.isToday
                     ? 'bg-violet-600 text-white shadow-sm'
                     : dow === 0 || (day.isHoliday && day.isCurrentMonth)
