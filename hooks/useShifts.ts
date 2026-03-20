@@ -132,7 +132,7 @@ export function useSwapRequests(userId?: string) {
     return () => { channel.unsubscribe(); };
   }, [userId, fetchSwaps]);
 
-  const acceptSwap = async (req: SwapRequest) => {
+  const acceptSwap = async (req: SwapRequest, force = false): Promise<{ collision?: string }> => {
     // Verify the request is still pending (prevent race condition)
     const { data: freshReq } = await supabase
       .from('swap_requests')
@@ -153,19 +153,18 @@ export function useSwapRequests(userId?: string) {
       throw new Error('เวรนี้ถูกเปลี่ยนเจ้าของไปแล้ว กรุณารีเฟรชหน้า');
     }
 
-    // PRE-ACCEPTANCE VALIDATION TO PREVENT COLLISION
+    // PRE-ACCEPTANCE COLLISION CHECK
+    let collisionMsg = '';
     const checks = [];
-    
+
     // Determine the actual shifts involved and who receives them
     if (req.request_type === 'swap' && req.target_shift && req.shift) {
-      // Fetch requester's shifts on target_shift's date (excluding the shift they give away)
       checks.push(
         supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.requester_id)
           .eq('date', req.target_shift.date)
           .neq('id', req.shift.id)
       );
-      // Fetch target_user's shifts on shift's date (excluding the shift they give away)
       checks.push(
         supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.target_user_id)
@@ -182,7 +181,6 @@ export function useSwapRequests(userId?: string) {
       );
     }
 
-    // Execute checks and validate overlap
     const checkResults = await Promise.all(checks);
 
     if (req.request_type === 'swap' && req.target_shift && req.shift) {
@@ -190,20 +188,27 @@ export function useSwapRequests(userId?: string) {
       if ((requesterOtherShifts.data || []).some(s =>
         shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
       )) {
-        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากผู้ขอแลกมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+        collisionMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
       }
       if ((targetOtherShifts.data || []).some(s =>
         shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
       )) {
-        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+        collisionMsg = collisionMsg
+          ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน'
+          : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
       }
     } else if (req.request_type === 'transfer' && req.shift) {
       const [newUserShifts] = checkResults;
       if ((newUserShifts.data || []).some(s =>
         shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
       )) {
-        throw new Error("ไม่สามารถดำเนินการได้ เนื่องจากมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว");
+        collisionMsg = 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
       }
+    }
+
+    // If collision detected and not forced, return collision info for UI to confirm
+    if (collisionMsg && !force) {
+      return { collision: collisionMsg };
     }
     
     // 1. Update swap status → accepted + mark requester_read = false
@@ -324,6 +329,7 @@ export function useSwapRequests(userId?: string) {
     }
 
     await fetchSwaps();
+    return collisionMsg ? { collision: collisionMsg } : {};
   };
 
   const rejectSwap = async (swapId: string) => {

@@ -97,9 +97,11 @@ export default function CalendarPage() {
     swapRequests, pendingCount, acceptSwap, rejectSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
 
-  async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0]) {
-    await acceptSwap(req);
+  async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0], force = false) {
+    const result = await acceptSwap(req, force);
+    if (result?.collision) return result;
     refetch();
+    return result;
   }
 
 
