@@ -94,7 +94,7 @@ export default function CalendarPage() {
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
   const {
-    swapRequests, pendingCount, acceptSwap, rejectSwap, markRequesterRead,
+    swapRequests, pendingCount, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
 
   async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0], force = false) {
@@ -594,6 +594,7 @@ export default function CalendarPage() {
           pendingCount={pendingCount}
           onAccept={handleAcceptSwap}
           onReject={rejectSwap}
+          onCancel={cancelSwap}
           onOpen={markRequesterRead}
           onClose={() => setShowNotifications(false)}
         />

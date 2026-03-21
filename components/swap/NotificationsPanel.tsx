@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, Moon, Sun, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -14,6 +14,7 @@ interface NotificationsPanelProps {
   pendingCount: number;
   onAccept: (req: SwapRequest, force?: boolean) => Promise<{ collision?: string } | void>;
   onReject: (swapId: string) => Promise<void>;
+  onCancel: (swapId: string) => Promise<void>;
   onOpen?: () => void;
   onClose: () => void;
 }
@@ -25,13 +26,14 @@ function statusBadge(status: string) {
 }
 
 export function NotificationsPanel({
-  swapRequests, currentUser, pendingCount, onAccept, onReject, onOpen, onClose,
+  swapRequests, currentUser, pendingCount, onAccept, onReject, onCancel, onOpen, onClose,
 }: NotificationsPanelProps) {
 
   const [visibleCount, setVisibleCount] = useState(10);
   const [collisionReqId, setCollisionReqId] = useState<string | null>(null);
   const [collisionMsg, setCollisionMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
 
   // Mark requester results as read when panel opens
   useEffect(() => {
@@ -88,6 +90,19 @@ export function NotificationsPanel({
     }
   }
 
+  async function handleCancel(swapId: string) {
+    setProcessingId(swapId);
+    try {
+      await onCancel(swapId);
+      setCancelConfirmId(null);
+      toast.success('ยกเลิกคำขอเรียบร้อยแล้ว');
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setProcessingId(null);
+    }
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:justify-end p-0 sm:p-4 sm:pt-16">
       {/* Backdrop */}
@@ -128,9 +143,11 @@ export function NotificationsPanel({
               const deptName = shift?.department?.name || '';
               const shiftDate = shift?.date ? new Date(shift.date + 'T00:00:00') : null;
               const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
+              const isMyPendingRequest = req.requester_id === currentUser?.id && req.status === 'pending';
               const isUnreadResult = req.requester_id === currentUser?.id && (req.status === 'accepted' || req.status === 'rejected') && req.requester_read === false;
               const isProcessing = processingId === req.id;
               const showCollisionConfirm = collisionReqId === req.id;
+              const showCancelConfirm = cancelConfirmId === req.id;
 
               // Determine arrow direction: เจ้าของเวรเดิม → คนใหม่
               const leftName = req.request_type === 'swap'
@@ -146,6 +163,7 @@ export function NotificationsPanel({
                   className={cn(
                     'rounded-xl border p-3 space-y-2 transition-all',
                     isIncoming ? 'border-violet-200 bg-violet-50/50' :
+                    isMyPendingRequest ? 'border-blue-200 bg-blue-50/40' :
                     isUnreadResult && req.status === 'accepted' ? 'border-green-200 bg-green-50/50 ring-1 ring-green-200' :
                     isUnreadResult && req.status === 'rejected' ? 'border-red-200 bg-red-50/50 ring-1 ring-red-200' :
                     'border-gray-100 bg-white'
@@ -239,6 +257,43 @@ export function NotificationsPanel({
                       >
                         <Ban className="w-3 h-3" /> ปฏิเสธ
                       </button>
+                    </div>
+                  )}
+
+                  {/* Cancel button — only for my own pending requests */}
+                  {isMyPendingRequest && !showCancelConfirm && (
+                    <div className="pt-1">
+                      <button
+                        onClick={() => setCancelConfirmId(req.id)}
+                        disabled={isProcessing}
+                        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50 text-xs font-medium transition-all disabled:opacity-50"
+                      >
+                        <Trash2 className="w-3 h-3" /> ยกเลิกคำขอ
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Cancel confirm dialog */}
+                  {showCancelConfirm && (
+                    <div className="p-2.5 rounded-lg bg-red-50 border-2 border-red-300 animate-fade-in space-y-2">
+                      <p className="text-xs font-medium text-red-700">ยืนยันการยกเลิกคำขอนี้? รายการจะถูกลบออกทันที</p>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setCancelConfirmId(null)}
+                          disabled={isProcessing}
+                          className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+                        >
+                          ไม่ยกเลิก
+                        </button>
+                        <button
+                          onClick={() => handleCancel(req.id)}
+                          disabled={isProcessing}
+                          className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+                        >
+                          {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                          ยืนยันยกเลิก
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
