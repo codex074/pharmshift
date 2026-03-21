@@ -28,6 +28,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [togglingReadonlyId, setTogglingReadonlyId] = useState<string | null>(null);
 
   // Pagination
   const PAGE_SIZE = 10;
@@ -44,6 +45,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
     role: 'pharmacist' as UserRole,
     is_sub_admin: false,
     is_active: true,
+    is_readonly: false,
   });
 
   useEffect(() => {
@@ -76,13 +78,14 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       role: user.role,
       is_sub_admin: user.is_sub_admin ?? false,
       is_active: user.is_active !== false,
+      is_readonly: user.is_readonly ?? false,
     });
     setView('edit');
   }
 
   function openAdd() {
     setEditingUser(null);
-    setFormData({ pha_id: '', prefix: '', f_name: '', l_name: '', nickname: '', salary_number: '', role: 'pharmacist', is_sub_admin: false, is_active: true });
+    setFormData({ pha_id: '', prefix: '', f_name: '', l_name: '', nickname: '', salary_number: '', role: 'pharmacist', is_sub_admin: false, is_active: true, is_readonly: false });
     setView('add');
   }
 
@@ -144,6 +147,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
           role: formData.role,
           is_sub_admin: STAFF_ROLES.includes(formData.role as any) ? formData.is_sub_admin : false,
           is_active: formData.is_active,
+          is_readonly: formData.is_readonly,
         }),
       });
 
@@ -210,6 +214,28 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       toast.error(err.message || 'เกิดข้อผิดพลาด');
     } finally {
       setTogglingId(null);
+    }
+  }
+
+  async function handleToggleReadonly(user: User, e: React.MouseEvent) {
+    e.stopPropagation();
+    setTogglingReadonlyId(user.id);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, is_readonly: !user.is_readonly }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Update failed');
+      }
+      toast.success(user.is_readonly ? `ยกเลิก Read-only ของ ${userFullName(user)} แล้ว` : `ตั้ง Read-only ให้ ${userFullName(user)} แล้ว`);
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด');
+    } finally {
+      setTogglingReadonlyId(null);
     }
   }
 
@@ -383,29 +409,60 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                                 Inactive
                               </span>
                             )}
+                            {user.is_readonly && user.is_active !== false && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                Read-only
+                              </span>
+                            )}
                           </div>
                         </div>
 
-                        {/* Toggle active + edit arrow */}
-                        <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={(e) => handleToggleActive(user, e)}
-                            disabled={togglingId === user.id}
-                            title={user.is_active !== false ? 'ระงับการเข้าสู่ระบบ' : 'เปิดใช้งาน'}
-                            className={cn(
-                              'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50',
-                              user.is_active !== false ? 'bg-green-500' : 'bg-gray-300'
-                            )}
-                          >
-                            {togglingId === user.id ? (
-                              <Loader2 className="w-3 h-3 animate-spin text-white m-auto" />
-                            ) : (
-                              <span className={cn(
-                                'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform',
-                                user.is_active !== false ? 'translate-x-4' : 'translate-x-0'
-                              )} />
-                            )}
-                          </button>
+                        {/* Toggles + edit arrow */}
+                        <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          {/* Active toggle (green = active, gray = inactive/blocked) */}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button
+                              onClick={(e) => handleToggleActive(user, e)}
+                              disabled={togglingId === user.id}
+                              title={user.is_active !== false ? 'ระงับการเข้าสู่ระบบ' : 'เปิดใช้งาน'}
+                              className={cn(
+                                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50',
+                                user.is_active !== false ? 'bg-green-500' : 'bg-gray-300'
+                              )}
+                            >
+                              {togglingId === user.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin text-white m-auto" />
+                              ) : (
+                                <span className={cn(
+                                  'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform',
+                                  user.is_active !== false ? 'translate-x-4' : 'translate-x-0'
+                                )} />
+                              )}
+                            </button>
+                            <span className="text-[9px] text-gray-400 leading-none">Login</span>
+                          </div>
+                          {/* Read-only toggle (amber = readonly, gray = normal) */}
+                          <div className="flex flex-col items-center gap-0.5">
+                            <button
+                              onClick={(e) => handleToggleReadonly(user, e)}
+                              disabled={togglingReadonlyId === user.id || user.is_active === false}
+                              title={user.is_readonly ? 'ยกเลิก Read-only' : 'ตั้งเป็น Read-only'}
+                              className={cn(
+                                'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-40',
+                                user.is_readonly ? 'bg-amber-400' : 'bg-gray-300'
+                              )}
+                            >
+                              {togglingReadonlyId === user.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin text-white m-auto" />
+                              ) : (
+                                <span className={cn(
+                                  'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform',
+                                  user.is_readonly ? 'translate-x-4' : 'translate-x-0'
+                                )} />
+                              )}
+                            </button>
+                            <span className="text-[9px] text-gray-400 leading-none">R/O</span>
+                          </div>
                           <PenLine className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
                         </div>
                       </button>
@@ -673,41 +730,80 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 </div>
               )}
 
-              {/* Active/Inactive toggle — only for staff roles */}
-              {STAFF_ROLES.includes(formData.role as any) && (
+              {/* Active/Inactive toggle */}
+              <div className="space-y-1.5">
+                <label className="block text-sm font-medium text-gray-700">สถานะบัญชี (Login)</label>
+                <div className={cn(
+                  'flex items-center gap-3 p-3 rounded-xl border transition-colors',
+                  formData.is_active
+                    ? 'bg-green-50 border-green-200'
+                    : 'bg-red-50 border-red-200'
+                )}>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={formData.is_active}
+                    onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active, ...(p.is_active ? {} : { is_readonly: false }) }))}
+                    className={cn(
+                      'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
+                      formData.is_active ? 'bg-green-500' : 'bg-red-400'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform',
+                        formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                      )}
+                    />
+                  </button>
+                  <div className="text-sm">
+                    <p className={cn('font-semibold', formData.is_active ? 'text-green-700' : 'text-red-600')}>
+                      {formData.is_active ? 'Active — เข้าสู่ระบบได้ปกติ' : 'Inactive — ระงับการเข้าสู่ระบบ'}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {formData.is_active
+                        ? 'ผู้ใช้สามารถเข้าสู่ระบบได้'
+                        : 'ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้ (เหมาะสำหรับผู้ที่ออกจากองค์กรแล้ว)'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Read-only toggle — only when is_active */}
+              {formData.is_active && (
                 <div className="space-y-1.5">
-                  <label className="block text-sm font-medium text-gray-700">สถานะผู้ใช้</label>
+                  <label className="block text-sm font-medium text-gray-700">สิทธิ์การใช้งาน (Read-only)</label>
                   <div className={cn(
                     'flex items-center gap-3 p-3 rounded-xl border transition-colors',
-                    formData.is_active
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-red-50 border-red-200'
+                    formData.is_readonly
+                      ? 'bg-amber-50 border-amber-200'
+                      : 'bg-gray-50 border-gray-200'
                   )}>
                     <button
                       type="button"
                       role="switch"
-                      aria-checked={formData.is_active}
-                      onClick={() => setFormData(p => ({ ...p, is_active: !p.is_active }))}
+                      aria-checked={formData.is_readonly}
+                      onClick={() => setFormData(p => ({ ...p, is_readonly: !p.is_readonly }))}
                       className={cn(
                         'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-                        formData.is_active ? 'bg-green-500' : 'bg-red-400'
+                        formData.is_readonly ? 'bg-amber-400' : 'bg-gray-200'
                       )}
                     >
                       <span
                         className={cn(
                           'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform',
-                          formData.is_active ? 'translate-x-5' : 'translate-x-0'
+                          formData.is_readonly ? 'translate-x-5' : 'translate-x-0'
                         )}
                       />
                     </button>
                     <div className="text-sm">
-                      <p className={cn('font-semibold', formData.is_active ? 'text-green-700' : 'text-red-600')}>
-                        {formData.is_active ? 'Active — ใช้งานปกติ' : 'Inactive — ระงับการใช้งาน'}
+                      <p className={cn('font-semibold', formData.is_readonly ? 'text-amber-700' : 'text-gray-500')}>
+                        {formData.is_readonly ? 'Read-only — ดูข้อมูลได้อย่างเดียว' : 'ปกติ — มีสิทธิ์เต็ม'}
                       </p>
                       <p className="text-xs text-gray-500">
-                        {formData.is_active
-                          ? 'ผู้ใช้สามารถถูกเพิ่มเวร, แลกเวร, ซื้อขายเวรได้ตามปกติ'
-                          : 'ผู้ใช้จะไม่สามารถถูกเพิ่มเวร, แลกเวร, ซื้อขายเวรได้ ดูตารางเวรอย่างเดียว'}
+                        {formData.is_readonly
+                          ? 'เข้าสู่ระบบได้ แต่ไม่สามารถถูกเพิ่มเวร, แลกเวร, หรือซื้อขายเวรได้'
+                          : 'ผู้ใช้สามารถถูกเพิ่มเวร, แลกเวร, ซื้อขายเวรได้ตามปกติ'}
                       </p>
                     </div>
                   </div>

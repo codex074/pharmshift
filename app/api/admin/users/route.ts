@@ -13,7 +13,7 @@ export async function GET() {
     const supabase = createSupabaseServer();
     const { data, error } = await supabase
       .from('users')
-      .select('id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, profile_image, salary_number, must_change_password, created_at')
+      .select('id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, is_readonly, profile_image, salary_number, must_change_password, created_at')
       .order('f_name', { ascending: true });
 
     if (error) throw error;
@@ -88,7 +88,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { userId, prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin, is_active } = body;
+    const { userId, prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin, is_active, is_readonly } = body;
 
     if (!userId) {
       return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
@@ -109,6 +109,7 @@ export async function PUT(req: NextRequest) {
       updatePayload.is_sub_admin = effectiveRole === 'admin' ? false : is_sub_admin;
     }
     if (is_active !== undefined) updatePayload.is_active = is_active;
+    if (is_readonly !== undefined) updatePayload.is_readonly = is_readonly;
 
     if (Object.keys(updatePayload).length === 0) {
       return NextResponse.json({ error: 'No fields to update' }, { status: 400 });

@@ -45,6 +45,7 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
         .select('*')
         .eq('role', roleGroup)
         .neq('is_active', false)
+        .neq('is_readonly', true)
         .order('f_name');
 
       if (error) {
