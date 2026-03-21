@@ -162,12 +162,30 @@ export async function GET(req: NextRequest) {
     let totalFailed = 0;
 
     const entries = Array.from(userShifts.entries());
+    const notifTitle = `⏰ ${timeLabel}คุณมีเวร`;
 
+    // Insert in-app notifications (จากระบบ) for all users at once
+    const notifRows = entries.map(([userId, shiftDescs]) => ({
+      user_id: userId,
+      type: 'shift_reminder',
+      title: notifTitle,
+      body: `${thaiDate} — ${shiftDescs.join(', ')}`,
+      url: '/calendar',
+    }));
+
+    const { error: notifErr } = await supabase.from('notifications').insert(notifRows);
+    if (notifErr) {
+      console.error('[Shift Reminders] in-app notification insert error:', notifErr);
+    } else {
+      console.log(`[Shift Reminders] ✅ Inserted ${notifRows.length} in-app notification(s)`);
+    }
+
+    // Send push notifications
     await Promise.allSettled(
       entries.map(async ([userId, shiftDescs]) => {
         const shiftList = shiftDescs.join(', ');
         const payload: NotificationPayload = {
-          title: `⏰ ${timeLabel}คุณมีเวร`,
+          title: notifTitle,
           body: `${thaiDate} — ${shiftList}`,
           url: '/calendar',
           tag: `reminder-${targetDate}`,
@@ -184,6 +202,7 @@ export async function GET(req: NextRequest) {
       targetDate,
       timeLabel,
       usersNotified: userShifts.size,
+      inAppInserted: notifRows.length,
       sent: totalSent,
       failed: totalFailed,
     });
