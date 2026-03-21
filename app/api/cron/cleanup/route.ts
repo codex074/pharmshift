@@ -47,11 +47,50 @@ export async function GET(request: Request) {
   }
 
   console.log(`[cron/cleanup] Deleted ${count2m ?? 0} old (>2mo) + ${count1d ?? 0} rejected (>1d) swap_requests`);
+
+  // 3) Delete shift_reminder notifications older than 12 hours
+  const cutoff12h = new Date();
+  cutoff12h.setHours(cutoff12h.getHours() - 12);
+  const cutoff12hISO = cutoff12h.toISOString();
+
+  const { error: errReminder, count: countReminder } = await supabase
+    .from('notifications')
+    .delete({ count: 'exact' })
+    .eq('type', 'shift_reminder')
+    .lt('created_at', cutoff12hISO);
+
+  if (errReminder) {
+    console.error('[cron/cleanup] notifications shift_reminder 12h delete error:', errReminder);
+  }
+
+  // 4) Delete all other notifications older than 1 week
+  const cutoff1w = new Date();
+  cutoff1w.setDate(cutoff1w.getDate() - 7);
+  const cutoff1wISO = cutoff1w.toISOString();
+
+  const { error: errNotif, count: countNotif } = await supabase
+    .from('notifications')
+    .delete({ count: 'exact' })
+    .neq('type', 'shift_reminder')
+    .lt('created_at', cutoff1wISO);
+
+  if (errNotif) {
+    console.error('[cron/cleanup] notifications 1-week delete error:', errNotif);
+  }
+
+  console.log(
+    `[cron/cleanup] Deleted ${countReminder ?? 0} shift_reminder (>12h) + ${countNotif ?? 0} other notifications (>1w)`
+  );
+
   return NextResponse.json({
     ok: true,
     deleted_old: count2m ?? 0,
     deleted_rejected: count1d ?? 0,
     cutoff_2months: cutoff2mISO,
     cutoff_1day: cutoff1dISO,
+    deleted_reminder_notifs: countReminder ?? 0,
+    deleted_other_notifs: countNotif ?? 0,
+    cutoff_12h: cutoff12hISO,
+    cutoff_1week: cutoff1wISO,
   });
 }

@@ -124,7 +124,7 @@ export interface Holiday {
   created_at?: string;
 }
 
-export type AppNotificationType = 'shift_assigned' | 'shift_changed' | 'shift_removed' | 'schedule_published';
+export type AppNotificationType = 'shift_assigned' | 'shift_changed' | 'shift_removed' | 'schedule_published' | 'shift_reminder';
 
 export interface AppNotification {
   id: string;
