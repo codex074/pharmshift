@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   X, Loader2, Save, Search, Users, UserCog, PenLine, KeyRound,
-  ChevronLeft, Shield, Hash, UserPlus,
+  ChevronLeft, Shield, Hash, UserPlus, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { ROLE_LABELS, STAFF_ROLES, userFullName } from '@/lib/types';
@@ -27,6 +27,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
 
   // Pagination
   const PAGE_SIZE = 10;
@@ -187,6 +188,28 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       toast.error(err.message || 'เกิดข้อผิดพลาด');
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleToggleActive(user: User, e: React.MouseEvent) {
+    e.stopPropagation(); // prevent opening edit view
+    setTogglingId(user.id);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, is_active: !user.is_active }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Update failed');
+      }
+      toast.success(user.is_active ? `ระงับบัญชี ${userFullName(user)} แล้ว` : `เปิดใช้งานบัญชี ${userFullName(user)} แล้ว`);
+      await fetchUsers();
+    } catch (err: any) {
+      toast.error(err.message || 'เกิดข้อผิดพลาด');
+    } finally {
+      setTogglingId(null);
     }
   }
 
@@ -363,8 +386,28 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                           </div>
                         </div>
 
-                        {/* Arrow */}
-                        <PenLine className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
+                        {/* Toggle active + edit arrow */}
+                        <div className="flex items-center gap-1.5 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            onClick={(e) => handleToggleActive(user, e)}
+                            disabled={togglingId === user.id}
+                            title={user.is_active !== false ? 'ระงับการเข้าสู่ระบบ' : 'เปิดใช้งาน'}
+                            className={cn(
+                              'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors focus:outline-none disabled:opacity-50',
+                              user.is_active !== false ? 'bg-green-500' : 'bg-gray-300'
+                            )}
+                          >
+                            {togglingId === user.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin text-white m-auto" />
+                            ) : (
+                              <span className={cn(
+                                'pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform',
+                                user.is_active !== false ? 'translate-x-4' : 'translate-x-0'
+                              )} />
+                            )}
+                          </button>
+                          <PenLine className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors" />
+                        </div>
                       </button>
                     ))}
                   </div>
