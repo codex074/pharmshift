@@ -29,7 +29,8 @@ export function NotificationsPanel({
   swapRequests, currentUser, pendingCount, onAccept, onReject, onCancel, onOpen, onClose,
 }: NotificationsPanelProps) {
 
-  const [visibleCount, setVisibleCount] = useState(10);
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(0);
   const [collisionReqId, setCollisionReqId] = useState<string | null>(null);
   const [collisionMsg, setCollisionMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -136,7 +137,7 @@ export function NotificationsPanel({
               <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือน</p>
             </div>
           ) : (
-            swapRequests.slice(0, visibleCount).map((req) => {
+            swapRequests.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((req) => {
               const shift = req.shift as any;
               const requester = req.requester as any;
               const targetUser = req.target_user as any;
@@ -300,13 +301,26 @@ export function NotificationsPanel({
               );
             })
           )}
-          {swapRequests.length > visibleCount && (
-            <button
-              onClick={() => setVisibleCount(c => c + 10)}
-              className="w-full py-2 text-xs text-violet-600 font-medium hover:text-violet-800 hover:bg-violet-50 rounded-lg transition-colors border border-violet-100"
-            >
-              โหลดเพิ่มเติม ({swapRequests.length - visibleCount} รายการ)
-            </button>
+          {swapRequests.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+              <button
+                onClick={() => setPage(p => p - 1)}
+                disabled={page === 0}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                ◀ ก่อนหน้า
+              </button>
+              <span className="text-[11px] text-gray-400">
+                {page + 1} / {Math.ceil(swapRequests.length / PAGE_SIZE)}
+              </span>
+              <button
+                onClick={() => setPage(p => p + 1)}
+                disabled={(page + 1) * PAGE_SIZE >= swapRequests.length}
+                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                ถัดไป ▶
+              </button>
+            </div>
           )}
         </div>
       </div>
