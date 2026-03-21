@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import {
   X, Loader2, Save, Search, Users, UserCog, PenLine, KeyRound,
-  ChevronLeft, Shield, Hash, UserPlus, Trash2, AlertTriangle,
+  ChevronLeft, Shield, Hash, UserPlus,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { ROLE_LABELS, STAFF_ROLES, userFullName } from '@/lib/types';
@@ -27,8 +27,6 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   // Pagination
   const PAGE_SIZE = 10;
@@ -90,7 +88,6 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   function backToList() {
     setView('list');
     setEditingUser(null);
-    setShowDeleteConfirm(false);
   }
 
   async function handleCreate() {
@@ -190,24 +187,6 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
       toast.error(err.message || 'เกิดข้อผิดพลาด');
     } finally {
       setResetting(false);
-    }
-  }
-
-  async function handleDelete() {
-    if (!editingUser) return;
-    setDeleting(true);
-    try {
-      const res = await fetch(`/api/admin/users?userId=${editingUser.id}`, { method: 'DELETE' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Delete failed');
-      toast.success(`ลบผู้ใช้ ${userFullName(editingUser)} เรียบร้อยแล้ว`);
-      setShowDeleteConfirm(false);
-      await fetchUsers();
-      backToList();
-    } catch (err: any) {
-      toast.error(err.message || 'เกิดข้อผิดพลาด');
-    } finally {
-      setDeleting(false);
     }
   }
 
@@ -738,51 +717,6 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 </button>
               </div>
 
-              {/* Delete user — danger zone */}
-              <div className="border-t border-red-100 pt-4 mt-2">
-                {!showDeleteConfirm ? (
-                  <button
-                    onClick={() => setShowDeleteConfirm(true)}
-                    disabled={deleting}
-                    className="w-full flex items-center justify-center gap-2 bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2.5 px-4 rounded-xl border border-red-200 transition-all disabled:opacity-50"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                    ลบผู้ใช้นี้ออกจากระบบ
-                  </button>
-                ) : (
-                  <div className="p-3 rounded-xl bg-red-50 border-2 border-red-300 space-y-3">
-                    <div className="flex items-start gap-2">
-                      <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-semibold text-red-700">ยืนยันการลบผู้ใช้?</p>
-                        <p className="text-xs text-red-600 mt-0.5">
-                          การกระทำนี้ไม่สามารถย้อนกลับได้ — ข้อมูลของ <strong>{editingUser ? userFullName(editingUser) : ''}</strong> จะถูกลบออกถาวร
-                        </p>
-                        <p className="text-xs text-red-500 mt-1">
-                          ⚠️ ผู้ใช้ที่มีข้อมูลเวรอยู่จะไม่สามารถลบได้ กรุณาใช้การ &quot;ระงับบัญชี&quot; แทน
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => setShowDeleteConfirm(false)}
-                        disabled={deleting}
-                        className="flex-1 py-2 rounded-lg border border-gray-300 text-gray-600 text-sm font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
-                      >
-                        ยกเลิก
-                      </button>
-                      <button
-                        onClick={handleDelete}
-                        disabled={deleting}
-                        className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1.5"
-                      >
-                        {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                        ยืนยันลบ
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
           )}
         </div>
