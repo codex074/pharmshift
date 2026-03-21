@@ -29,6 +29,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
+    // Block disabled accounts
+    if (user.is_active === false) {
+      return NextResponse.json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' }, { status: 403 });
+    }
+
     // Set the custom auth token cookie
     await createSession(user);
 
