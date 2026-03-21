@@ -16,7 +16,11 @@ interface ManageHolidaysModalProps {
 export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalProps) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(0);
+
   // Form state
   const [date, setDate] = useState('');
   const [name, setName] = useState('');
@@ -202,7 +206,7 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
                 {holidays.length} วัน
               </span>
             </h3>
-            
+
             {loading ? (
               <div className="flex flex-col items-center justify-center py-8 text-gray-400 gap-2 bg-white rounded-xl border border-gray-100">
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -214,38 +218,61 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
                 <p className="text-sm">ยังไม่มีข้อมูลวันหยุด</p>
               </div>
             ) : (
-              <div className="space-y-2">
-                {holidays.map((h) => {
-                  const dateObj = new Date(h.date);
-                  const isPast = dateObj < new Date(new Date().setHours(0,0,0,0));
-                  
-                  return (
-                    <div 
-                      key={h.id} 
-                      className={`flex items-center justify-between p-3 bg-white rounded-xl border ${isPast ? 'border-gray-100 opacity-60' : 'border-gray-200 shadow-sm'} transition-all`}
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">{h.name}</p>
-                        <p className="text-xs text-gray-500">
-                          {format(dateObj, 'd MMMM yyyy', { locale: th })}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => handleDelete(h.id)}
-                        disabled={deletingId === h.id}
-                        title="ลบวันหยุด"
-                        className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              <>
+                <div className="space-y-2">
+                  {holidays.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((h) => {
+                    const dateObj = new Date(h.date);
+                    const isPast = dateObj < new Date(new Date().setHours(0,0,0,0));
+
+                    return (
+                      <div
+                        key={h.id}
+                        className={`flex items-center justify-between p-3 bg-white rounded-xl border ${isPast ? 'border-gray-100 opacity-60' : 'border-gray-200 shadow-sm'} transition-all`}
                       >
-                        {deletingId === h.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="w-4 h-4" />
-                        )}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{h.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {format(dateObj, 'd MMMM yyyy', { locale: th })}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleDelete(h.id)}
+                          disabled={deletingId === h.id}
+                          title="ลบวันหยุด"
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === h.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                {holidays.length > PAGE_SIZE && (
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-2">
+                    <button
+                      onClick={() => setPage(p => p - 1)}
+                      disabled={page === 0}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      ◀ ก่อนหน้า
+                    </button>
+                    <span className="text-[11px] text-gray-400">
+                      {page + 1} / {Math.ceil(holidays.length / PAGE_SIZE)}
+                    </span>
+                    <button
+                      onClick={() => setPage(p => p + 1)}
+                      disabled={(page + 1) * PAGE_SIZE >= holidays.length}
+                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                    >
+                      ถัดไป ▶
+                    </button>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

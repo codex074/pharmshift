@@ -28,6 +28,10 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
   const [saving, setSaving] = useState(false);
   const [resetting, setResetting] = useState(false);
 
+  // Pagination
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(0);
+
   // Edit/Add form state
   const [formData, setFormData] = useState({
     pha_id: '',
@@ -268,7 +272,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 <input
                   type="text"
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  onChange={(e) => { setSearch(e.target.value); setPage(0); }}
                   placeholder="ค้นหาชื่อ, รหัส..."
                   className="w-full bg-white border border-gray-300 rounded-xl pl-10 pr-4 py-2.5 text-gray-800 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-teal-500/50 focus:border-teal-500 transition-all shadow-sm text-sm"
                 />
@@ -278,7 +282,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
               {/* Role filter */}
               <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
                 <button
-                  onClick={() => setFilterRole('all')}
+                  onClick={() => { setFilterRole('all'); setPage(0); }}
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all',
                     filterRole === 'all'
@@ -291,7 +295,7 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                 {ALL_ROLES.map((role) => (
                   <button
                     key={role}
-                    onClick={() => setFilterRole(role)}
+                    onClick={() => { setFilterRole(role); setPage(0); }}
                     className={cn(
                       'px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all',
                       filterRole === role
@@ -322,47 +326,71 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
                   <p className="text-sm">ไม่พบผู้ใช้ที่ตรงกับเงื่อนไข</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {filtered.map((user) => (
-                    <button
-                      key={user.id}
-                      onClick={() => openEdit(user)}
-                      className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
-                    >
-                      {/* Avatar */}
-                      <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
-                        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 truncate">
-                          {userFullName(user)}
-                          {user.nickname ? ` (${user.nickname})` : ''}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          <span className="text-xs text-gray-400">{user.pha_id}</span>
-                          <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', roleColor[user.role])}>
-                            {ROLE_LABELS[user.role]}
-                          </span>
-                          {user.is_sub_admin && user.role !== 'admin' && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
-                              Sub-Admin
-                            </span>
-                          )}
-                          {user.is_active === false && (
-                            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
-                              Inactive
-                            </span>
-                          )}
+                <>
+                  <div className="space-y-2">
+                    {filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((user) => (
+                      <button
+                        key={user.id}
+                        onClick={() => openEdit(user)}
+                        className="w-full flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md hover:border-teal-200 transition-all text-left group"
+                      >
+                        {/* Avatar */}
+                        <div className="w-10 h-10 flex-shrink-0 rounded-full bg-gradient-to-br from-teal-400 to-cyan-500 flex items-center justify-center text-white shadow-inner">
+                          <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
                         </div>
-                      </div>
 
-                      {/* Arrow */}
-                      <PenLine className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
-                    </button>
-                  ))}
-                </div>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {userFullName(user)}
+                            {user.nickname ? ` (${user.nickname})` : ''}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-gray-400">{user.pha_id}</span>
+                            <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded-full', roleColor[user.role])}>
+                              {ROLE_LABELS[user.role]}
+                            </span>
+                            {user.is_sub_admin && user.role !== 'admin' && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-yellow-100 text-yellow-700">
+                                Sub-Admin
+                              </span>
+                            )}
+                            {user.is_active === false && (
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-gray-200 text-gray-500">
+                                Inactive
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <PenLine className="w-4 h-4 text-gray-300 group-hover:text-teal-500 transition-colors flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                  {filtered.length > PAGE_SIZE && (
+                    <div className="flex items-center justify-between pt-3 border-t border-gray-100 mt-2">
+                      <button
+                        onClick={() => setPage(p => p - 1)}
+                        disabled={page === 0}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        ◀ ก่อนหน้า
+                      </button>
+                      <span className="text-[11px] text-gray-400">
+                        {page + 1} / {Math.ceil(filtered.length / PAGE_SIZE)}
+                        <span className="ml-1 text-gray-300">({filtered.length} คน)</span>
+                      </span>
+                      <button
+                        onClick={() => setPage(p => p + 1)}
+                        disabled={(page + 1) * PAGE_SIZE >= filtered.length}
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                      >
+                        ถัดไป ▶
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </>
           ) : view === 'add' ? (
