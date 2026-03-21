@@ -375,7 +375,25 @@ export function useSwapRequests(userId?: string) {
     await fetchSwaps();
   };
 
-  return { swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, markRequesterRead };
+  const cancelSwap = async (swapId: string) => {
+    // Verify it's still pending before deleting
+    const { data: freshReq } = await supabase
+      .from('swap_requests')
+      .select('status, requester_id, target_user_id, request_type')
+      .eq('id', swapId)
+      .single();
+
+    if (!freshReq) throw new Error('ไม่พบคำขอนี้ในระบบ');
+    if (freshReq.status !== 'pending') throw new Error('คำขอนี้ดำเนินการไปแล้ว ไม่สามารถยกเลิกได้');
+    if (freshReq.requester_id !== userId) throw new Error('คุณไม่มีสิทธิ์ยกเลิกคำขอนี้');
+
+    // Delete from DB immediately
+    await supabase.from('swap_requests').delete().eq('id', swapId);
+
+    await fetchSwaps();
+  };
+
+  return { swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead };
 }
 
 export function useCurrentUser() {
