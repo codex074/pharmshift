@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
-import { useShifts, useSwapRequests, useCurrentUser } from '@/hooks/useShifts';
+import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
@@ -73,6 +73,7 @@ export default function CalendarPage() {
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
+  const { notifications, unreadCount: notifUnreadCount, markAllRead: markNotifsRead } = useNotifications(currentUser?.id);
 
   // Auto-subscribe to push notifications when user is authenticated
   useEffect(() => {
@@ -202,7 +203,7 @@ export default function CalendarPage() {
     <>
       <Header
         currentUser={currentUser}
-        pendingCount={pendingCount}
+        pendingCount={pendingCount + notifUnreadCount}
         onBellClick={() => setShowNotifications(true)}
         onHistoryClick={() => setShowSwapHistory(true)}
         year={year}
@@ -590,11 +591,14 @@ export default function CalendarPage() {
       {showNotifications && (
         <NotificationsPanel
           swapRequests={swapRequests}
+          notifications={notifications}
+          notifUnreadCount={notifUnreadCount}
           currentUser={currentUser}
           pendingCount={pendingCount}
           onAccept={handleAcceptSwap}
           onReject={rejectSwap}
           onCancel={cancelSwap}
+          onMarkNotifsRead={markNotifsRead}
           onOpen={markRequesterRead}
           onClose={() => setShowNotifications(false)}
         />

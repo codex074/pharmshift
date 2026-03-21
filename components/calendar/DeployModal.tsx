@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { ROLE_LABELS, STAFF_ROLES, UserRole, isAdminLike } from '@/lib/types';
+import { insertNotifications } from '@/lib/notifyUsers';
 
 interface DeployModalProps {
   initialYear: number;
@@ -89,7 +90,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       setSuccessMsg('ประกาศตารางเวรสำเร็จแล้ว!');
       toast.success('ประกาศตารางเวรสำเร็จแล้ว!');
 
-      // Send push to all staff of the published role group(s)
+      // Send push + in-app notifications to all staff of the published role group(s)
       try {
         const rolesToNotify = roleGroup === 'all'
           ? ['pharmacist', 'pharmacy_technician', 'officer']
@@ -99,17 +100,39 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
           .select('id')
           .in('role', rolesToNotify);
         if (staffUsers?.length) {
+          const notifTitle = '📋 ตารางเวรประกาศแล้ว';
+          const now = new Date();
+          const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
+          const notifBody = `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} แล้ว — ${timestamp}`;
+          // Push notification
           fetch('/api/push/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               userIds: staffUsers.map(u => u.id),
-              title: '📋 ตารางเวรประกาศแล้ว',
-              body: `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} แล้ว`,
+              title: notifTitle,
+              body: notifBody,
               url: '/calendar',
               tag: `publish-${monthYear}`,
             }),
           }).catch(() => {});
+          // In-app notification to all staff
+          insertNotifications(
+            staffUsers.map(u => u.id),
+            'schedule_published',
+            notifTitle,
+            notifBody,
+          );
+          // Also send summary to admin if admin isn't already in the staff list
+          if (currentUser?.id && !staffUsers.some(u => u.id === currentUser.id)) {
+            const roleLabel = roleGroup === 'all' ? 'ทุกตำแหน่ง' : roleGroup;
+            insertNotifications(
+              [currentUser.id],
+              'schedule_published',
+              '📋 คุณประกาศตารางเวรแล้ว',
+              `คุณประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} (${roleLabel}) ส่งถึงพนักงาน ${staffUsers.length} คน — ${timestamp}`,
+            );
+          }
         }
       } catch {}
 

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import type { Shift, ShiftType, SwapRequest, User, Holiday } from '@/lib/types';
+import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
 import { toMonthYear, shiftsOverlap } from '@/lib/utils';
 
 export function useShifts(year: number, month: number) {
@@ -394,6 +394,49 @@ export function useSwapRequests(userId?: string) {
   };
 
   return { swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead };
+}
+
+export function useNotifications(userId?: string) {
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // Fetch via API route (uses iron-session — avoids Supabase RLS/auth issues)
+  const fetchNotifications = useCallback(async () => {
+    if (!userId) return;
+    try {
+      const res = await fetch('/api/notifications');
+      if (!res.ok) return;
+      const data = await res.json();
+      const notifs = (data.notifications || []) as AppNotification[];
+      setNotifications(notifs);
+      setUnreadCount(notifs.filter((n) => !n.is_read).length);
+    } catch {}
+  }, [userId]);
+
+  useEffect(() => {
+    fetchNotifications();
+    if (!userId) return;
+    // Listen for INSERT events — refetch when any notification is added
+    const channel = supabase
+      .channel(`notifs-${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        () => { fetchNotifications(); },
+      )
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [userId, fetchNotifications]);
+
+  const markAllRead = useCallback(async () => {
+    if (!userId) return;
+    try {
+      await fetch('/api/notifications', { method: 'PUT' });
+      await fetchNotifications();
+    } catch {}
+  }, [userId, fetchNotifications]);
+
+  return { notifications, unreadCount, fetchNotifications, markAllRead };
 }
 
 export function useCurrentUser() {

@@ -29,6 +29,7 @@ export function AdminShiftSubstituteModal({ shift, onClose, onSelectSubstitute }
         .select('*')
         .eq('role', currentRole)
         .neq('is_active', false)
+        .neq('is_readonly', true)
         .order('f_name');
         
       if (error) {

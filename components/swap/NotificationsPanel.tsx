@@ -1,20 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
-import { format } from 'date-fns';
+import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2 } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
-import type { SwapRequest, User } from '@/lib/types';
+import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface NotificationsPanelProps {
   swapRequests: SwapRequest[];
+  notifications: AppNotification[];
+  notifUnreadCount: number;
   currentUser: User | null;
   pendingCount: number;
   onAccept: (req: SwapRequest, force?: boolean) => Promise<{ collision?: string } | void>;
   onReject: (swapId: string) => Promise<void>;
   onCancel: (swapId: string) => Promise<void>;
+  onMarkNotifsRead: () => Promise<void>;
   onOpen?: () => void;
   onClose: () => void;
 }
@@ -26,10 +29,12 @@ function statusBadge(status: string) {
 }
 
 export function NotificationsPanel({
-  swapRequests, currentUser, pendingCount, onAccept, onReject, onCancel, onOpen, onClose,
+  swapRequests, notifications, notifUnreadCount, currentUser, pendingCount,
+  onAccept, onReject, onCancel, onMarkNotifsRead, onOpen, onClose,
 }: NotificationsPanelProps) {
 
   const PAGE_SIZE = 10;
+  const [tab, setTab] = useState<'swap' | 'system'>('swap');
   const [page, setPage] = useState(0);
   const [collisionReqId, setCollisionReqId] = useState<string | null>(null);
   const [collisionMsg, setCollisionMsg] = useState('');
@@ -40,6 +45,13 @@ export function NotificationsPanel({
   useEffect(() => {
     if (onOpen) onOpen();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Mark system notifications as read when switching to system tab
+  useEffect(() => {
+    if (tab === 'system' && notifUnreadCount > 0) {
+      onMarkNotifsRead();
+    }
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleAccept(req: SwapRequest, force = false) {
     setProcessingId(req.id);
@@ -114,22 +126,53 @@ export function NotificationsPanel({
         {/* Mobile drag indicator */}
         <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-violet-600" />
-            <h2 className="font-semibold text-gray-900 text-sm">การแจ้งเตือน</h2>
-            {pendingCount > 0 && (
-              <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                {pendingCount}
-              </span>
-            )}
+        <div className="p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-violet-600" />
+              <h2 className="font-semibold text-gray-900 text-sm">การแจ้งเตือน</h2>
+            </div>
+            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-all">
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-all">
-            <X className="w-3.5 h-3.5" />
-          </button>
+          {/* Tabs */}
+          <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+            <button
+              onClick={() => { setTab('swap'); setPage(0); }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
+                tab === 'swap' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <ArrowRightLeft className="w-3 h-3" />
+              แลก/โอนเวร
+              {pendingCount > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => { setTab('system'); setPage(0); }}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
+                tab === 'system' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              )}
+            >
+              <Settings2 className="w-3 h-3" />
+              จากระบบ
+              {notifUnreadCount > 0 && tab !== 'system' && (
+                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
+                  {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* List */}
+        {/* Swap Tab Content */}
+        {tab === 'swap' && (
         <div className="overflow-y-auto flex-1 p-3 space-y-2">
           {swapRequests.length === 0 ? (
             <div className="text-center py-8">
@@ -323,6 +366,68 @@ export function NotificationsPanel({
             </div>
           )}
         </div>
+        )}
+
+        {/* System Tab Content */}
+        {tab === 'system' && (
+        <div className="overflow-y-auto flex-1 p-3 space-y-2">
+          {notifications.length === 0 ? (
+            <div className="text-center py-8">
+              <Settings2 className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือนจากระบบ</p>
+            </div>
+          ) : (
+            <>
+              {notifications.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((notif) => (
+                <div
+                  key={notif.id}
+                  className={cn(
+                    'rounded-xl border p-3 space-y-1 transition-all',
+                    !notif.is_read
+                      ? 'border-violet-200 bg-violet-50/40 ring-1 ring-violet-100'
+                      : 'border-gray-100 bg-white'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900">{notif.title}</p>
+                      <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed whitespace-pre-line">{notif.body}</p>
+                    </div>
+                    {!notif.is_read && (
+                      <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0 mt-1" />
+                    )}
+                  </div>
+                  <p className="text-[10px] text-gray-400">
+                    {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: th })}
+                  </p>
+                </div>
+              ))}
+              {notifications.length > PAGE_SIZE && (
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                  <button
+                    onClick={() => setPage(p => p - 1)}
+                    disabled={page === 0}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    ◀ ก่อนหน้า
+                  </button>
+                  <span className="text-[11px] text-gray-400">
+                    {page + 1} / {Math.ceil(notifications.length / PAGE_SIZE)}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => p + 1)}
+                    disabled={(page + 1) * PAGE_SIZE >= notifications.length}
+                    className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    ถัดไป ▶
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+        )}
+
       </div>
     </div>
   );

@@ -1,11 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { format } from 'date-fns';
+import { th } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { Loader2, X, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import type { Shift, ShiftType, User } from '@/lib/types';
-import { userFullName } from '@/lib/types';
+import { userFullName, userDisplayName } from '@/lib/types';
+import { insertNotifications } from '@/lib/notifyUsers';
 import { shiftsOverlap } from '@/lib/utils';
 import type { PendingAdd } from './AdminAddShiftModal';
 
@@ -81,6 +84,17 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       toastError('รหัสผ่านไม่ถูกต้อง'); return;
     }
     setLoading(true);
+    const now = new Date();
+    const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
+    const adminName = currentUser?.f_name || 'ผู้ดูแลระบบ';
+    /** Format shift date "2025-03-20" → "20 มี.ค." */
+    const fmtDate = (d: string) => {
+      try { return format(new Date(d + 'T00:00'), 'd MMM', { locale: th }); }
+      catch { return d; }
+    };
+    /** Format one shift line: "20 มี.ค. เช้า (แผนก OPD)" */
+    const fmtShift = (date: string, shiftType: string, dept?: string) =>
+      `${fmtDate(date)} ${shiftType}${dept ? ` (${dept})` : ''}`;
     try {
       // ── Prefetch published status for all affected month_years ──────────
       const allMonthYears = new Set<string>();
@@ -123,7 +137,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
 
-        // Notify only if month is published
+        // Notify only if month is published (push)
         const deletedOwnerIds = Array.from(new Set(
           deletes
             .filter(s => s.month_year && isPublished(s.month_year, (s.user as any)?.role))
@@ -135,6 +149,23 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '🗑️ เวรของคุณถูกลบ',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
         );
+        // In-app notification per user with details (always — regardless of published status)
+        const deletesByUser = new Map<string, typeof deletes>();
+        deletes.forEach(s => {
+          if (!s.user_id) return;
+          const list = deletesByUser.get(s.user_id) || [];
+          list.push(s);
+          deletesByUser.set(s.user_id, list);
+        });
+        deletesByUser.forEach((shifts, userId) => {
+          const details = shifts.map(s => fmtShift(s.date, s.shift_type as string, (s as any).department_name)).join(', ');
+          insertNotifications(
+            [userId],
+            'shift_removed',
+            '🗑️ เวรของคุณถูกลบ',
+            `${adminName} ได้ลบเวรของคุณ: ${details} — ${timestamp}`,
+          );
+        });
       }
 
       // 2. Edit shifts (change owner)
@@ -178,6 +209,39 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '📋 คุณได้รับมอบหมายเวรใหม่',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
+        // In-app notifications per user with details (always)
+        const editsByOldOwner = new Map<string, typeof edits>();
+        const editsByNewOwner = new Map<string, typeof edits>();
+        edits.forEach(e => {
+          if (e.shift.user_id) {
+            const list = editsByOldOwner.get(e.shift.user_id) || [];
+            list.push(e);
+            editsByOldOwner.set(e.shift.user_id, list);
+          }
+          if (e.newUser.id) {
+            const list = editsByNewOwner.get(e.newUser.id) || [];
+            list.push(e);
+            editsByNewOwner.set(e.newUser.id, list);
+          }
+        });
+        editsByOldOwner.forEach((items, userId) => {
+          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
+          insertNotifications(
+            [userId],
+            'shift_changed',
+            '🔄 เวรของคุณถูกเปลี่ยนแปลง',
+            `${adminName} ได้เปลี่ยนผู้อยู่เวรของคุณไปให้คนอื่น: ${details} — ${timestamp}`,
+          );
+        });
+        editsByNewOwner.forEach((items, userId) => {
+          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
+          insertNotifications(
+            [userId],
+            'shift_assigned',
+            '📋 คุณได้รับมอบหมายเวรใหม่',
+            `${adminName} ได้มอบหมายเวรให้คุณ: ${details} — ${timestamp}`,
+          );
+        });
       }
 
       // 3. Insert new shifts
@@ -214,7 +278,70 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '📋 คุณได้รับมอบหมายเวรใหม่',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
+        // In-app notifications per user with details (always)
+        const addsByUser = new Map<string, PendingAdd[]>();
+        pendingAdds.forEach(add => {
+          if (!add.user.id) return;
+          const list = addsByUser.get(add.user.id) || [];
+          list.push(add);
+          addsByUser.set(add.user.id, list);
+        });
+        addsByUser.forEach((adds, userId) => {
+          const details = adds.map(a => fmtShift(a.date, a.shift_type, a.department)).join(', ');
+          insertNotifications(
+            [userId],
+            'shift_assigned',
+            '📋 คุณได้รับมอบหมายเวรใหม่',
+            `${adminName} ได้เพิ่มเวรให้คุณ: ${details} — ${timestamp}`,
+          );
+        });
       }
+
+      // ── Summary notification → Admin + all affected users ──────────────
+      if (currentUser?.id) {
+        const summaryLines: string[] = [];
+        const allAffectedIds = new Set<string>();
+
+        if (deletes.length > 0) {
+          deletes.forEach(s => {
+            const ownerName = (s as any).user_f_name || s.user?.f_name || 'ไม่ทราบชื่อ';
+            summaryLines.push(`🗑️ ลบเวร ${ownerName}: ${fmtShift(s.date, s.shift_type as string, (s as any).department_name)}`);
+            if (s.user_id) allAffectedIds.add(s.user_id);
+          });
+        }
+
+        if (edits.length > 0) {
+          edits.forEach(e => {
+            const oldName = (e.shift as any).user_f_name || e.shift.user?.f_name || 'ไม่ทราบชื่อ';
+            const newName = userDisplayName(e.newUser);
+            summaryLines.push(`🔄 เปลี่ยนเวร ${oldName} → ${newName}: ${fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)}`);
+            if (e.shift.user_id) allAffectedIds.add(e.shift.user_id);
+            if (e.newUser.id) allAffectedIds.add(e.newUser.id);
+          });
+        }
+
+        if (pendingAdds.length > 0) {
+          pendingAdds.forEach(a => {
+            const userName = userDisplayName(a.user);
+            summaryLines.push(`📋 เพิ่มเวร ${userName}: ${fmtShift(a.date, a.shift_type, a.department)}`);
+            if (a.user.id) allAffectedIds.add(a.user.id);
+          });
+        }
+
+        if (summaryLines.length > 0) {
+          // Include admin in recipient list
+          allAffectedIds.add(currentUser.id);
+          const recipientIds = Array.from(allAffectedIds).filter(Boolean);
+          const summaryBody = `${adminName} ได้จัดการเวร ${summaryLines.length} รายการ:\n${summaryLines.join('\n')}\n— ${timestamp}`;
+          insertNotifications(
+            recipientIds,
+            'shift_changed',
+            `📝 สรุปการจัดการเวร (${summaryLines.length} รายการ)`,
+            summaryBody,
+          );
+        }
+      }
+      // ────────────────────────────────────────────────────────────────────
 
       toastSuccess('บันทึกการเปลี่ยนแปลงสำเร็จ');
       onSuccess();
