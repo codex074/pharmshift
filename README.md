@@ -1,1016 +1,793 @@
-# 🏥 เวรดี๊ดี (PharmShift)
+# เวรดี๊ดี — PharmShift
 
-> ระบบจัดการตารางเวรเภสัชกรรม สำหรับบุคลากรโรงพยาบาล
-> Built with **Next.js 14 · Supabase · TypeScript · Tailwind CSS**
+> ระบบจัดตารางเวรสำหรับกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
 
----
-
-## 📋 สารบัญ
-
-- [ภาพรวมระบบ](#-ภาพรวมระบบ)
-- [ฟีเจอร์หลัก (สำหรับผู้ใช้ทั่วไป)](#-ฟีเจอร์หลัก)
-- [Flow การทำงาน](#-flow-การทำงาน)
-- [โครงสร้างโปรเจกต์](#-โครงสร้างโปรเจกต์)
-- [Database Schema](#-database-schema)
-- [API Endpoints](#-api-endpoints)
-- [Authentication & Session](#-authentication--session)
-- [Roles & Permissions](#-roles--permissions)
-- [ระบบแจ้งเตือน](#-ระบบแจ้งเตือน)
-- [Cron Jobs](#-cron-jobs)
-- [Custom Hooks](#-custom-hooks)
-- [Utilities & Helpers](#-utilities--helpers)
-- [Environment Variables](#-environment-variables)
-- [การ Deploy](#-การ-deploy)
-- [SQL Migrations](#-sql-migrations)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-green?logo=supabase)](https://supabase.com)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel)](https://vercel.com)
 
 ---
 
-## 🗺 ภาพรวมระบบ
+## สารบัญ
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        เวรดี๊ดี                                  │
-│              ระบบจัดการตารางเวรเภสัชกรรม                         │
-└─────────────────────────────────────────────────────────────────┘
-
-  ผู้ใช้งาน 3 ระดับ
-  ┌──────────┐   ┌────────────┐   ┌──────────────┐
-  │  Admin   │   │ Sub-Admin  │   │   User       │
-  │ ดูแลระบบ  │   │ ผู้จัดเวร     │   │  ผู้ใช้ทั่วไป     │
-  └──────────┘   └────────────┘   └──────────────┘
-       │               │                 │
-       └───────────────┴─────────────────┘
-                       │
-                       ▼
-         ┌─────────────────────────┐
-         │   Next.js 14 App Router  │
-         │   (Server + Client)      │
-         └─────────────────────────┘
-                       │
-          ┌────────────┴────────────┐
-          ▼                         ▼
-   ┌─────────────┐         ┌──────────────┐
-   │  Supabase   │         │   Vercel     │
-   │  Database   │         │   Hosting    │
-   │  + Realtime │         │   + Cron     │
-   └─────────────┘         └──────────────┘
-```
-
-### Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | Next.js 14 (App Router) + React 18 |
-| Language | TypeScript (strict mode) |
-| Styling | Tailwind CSS + Radix UI |
-| Database | Supabase (PostgreSQL) |
-| Auth | Iron-session (JWT cookie, ไม่ใช้ Supabase Auth) |
-| Push Notifications | Web Push API + VAPID |
-| Realtime | Supabase Realtime (postgres_changes) |
-| Export | ExcelJS + jsPDF + html2canvas |
-| Deployment | Vercel (with Cron Jobs) |
+- [ภาพรวมระบบ](#ภาพรวมระบบ)
+- [Tech Stack](#tech-stack)
+- [ฟีเจอร์หลัก](#ฟีเจอร์หลัก)
+- [สิทธิ์การใช้งาน (Roles)](#สิทธิ์การใช้งาน-roles)
+- [ประเภทเวร](#ประเภทเวร)
+- [โครงสร้างโปรเจกต์](#โครงสร้างโปรเจกต์)
+- [Database Schema](#database-schema)
+- [API Routes](#api-routes)
+- [Cron Jobs](#cron-jobs)
+- [ระบบแจ้งเตือน](#ระบบแจ้งเตือน)
+- [ฟีเจอร์ Export](#ฟีเจอร์-export)
+- [Environment Variables](#environment-variables)
+- [การติดตั้งและรัน](#การติดตั้งและรัน)
+- [การ Deploy](#การ-deploy)
+- [Database Migrations](#database-migrations)
 
 ---
 
-## ✨ ฟีเจอร์หลัก
+## ภาพรวมระบบ
 
-### 1. 📅 ตารางเวร
-```
-วิธีดูตาราง:
-┌─────────────────────────────┐
-│  ทุกเวร  │  เวรของฉัน       │  ← สลับ Tab
-│  (ดูได้ทุกคน) │ (ดูเฉพาะตัวเอง) │
-└─────────────────────────────┘
-   │
-   ▼
-  เลือกเดือนดูตารางแต่ละเดือน
-  แสดงเป็น Grid 7 วัน × 6 สัปดาห์
-  มีสี + ชื่อย่อแสดงตามตำแหน่ง
-```
+**เวรดี๊ดี (PharmShift)** คือระบบจัดการตารางเวรออนไลน์สำหรับบุคลากรกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์ ประกอบด้วย:
 
-**ประเภทเวร:**
-| เวร | เวลา | หมายเหตุ |
-|-----|------|---------|
-| เช้า | 08:30–16:30 | ทุกวัน |
-| บ่าย | 16:30–23:59 | ทุกวัน |
-| ดึก | 00:00–08:30 | ทุกวัน |
-| รุ่งอรุณ | 07:00–08:30 | เฉพาะวันธรรมดา |
-| SMC | 16:30–20:30 | จันทร์–พฤหัส |
+- 📅 **ปฏิทินเวรรายเดือน** — แสดงตารางเวรแยกตามแผนกและประเภทเวร
+- 🔄 **ระบบแลก/โอนเวร** — บุคลากรสามารถแลกเปลี่ยนเวรกันได้ พร้อม Collision Detection
+- 📊 **ออกรายงาน Excel/PDF** — หลักฐานการจัดเวร, ค่าตอบแทน, ตารางเวร
+- 🔔 **แจ้งเตือนล่วงหน้า** — Web Push + In-app notification ก่อนเวรประจำวัน
+- 👥 **จัดการผู้ใช้** — สร้าง/แก้ไข/ปิดบัญชีบุคลากร
+- 📱 **PWA รองรับมือถือ** — ติดตั้งเป็น App บนสมาร์ทโฟนได้
 
 ---
 
-### 2. 🔄 ขอแลก/โอนเวร
+## Tech Stack
 
-```
-Flow แลกเวร (Swap)
-─────────────────
-  ฉัน คลิกเวรตัวเอง
-       │
-       ▼
-  เลือก "แลกเวร"
-       │
-       ▼
-  เลือกบุคลากรที่ต้องการแลก
-       │
-       ▼
-  ส่งคำขอ ─────────► เพื่อน ได้รับการแจ้งเตือน
-                           │
-                    ┌──────┴──────┐
-                    ▼             ▼
-                 ยอมรับ         ปฏิเสธ
-                    │             │
-            เวรสลับกัน      แจ้งกลับฉัน
-            อัตโนมัติ
-
-Flow โอนเวร (Transfer)
-──────────────────────
-  ฉัน คลิกเวรของเพื่อน
-       │
-       ▼
-  เลือก "รับเวร"
-       │
-       ▼
-  ส่งคำขอ ──────────► เพื่อน ได้รับการแจ้งเตือน
-                           │
-                    ┌──────┴──────┐
-                    ▼             ▼
-                 ยอมรับ         ปฏิเสธ
-                    │
-               ฉัน ได้เวรนั้น
-               เพื่อน ไม่มีเวร
-```
-
-**ระบบตรวจสอบชนเวร:** ก่อนยืนยันจะตรวจว่าเวรที่จะได้รับชนกับเวรที่มีอยู่แล้วหรือไม่ ถ้าชนจะแจ้งเตือนก่อน
+| Layer | เทคโนโลยี |
+|-------|----------|
+| **Frontend** | Next.js 14 (App Router) + React 18 |
+| **Language** | TypeScript (strict mode) |
+| **Styling** | Tailwind CSS + Radix UI |
+| **Database** | Supabase (PostgreSQL) |
+| **Authentication** | Iron-session (JWT Cookie — ไม่ใช้ Supabase Auth) |
+| **Realtime** | Supabase Realtime (postgres_changes) |
+| **Push Notifications** | Web Push API + VAPID (`web-push` v3.6.7) |
+| **PWA** | `@ducanh2912/next-pwa` |
+| **Excel Export** | ExcelJS (v4.4.0) |
+| **PDF Export** | jsPDF + html2canvas |
+| **Excel Import** | xlsx (v0.18.5) |
+| **Icons** | Lucide React |
+| **Toast** | Sonner + SweetAlert2 |
+| **Deployment** | Vercel (with Cron Jobs) |
 
 ---
 
-### 3. 🔔 การแจ้งเตือน
+## ฟีเจอร์หลัก
 
-```
-กระดิ่ง 🔔  มีสองแท็บ:
-┌────────────────────────────────────┐
-│ แลก/โอนเวร  │  จากระบบ            │
-│ (swap req)  │  (admin + reminder)  │
-└────────────────────────────────────┘
+### 📅 ปฏิทินเวร (Calendar)
 
-แจ้งเตือนจากระบบ (จากระบบ):
-  ▸ 📋 ได้รับมอบหมายเวรใหม่  → อยู่ 1 สัปดาห์
-  ▸ 🔄 เวรถูกเปลี่ยนแปลง    → อยู่ 1 สัปดาห์
-  ▸ 🗑️ เวรถูกลบ             → อยู่ 1 สัปดาห์
-  ▸ 📋 ประกาศตารางเวร        → อยู่ 1 สัปดาห์
-  ▸ ⏰ เตือนเวรล่วงหน้า      → ลบอัตโนมัติใน 12 ชม.
-```
+- แสดงตารางเวรรายเดือนแบบ Grid 6 สัปดาห์ (42 วัน)
+- แท็บแยก **"ทุกเวร"** และ **"เวรของฉัน"**
+- แยก Section ตาม Role: เภสัชกร / เจ้าพนักงานเภสัชกรรม / เจ้าหน้าที่
+- รองรับ **Mobile** ด้วย List View + Swipe เปลี่ยนเดือน
+- แสดงวันหยุดราชการในปฏิทิน
+
+### 🔄 ระบบแลก/โอนเวร (Swap & Transfer)
+
+- **Swap** — แลกเวรระหว่างกัน (2 ฝ่ายยืนยัน)
+- **Transfer** — โอนเวรให้คนอื่น (เจ้าของเวรยืนยัน)
+- ตรวจสอบ **Collision** — ป้องกันเวรซ้อนทับตามช่วงเวลา
+- บันทึก Audit Log ทุก Action (swap / transfer / admin_edit / admin_delete)
+- Realtime — อัปเดตสถานะทันทีผ่าน Supabase Realtime
+
+### 🛠️ Admin — จัดการตาราง
+
+| ฟีเจอร์ | รายละเอียด |
+|---------|------------|
+| **Upload Excel** | นำเข้าเวรทีละมากจาก Template Excel |
+| **สร้าง/แก้ไขเวร** | เพิ่ม/ย้าย/ลบเวรทีละรายการ |
+| **แทนเวร** | ย้ายเวรระหว่างบุคลากร |
+| **ประกาศตาราง** | Publish ตารางแยกตาม Role (เภสัชกร / เจ้าพนักงาน / เจ้าหน้าที่) |
+| **จัดการวันหยุด** | เพิ่ม/ลบวันหยุดราชการ (กระทบ Slot ของเวร) |
+
+### 👤 Admin — จัดการผู้ใช้
+
+- สร้าง/แก้ไขข้อมูลบุคลากร (ชื่อ, nickname, ตำแหน่ง, เลขที่รับเงินเดือน)
+- กำหนด Role และ Sub-admin flag
+- ปิด/เปิดบัญชี (`is_active`)
+- โหมด Read-only (`is_readonly`)
+- Reset รหัสผ่าน
+
+### 📊 Export รายงาน
+
+| รายงาน | ฟอร์แมต | รายละเอียด |
+|--------|---------|-----------|
+| **หลักฐานการจัดตารางเวร** | Excel (.xlsx) | แสดงผู้ปฏิบัติงาน Original ก่อน Swap, แยกแผ่นตามประเภทเวร |
+| **หลักฐานค่าตอบแทน** | Excel (.xlsx) | คำนวณค่าตอบแทนรายบุคคล, แปลงเป็นตัวอักษรภาษาไทย |
+| **ตารางเวร (ปฏิทิน)** | Excel (.xlsx) | Calendar Grid พร้อมสี, Nickname, Position |
+| **ตารางเซ็นชื่อ** | PDF | Sign-in sheet รายเดือน |
+
+### 🔔 ระบบแจ้งเตือน
+
+- **In-App Bell** — Panel แจ้งเตือนในระบบ (สีส้ม Badge)
+- **Web Push** — Native notification บน Browser/Mobile
+- **อัตโนมัติ** — Cron ส่งแจ้งเตือนเวรล่วงหน้า 2 ครั้ง/วัน
 
 ---
 
-### 4. 👑 การจัดการโดย Admin
+## สิทธิ์การใช้งาน (Roles)
 
-```
-Admin Panel (ไอคอนดินสอ)
-├── อัพโหลด Excel     → นำเข้าตารางเวรทั้งเดือน
-├── Edit Mode         → คลิกแก้ไข/ลบ/เพิ่มเวรรายวัน
-├── ประกาศตาราง       → เลือก role ที่จะประกาศ + ยืนยันด้วยรหัสผ่าน
-├── จัดการวันหยุด     → เพิ่ม/ลบวันหยุดราชการ
-├── จัดการผู้ใช้      → เพิ่ม/แก้ไข/ปิด account
-└── ส่งออก Excel/PDF  → Export ตารางเวรและใบเซ็นชื่อ
-```
+| Role | ชื่อ | เวร | แลกเวร | Admin |
+|------|------|-----|--------|-------|
+| `admin` | ผู้ดูแลระบบ | ✗ | ✗ | ✅ ทุกอย่าง |
+| `pharmacist` | เภสัชกร | ✅ | ✅ | ✗ |
+| `pharmacy_technician` | เจ้าพนักงานเภสัชกรรม | ✅ | ✅ | ✗ |
+| `officer` | เจ้าหน้าที่ | ✅ | ✅ | ✗ |
 
----
+### Sub-Admin (`is_sub_admin = true`)
 
-### 5. 👤 สิทธิ์ผู้ใช้งาน
+บุคลากรที่มี `is_sub_admin = true` สามารถจัดการเวรทั้งหมดใน Role Group ของตัวเองได้ (เช่น เภสัชกรที่เป็น Sub-admin จัดการเวรเภสัชกรทุกคน)
 
-| สถานะ | คำอธิบาย |
-|-------|---------|
-| **Active** | ใช้งานได้ปกติ |
-| **Inactive** | ออกจากองค์กร → Login ไม่ได้ |
-| **Read-only** | Login ได้ ดูได้ แต่ไม่สามารถมอบหมาย/แลกเวรได้ |
-| **must_change_password** | ต้องเปลี่ยนรหัสผ่านก่อนใช้งาน |
+### สถานะบัญชี
+
+| Flag | ความหมาย |
+|------|----------|
+| `is_active = false` | ล็อกอินไม่ได้ |
+| `is_readonly = true` | ดูได้อย่างเดียว ไม่รับเวร/แลกเวรไม่ได้ |
+| `must_change_password = true` | ต้องเปลี่ยนรหัสผ่านก่อนใช้งาน |
 
 ---
 
-## 🔁 Flow การทำงาน
+## ประเภทเวร
 
-### Flow การ Login
+### Shift Types
 
-```
-User กรอก pha_id + password
-          │
-          ▼
-    POST /api/auth/login
-          │
-    ┌─────┴──────┐
-    │ is_active? │
-    └─────┬──────┘
-    ✗ ──► แสดง error "บัญชีถูกระงับ"
-    ✓
-          │
-    ┌─────┴──────────────────┐
-    │ must_change_password?  │
-    └─────┬──────────────────┘
-    ✓ ──► redirect → /change-password
-    ✗
-          │
-    สร้าง JWT cookie (30 วัน)
-          │
-    redirect → /calendar
-```
+| Type | ไทย | ช่วงเวลา | สี |
+|------|-----|---------|-----|
+| `เช้า` | เวรเช้า | 08:30–16:30 | 🟢 Emerald |
+| `บ่าย` | เวรบ่าย | 16:30–23:59 | 🟠 Orange |
+| `ดึก` | เวรดึก | 00:00–08:30 | 🔵 Indigo |
+| `รุ่งอรุณ` | เวรรุ่งอรุณ | 07:00–08:30 | 🟡 Amber |
+| `smc` | เวร SMC | 16:30–20:30 | 🔴 Rose |
 
-### Flow ประกาศตาราง (Deploy)
+### Departments & Positions
 
 ```
-Admin คลิก "ประกาศตาราง"
-          │
-          ▼
-  เลือก ✅ checkbox แต่ละ role
-  (เภสัช / เจ้าพนักงาน / เจ้าหน้าที่)
-          │
-          ▼
-  กรอกรหัสผ่านยืนยัน
-          ▼
-  ถ้าเลือก role นอกเหนือจาก role ตัวเอง (Sub-admin)
-  → แสดง ⚠️ คำเตือนก่อน
-          │
-          ▼
-  บันทึก published_months ใน DB
-          │
-          ▼
-  ส่ง in-app notification หาทุก user ใน role นั้น
-  ✉️ "📋 ตารางเวรประกาศแล้ว — วันที่ X เวลา HH:mm น."
+เช้า (วันธรรมดา)
+ ├── SURG        ×3
+ ├── MED D/C     ×1
+ ├── MED Cont    ×1
+ ├── ER          ×1
+ └── โครงการ     ×1
+
+บ่าย (วันธรรมดา)
+ ├── โครงการ     ×1
+ ├── MED         ×1
+ ├── ER          ×1
+ └── SMC         ×2  (จ–พฤ เท่านั้น)
+
+ดึก (ทุกวัน)
+ └── ER          ×1
+
+รุ่งอรุณ (วันธรรมดา)
+ ├── OPD         ×1  (ทุกวัน)
+ ├── ER          ×1  (อ–ศ)
+ └── HIV         ×1  (อ เท่านั้น)
+
+เสาร์/อาทิตย์/วันหยุด — เพิ่ม Chemo ×2
 ```
 
 ---
 
-## 📁 โครงสร้างโปรเจกต์
+## โครงสร้างโปรเจกต์
 
 ```
 pharmshift/
-├── app/                          # Next.js App Router
-│   ├── page.tsx                  # redirect → /calendar
-│   ├── login/page.tsx            # หน้า Login
-│   ├── change-password/page.tsx  # เปลี่ยนรหัสผ่านครั้งแรก
-│   ├── calendar/page.tsx         # หน้าหลัก (calendar + modals)
-│   └── api/
-│       ├── auth/
-│       │   ├── login/route.ts          # POST login
-│       │   ├── logout/route.ts         # POST logout
-│       │   ├── me/route.ts             # GET current user
-│       │   └── change-password/route.ts # POST เปลี่ยนรหัสผ่าน
-│       ├── admin/
-│       │   └── users/
-│       │       ├── route.ts            # GET/POST/PUT users
-│       │       └── reset-password/route.ts # POST reset password
-│       ├── user/
-│       │   └── profile/route.ts        # PUT อัพเดตโปรไฟล์
-│       ├── shifts/
-│       │   └── upload/route.ts         # POST อัพโหลด Excel
-│       ├── holidays/
-│       │   ├── route.ts                # GET/POST holidays
-│       │   ├── [id]/route.ts           # DELETE holiday
-│       │   └── import/route.ts         # POST bulk import
-│       ├── push/
-│       │   ├── subscribe/route.ts      # POST/DELETE push subscription
-│       │   └── send/route.ts           # POST send push
-│       ├── notifications/
-│       │   └── route.ts                # GET/POST/PUT in-app notifications
-│       └── cron/
-│           ├── shift-reminders/route.ts # cron แจ้งเตือนเวร
-│           └── cleanup/route.ts         # cron ลบข้อมูลเก่า
+├── app/
+│   ├── api/
+│   │   ├── auth/
+│   │   │   ├── login/          POST — เข้าสู่ระบบ
+│   │   │   ├── logout/         POST — ออกจากระบบ
+│   │   │   ├── me/             GET  — ข้อมูลผู้ใช้ปัจจุบัน
+│   │   │   └── change-password/ POST — เปลี่ยนรหัสผ่าน
+│   │   ├── admin/
+│   │   │   └── users/          GET/POST/PUT — จัดการผู้ใช้
+│   │   ├── user/
+│   │   │   └── profile/        PUT — อัปเดตโปรไฟล์ตัวเอง
+│   │   ├── shifts/
+│   │   │   └── upload/         POST — นำเข้าเวรจาก Excel
+│   │   ├── holidays/
+│   │   │   ├── route.ts        GET/POST — รายการวันหยุด
+│   │   │   ├── [id]/           DELETE — ลบวันหยุด
+│   │   │   └── import/         POST — นำเข้าวันหยุด
+│   │   ├── notifications/      GET/POST/PUT — แจ้งเตือน In-app
+│   │   ├── push/
+│   │   │   ├── subscribe/      POST/DELETE — Web Push subscription
+│   │   │   └── send/           POST — ส่ง Push notification
+│   │   └── cron/
+│   │       ├── shift-reminders/ GET — แจ้งเตือนเวรล่วงหน้า (Cron)
+│   │       └── cleanup/        GET — ลบข้อมูลเก่า (Cron)
+│   ├── calendar/
+│   │   └── page.tsx            หน้าปฏิทินหลัก
+│   ├── login/
+│   │   └── page.tsx            หน้าล็อกอิน
+│   ├── change-password/
+│   │   └── page.tsx            หน้าเปลี่ยนรหัสผ่านครั้งแรก
+│   └── layout.tsx              Root layout + PWA meta
 │
 ├── components/
-│   ├── calendar/                 # Calendar UI components
-│   │   ├── CalendarGrid.tsx            # ตารางเภสัชกร (desktop)
-│   │   ├── PharmacyTechCalendarGrid.tsx # ตารางเจ้าพนักงาน
-│   │   ├── OfficeCalendarGrid.tsx      # ตารางเจ้าหน้าที่
-│   │   ├── MyCalendarGrid.tsx          # ตารางส่วนตัว
-│   │   ├── MobileCalendarGrid.tsx      # mobile grid
-│   │   ├── MobileCalendarList.tsx      # mobile list
-│   │   ├── DayDetailModal.tsx          # รายละเอียดวัน (mobile)
-│   │   ├── AdminAddShiftModal.tsx      # เพิ่มเวร (admin)
-│   │   ├── AdminConfirmModal.tsx       # ยืนยันแก้ไขเวร (admin)
-│   │   ├── AdminShiftSubstituteModal.tsx # เปลี่ยนผู้รับเวร
-│   │   ├── AdminExportModal.tsx        # ส่งออกตาราง
-│   │   ├── AdminUserManagementModal.tsx # จัดการผู้ใช้
-│   │   ├── ShiftUploadModal.tsx        # อัพโหลด Excel
-│   │   ├── DeployModal.tsx             # ประกาศตาราง
-│   │   ├── ManageHolidaysModal.tsx     # จัดการวันหยุด
-│   │   ├── CompensationModal.tsx       # คำนวณค่าตอบแทน
-│   │   ├── ShiftLogsModal.tsx          # ประวัติการแก้ไข
-│   │   └── HelpGuideModal.tsx          # คู่มือการใช้งาน
+│   ├── calendar/
+│   │   ├── CalendarGrid.tsx         Grid ปฏิทิน Desktop
+│   │   ├── MobileCalendar.tsx       Calendar สำหรับมือถือ
+│   │   ├── DayCell.tsx              ช่องวันในปฏิทิน
+│   │   ├── ShiftBadge.tsx           Badge แสดงเวร
+│   │   ├── AdminShiftModal.tsx      Modal จัดการเวร (Admin)
+│   │   ├── DeployModal.tsx          Modal ประกาศตาราง
+│   │   ├── AdminConfirmModal.tsx    Modal ยืนยัน Admin Action
+│   │   ├── HolidayModal.tsx         Modal จัดการวันหยุด
+│   │   ├── ScheduleTableExportButton.tsx  Export ตารางเวร Excel
+│   │   └── UserManagementModal.tsx  Modal จัดการผู้ใช้
 │   ├── swap/
-│   │   ├── SwapModal.tsx               # แลก/โอนเวร
-│   │   └── NotificationsPanel.tsx      # แผงการแจ้งเตือน
-│   ├── ui/                       # Radix UI wrappers
-│   ├── Header.tsx                # Header + navigation
-│   ├── MobileBottomNav.tsx       # Mobile bottom bar
-│   └── UserProfileModal.tsx      # โปรไฟล์ผู้ใช้
+│   │   ├── SwapModal.tsx            Modal แลก/โอนเวร
+│   │   ├── NotificationsPanel.tsx   Panel แจ้งเตือน (Bell)
+│   │   └── ShiftLogsModal.tsx       Modal ประวัติการเปลี่ยนเวร
+│   ├── layout/
+│   │   ├── Header.tsx               Header + Navigation
+│   │   ├── MobileBottomNav.tsx      Bottom Nav บนมือถือ
+│   │   └── MobileAdminMenu.tsx      Admin Menu บนมือถือ
+│   ├── ExcelExportButton.tsx        Export หลักฐาน/ค่าตอบแทน
+│   ├── PdfExportButton.tsx          Export PDF
+│   └── UserProfileModal.tsx         Modal โปรไฟล์ผู้ใช้
 │
 ├── hooks/
-│   ├── useShifts.ts              # ดึงข้อมูลเวร + publish status
-│   ├── useSwapRequests.ts        # จัดการคำขอแลกเวร
-│   ├── useNotifications.ts       # in-app notifications
-│   ├── useCurrentUser.ts         # ดึง current user
-│   ├── useIsMobile.ts            # detect mobile viewport
-│   └── useSwipeGesture.ts        # swipe gesture สำหรับ mobile
+│   ├── useShifts.ts            Fetch shifts + publish status + Realtime
+│   ├── useSwapRequests.ts      Swap requests + Realtime
+│   ├── useCurrentUser.ts       Auth state (session)
+│   ├── useNotifications.ts     In-app notifications + Realtime
+│   ├── useIsMobile.ts          Responsive breakpoint detection
+│   └── useSwipeGesture.ts      Touch swipe handler
 │
 ├── lib/
-│   ├── types.ts                  # TypeScript types + helpers
-│   ├── session.ts                # iron-session config
-│   ├── supabase.ts               # Supabase client (browser)
-│   ├── supabaseServer.ts         # Supabase client (server)
-│   ├── pushNotifications.ts      # Web Push client helpers
-│   ├── pushSender.ts             # Web Push server sender
-│   ├── notifyUsers.ts            # Insert in-app notifications
-│   ├── excelExport.ts            # Export Excel ตารางเวร
-│   ├── signSheetExport.ts        # Export ใบเซ็นชื่อ
-│   ├── swal.ts                   # SweetAlert2 wrappers
-│   └── utils.ts                  # Calendar helpers + formatters
+│   ├── types.ts                TypeScript interfaces ทั้งหมด
+│   ├── session.ts              JWT cookie (iron-session)
+│   ├── supabase.ts             Supabase client (browser)
+│   ├── supabaseServer.ts       Supabase client (server / service role)
+│   ├── utils.ts                Date formatting, shift overlap detection
+│   ├── excelExport.ts          Export หลักฐาน + ค่าตอบแทน
+│   ├── scheduleTableExport.ts  Export ตารางเวร Calendar Grid
+│   ├── signSheetExport.ts      Export ใบเซ็นชื่อ
+│   ├── pushNotifications.ts    Web Push API (client-side)
+│   ├── pushSender.ts           Web Push sender (server-side, VAPID)
+│   ├── notifyUsers.ts          Insert in-app notifications
+│   └── swal.ts                 SweetAlert2 helpers
 │
 ├── supabase/
-│   ├── run_add_is_readonly.sql   # Migration: add is_readonly
-│   └── run_add_notifications.sql # Migration: create notifications table
+│   ├── schema.sql              Schema หลัก (tables, views, RLS)
+│   ├── migrations/             Migration scripts แยกตามฟีเจอร์
+│   └── run_*.sql               Setup scripts
 │
-├── middleware.ts                 # JWT auth middleware
-├── vercel.json                   # Cron schedule config
-└── public/
-    ├── sw.js                     # Service Worker (push notifications)
-    └── manifest.json             # PWA manifest
+├── public/
+│   ├── manifest.json           PWA Manifest
+│   ├── worker.js               Service Worker (Push + Cache)
+│   ├── icon.png
+│   └── apple-touch-icon.png
+│
+├── middleware.ts               Auth guard — ป้องกัน route ที่ต้อง login
+├── vercel.json                 Cron job schedule
+├── next.config.mjs             Next.js config + PWA
+├── tailwind.config.ts
+└── tsconfig.json
 ```
 
 ---
 
-## 🗄 Database Schema
+## Database Schema
 
-### ตารางหลัก
+### ตารางหลัก (10 Tables + 1 View)
 
+#### `users`
 ```sql
--- ผู้ใช้งาน
-users (
-  id                UUID PRIMARY KEY,
-  pha_id            TEXT UNIQUE,          -- รหัสเภสัชกร
-  password          TEXT,                 -- hashed
-  prefix            TEXT,                 -- นาย/นาง/นางสาว/ภก./ภญ.
-  f_name            TEXT,
-  l_name            TEXT,
-  nickname          TEXT,
-  salary_number     TEXT,
-  role              TEXT,                 -- pharmacist|pharmacy_technician|officer|admin
-  is_sub_admin      BOOLEAN DEFAULT false,
-  is_active         BOOLEAN DEFAULT true, -- false = block login
-  is_readonly       BOOLEAN DEFAULT false, -- true = view only
-  profile_image     TEXT,
-  must_change_password BOOLEAN DEFAULT false,
-  created_at        TIMESTAMPTZ
-)
-
--- เวร
-shifts (
-  id            UUID PRIMARY KEY,
-  date          DATE,
-  department_id UUID REFERENCES departments(id),
-  shift_type    TEXT,          -- เช้า|บ่าย|ดึก|รุ่งอรุณ|smc
-  position      INT,           -- ลำดับที่ในเวรนั้น
-  user_id       UUID REFERENCES users(id),
-  month_year    TEXT,          -- "YYYY-MM"
-  created_at    TIMESTAMPTZ,
-  UNIQUE(user_id, date, shift_type, position)
-)
-
--- แผนก
-departments (
-  id    UUID PRIMARY KEY,
-  name  TEXT               -- ER, MED, SURG, SMC, OPD, HIV, Chemo, ...
-)
-
--- คำขอแลก/โอนเวร
-swap_requests (
-  id             UUID PRIMARY KEY,
-  shift_id       UUID REFERENCES shifts(id),
-  requester_id   UUID REFERENCES users(id),
-  target_user_id UUID REFERENCES users(id),
-  request_type   TEXT,    -- 'swap' | 'transfer'
-  target_shift_id UUID,   -- เวรของ target (กรณี swap)
-  status         TEXT,    -- 'pending' | 'accepted' | 'rejected'
-  message        TEXT,
-  requester_read BOOLEAN DEFAULT false,
-  created_at     TIMESTAMPTZ,
-  updated_at     TIMESTAMPTZ
-)
-
--- ประวัติการแก้ไขเวร
-shift_logs (
-  id           UUID PRIMARY KEY,
-  shift_id     UUID,
-  action       TEXT,        -- 'swap'|'transfer'|'admin_edit'|'admin_delete'
-  old_user_id  UUID,
-  new_user_id  UUID,
-  performed_by UUID,
-  details      TEXT,
-  created_at   TIMESTAMPTZ
-)
-
--- การแจ้งเตือน push notification (subscriptions)
-push_subscriptions (
-  id         UUID PRIMARY KEY,
-  user_id    UUID REFERENCES users(id),
-  endpoint   TEXT UNIQUE,
-  p256dh     TEXT,
-  auth       TEXT,
-  user_agent TEXT
-)
-
--- การแจ้งเตือนในแอป
-notifications (
-  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type       TEXT NOT NULL,  -- shift_assigned|shift_changed|shift_removed|schedule_published|shift_reminder
-  title      TEXT NOT NULL,
-  body       TEXT NOT NULL,
-  is_read    BOOLEAN NOT NULL DEFAULT false,
-  url        TEXT DEFAULT '/calendar',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-)
-
--- วันหยุดราชการ
-holidays (
-  id         UUID PRIMARY KEY,
-  date       DATE UNIQUE,
-  name       TEXT,
-  created_at TIMESTAMPTZ
-)
-
--- สถานะการประกาศตารางเวร
-published_months (
-  month_year                      TEXT,
-  is_published                    BOOLEAN,
-  pharmacist_published            BOOLEAN,
-  pharmacy_technician_published   BOOLEAN,
-  officer_published               BOOLEAN,
-  published_at                    TIMESTAMPTZ,
-  published_by                    UUID
-)
-
--- ประกาศแยกตาม role (ใช้ใน cron)
-role_publish_flags (
-  role        TEXT,     -- pharmacist|pharmacy_technician|officer
-  month_year  TEXT,
-  is_published BOOLEAN
-)
+id              UUID PRIMARY KEY
+pha_id          TEXT UNIQUE          -- รหัสประจำตัว เช่น "pha208"
+prefix          TEXT                 -- "ภก." | "ภญ."
+f_name          TEXT
+l_name          TEXT
+nickname        TEXT
+role            TEXT                 -- pharmacist | pharmacy_technician | officer | admin
+is_sub_admin    BOOLEAN DEFAULT false
+is_active       BOOLEAN DEFAULT true
+is_readonly     BOOLEAN DEFAULT false
+must_change_password BOOLEAN DEFAULT true
+password        TEXT                 -- plain-text (hash ยังไม่ implement)
+salary_number   TEXT                 -- เลขที่รับเงินเดือน
+profile_image   TEXT                 -- 'male' | 'female'
+created_at      TIMESTAMPTZ
 ```
 
-### Indexes สำคัญ
-
+#### `shifts`
 ```sql
--- notifications: query by user ล่าสุดก่อน
-CREATE INDEX idx_notifications_user_created
-  ON notifications(user_id, created_at DESC);
+id             UUID PRIMARY KEY
+date           DATE                  -- วันที่เวร
+department_id  INTEGER → departments
+shift_type     TEXT                  -- เช้า | บ่าย | ดึก | รุ่งอรุณ | smc
+position       TEXT                  -- OPD | ER | HIV | Cont | D/C (optional)
+user_id        UUID → users
+month_year     TEXT                  -- 'YYYY-MM' (สำหรับ batch query)
+created_at     TIMESTAMPTZ
+-- Index: date, user_id, month_year
 ```
 
-### Realtime
-
+#### `departments`
 ```sql
--- เปิด Realtime สำหรับตาราง notifications (ใช้ Supabase Realtime)
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
+id    SERIAL PRIMARY KEY
+name  TEXT UNIQUE   -- โครงการ | SURG | MED | ER | SMC | รุ่งอรุณ | Chemo
 ```
 
-> ⚠️ **หมายเหตุสำคัญสำหรับ Dev:**
-> แอปใช้ **iron-session** ไม่ใช่ Supabase Auth → `auth.uid()` จะ return `NULL` เสมอ
-> ดังนั้น RLS (Row Level Security) ที่ใช้ `auth.uid()` จะไม่ทำงาน
-> แก้โดย: ปิด RLS บนตาราง + ใช้ `SUPABASE_SERVICE_ROLE_KEY` ใน API routes ฝั่ง server
+#### `swap_requests`
+```sql
+id              UUID PRIMARY KEY
+shift_id        UUID → shifts        -- เวรที่ขอแลก
+requester_id    UUID → users         -- ผู้ขอ
+target_user_id  UUID → users         -- เป้าหมาย
+request_type    TEXT                 -- 'swap' | 'transfer'
+target_shift_id UUID → shifts        -- เวรของเป้าหมาย (swap เท่านั้น)
+status          TEXT                 -- 'pending' | 'accepted' | 'rejected'
+message         TEXT
+requester_read  BOOLEAN DEFAULT false
+created_at      TIMESTAMPTZ
+updated_at      TIMESTAMPTZ          -- auto-updated via trigger
+```
+
+#### `published_months`
+```sql
+month_year                    TEXT PRIMARY KEY   -- 'YYYY-MM'
+is_published                  BOOLEAN            -- true เมื่อ 3 role ประกาศทั้งหมด
+pharmacist_published          BOOLEAN
+pharmacy_technician_published BOOLEAN
+officer_published             BOOLEAN
+published_at                  TIMESTAMPTZ
+published_by                  UUID → users
+```
+
+#### `notifications`
+```sql
+id         UUID PRIMARY KEY
+user_id    UUID → users
+type       TEXT    -- shift_assigned | shift_changed | shift_removed
+                  --   schedule_published | shift_reminder
+title      TEXT
+body       TEXT
+is_read    BOOLEAN DEFAULT false
+url        TEXT DEFAULT '/calendar'
+created_at TIMESTAMPTZ
+-- Index: (user_id, created_at DESC)
+```
+
+#### `push_subscriptions`
+```sql
+id         UUID PRIMARY KEY
+user_id    UUID → users
+endpoint   TEXT UNIQUE      -- Web Push endpoint URL
+p256dh     TEXT             -- VAPID encryption key
+auth       TEXT             -- VAPID auth secret
+user_agent TEXT
+created_at TIMESTAMPTZ
+```
+
+#### `shift_logs`
+```sql
+id           UUID PRIMARY KEY
+shift_id     UUID → shifts
+action       TEXT    -- 'swap' | 'transfer' | 'admin_edit' | 'admin_delete'
+old_user_id  UUID → users
+new_user_id  UUID → users
+performed_by UUID → users
+details      TEXT
+created_at   TIMESTAMPTZ
+```
+
+#### `holidays`
+```sql
+id         UUID PRIMARY KEY
+date       DATE UNIQUE
+name       TEXT
+created_at TIMESTAMPTZ
+```
+
+#### `shifts_full` (VIEW)
+```sql
+-- Convenience view: shifts + departments + users (ใช้ใน Calendar)
+SELECT s.*, d.name AS department_name,
+       u.prefix, u.f_name, u.l_name, u.nickname, u.profile_image
+FROM shifts s
+LEFT JOIN departments d ON s.department_id = d.id
+LEFT JOIN users u ON s.user_id = u.id
+```
+
+### Row Level Security (RLS)
+
+ระบบใช้ iron-session JWT ไม่ใช่ Supabase Auth จึงตั้ง RLS เป็น `using(true)` และควบคุมสิทธิ์ที่ Application Layer แทน ยกเว้น operations ที่ต้องการ service role key (เช่น Insert notifications จาก Cron)
 
 ---
 
-## 🔌 API Endpoints
+## API Routes
 
 ### Authentication
 
-| Method | Endpoint | Body | Response | หมายเหตุ |
-|--------|----------|------|----------|---------|
-| POST | `/api/auth/login` | `{ pha_id, password }` | `{ user, message }` | ตั้ง cookie `pharmshift_session` |
-| POST | `/api/auth/logout` | — | `{ success }` | ล้าง cookie |
-| GET | `/api/auth/me` | — | `{ user }` | อ่าน session |
-| POST | `/api/auth/change-password` | `{ password }` | `{ success }` | อัพเดต DB + session |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/login` | Login ด้วย pha_id + password, สร้าง JWT Cookie |
+| POST | `/api/auth/logout` | ลบ Session Cookie |
+| GET | `/api/auth/me` | ดึงข้อมูล User จาก Session |
+| POST | `/api/auth/change-password` | เปลี่ยนรหัสผ่าน |
 
-### Users (Admin only)
+### Notifications
 
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| GET | `/api/admin/users` | — | `{ users[] }` |
-| POST | `/api/admin/users` | `{ pha_id, prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin }` | `{ user }` |
-| PUT | `/api/admin/users` | `{ id, ...fields }` | `{ user }` |
-| POST | `/api/admin/users/reset-password` | `{ userId }` | `{ success }` |
-| PUT | `/api/user/profile` | `{ prefix, f_name, l_name, nickname, password?, salary_number }` | `{ success }` |
-
-**PUT /api/admin/users** fields ที่แก้ไขได้:
-`prefix, f_name, l_name, nickname, salary_number, role, is_sub_admin, is_active, is_readonly`
-
-### Shifts
-
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| POST | `/api/shifts/upload` | `FormData: { file, year, month, role, password }` | `{ imported, errors[] }` |
-
-**Excel Upload Logic:**
-- อ่าน code เวรแบบ role-specific (เภสัช / เจ้าพนักงาน / เจ้าหน้าที่)
-- map code → shift_type + department
-- ตรวจ unique constraint ก่อน insert
-- ต้องกรอก admin password ถ้าเดือนนั้นมีข้อมูลอยู่แล้ว
-
-### Holidays
-
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| GET | `/api/holidays` | — | `{ holidays[] }` |
-| POST | `/api/holidays` | `{ date, name }` | `{ holiday }` |
-| DELETE | `/api/holidays/[id]` | — | `{ success }` |
-| POST | `/api/holidays/import` | `{ holidays[] }` | `{ imported }` |
-
-### In-App Notifications
-
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| GET | `/api/notifications` | — | `{ notifications[] }` (max 50, newest first) |
-| POST | `/api/notifications` | `{ userIds[], type, title, body, url }` | `{ success }` |
-| PUT | `/api/notifications` | — | `{ success }` (mark all read) |
-
-> POST ต้องมี session (ตรวจสอบผ่าน `getSession()`) — ใช้ service role key insert จริง
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/notifications` | ดึงแจ้งเตือนของตัวเอง (50 รายการล่าสุด) |
+| POST | `/api/notifications` | Batch insert แจ้งเตือนให้ผู้ใช้หลายคน |
+| PUT | `/api/notifications` | Mark all as read |
 
 ### Push Notifications
 
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| POST | `/api/push/subscribe` | `{ userId, subscription: { endpoint, p256dh, auth } }` | `{ success }` |
-| DELETE | `/api/push/subscribe` | `{ endpoint }` | `{ success }` |
-| POST | `/api/push/send` | `{ userId?, userIds?, title, body, url, tag }` | `{ sent, failed }` |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/push/subscribe` | บันทึก Web Push subscription |
+| DELETE | `/api/push/subscribe` | ยกเลิก subscription |
+| POST | `/api/push/send` | ส่ง Push notification ทันที |
 
-### Cron (ต้องส่ง `Authorization: Bearer CRON_SECRET`)
+### Shifts
 
-| Method | Endpoint | ทำงานเมื่อไหร่ |
-|--------|----------|--------------|
-| GET | `/api/cron/shift-reminders` | 01:00 UTC (08:00 BKK) · 11:00 UTC (18:00 BKK) |
-| GET | `/api/cron/cleanup` | 21:00 UTC ทุกวัน |
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/shifts/upload` | Batch import เวรจาก Excel |
+
+### Holidays
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/holidays` | รายการวันหยุดทั้งหมด |
+| POST | `/api/holidays` | เพิ่มวันหยุด |
+| DELETE | `/api/holidays/[id]` | ลบวันหยุด |
+| POST | `/api/holidays/import` | Import วันหยุดจากไฟล์ |
+
+### Admin — Users
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/users` | รายชื่อบุคลากรทั้งหมด |
+| POST | `/api/admin/users` | เพิ่มบุคลากรใหม่ |
+| PUT | `/api/admin/users` | แก้ไขข้อมูลบุคลากร |
+| POST | `/api/admin/users/reset-password` | Reset รหัสผ่าน |
+
+### Cron Jobs (Vercel Auto-run)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/cron/shift-reminders` | ส่ง Push + In-app แจ้งเตือนเวร |
+| GET | `/api/cron/cleanup` | ลบ notifications เก่า |
 
 ---
 
-## 🔐 Authentication & Session
+## Cron Jobs
 
-```typescript
-// lib/session.ts
-const SESSION_OPTIONS = {
-  cookieName: 'pharmshift_session',
-  password: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, // fallback to 'pharmshift-fallback-secret'
-  cookieOptions: { secure: true, maxAge: 30 * 24 * 60 * 60 }, // 30 วัน
-};
+กำหนดค่าใน `vercel.json`:
 
-// Session payload
-interface SessionData {
-  id: string;           // user UUID
-  pha_id: string;
-  role: UserRole;
-  is_sub_admin: boolean;
-  must_change_password: boolean;
+```json
+{
+  "crons": [
+    { "path": "/api/cron/cleanup",         "schedule": "0 21 * * *" },
+    { "path": "/api/cron/shift-reminders", "schedule": "0 1  * * *" },
+    { "path": "/api/cron/shift-reminders", "schedule": "0 11 * * *" }
+  ]
 }
 ```
 
-**Middleware (`middleware.ts`):**
-- ตรวจ JWT ทุก request ที่ไม่ใช่ `/login` หรือ `/change-password`
-- ถ้า token หมดอายุหรือ invalid → redirect ไป `/login?reason=session_expired`
-- ใช้ `jose` library verify JWT
+| Cron | UTC | Bangkok | หน้าที่ |
+|------|-----|---------|--------|
+| cleanup | 21:00 | 04:00 | ลบ notifications เก่ากว่า 90 วัน |
+| shift-reminders (เช้า) | 01:00 | 08:00 | แจ้งเตือน **วันนี้** (ยกเว้นรุ่งอรุณ) |
+| shift-reminders (เย็น) | 11:00 | 18:00 | แจ้งเตือน **พรุ่งนี้** (ทุกประเภท) |
 
-```typescript
-// Public routes (ไม่ต้อง auth)
-const PUBLIC_ROUTES = ['/login', '/change-password'];
+### Logic แจ้งเตือนเวร
+
+```
+ตรวจ published_months ก่อน:
+  ├── ยังไม่ประกาศ → ไม่ส่งแจ้งเตือน
+  └── ประกาศแล้ว → ดึง shifts ตามวันเป้าหมาย
+
+  Morning run (08:00 BKK):
+    targetDate = วันนี้
+    ยกเว้น shift_type = 'รุ่งอรุณ'
+
+  Evening run (18:00 BKK):
+    targetDate = พรุ่งนี้
+    ส่งทุก shift_type
+
+  → Insert in-app notification (notifications table)
+  → ส่ง Web Push ไปทุกอุปกรณ์ที่ subscribe ไว้
 ```
 
 ---
 
-## 👥 Roles & Permissions
+## ระบบแจ้งเตือน
 
-```typescript
-type UserRole = 'pharmacist' | 'pharmacy_technician' | 'officer' | 'admin';
+### Web Push Notifications
 
-// lib/types.ts — helper functions
-isAdmin(user)           // role === 'admin'
-isAdminLike(user)       // role === 'admin' หรือ is_sub_admin === true
-canManageRoleGroup(user, targetRole)
-  // admin → จัดการได้ทุก role
-  // sub_admin → จัดการได้เฉพาะ role ตัวเอง
+ใช้ **VAPID** (Voluntary Application Server Identification) มาตรฐาน W3C
+
+```
+การทำงาน:
+1. User เปิดปฏิทิน → auto-subscribe (ขอ permission browser)
+2. Endpoint + keys บันทึกใน push_subscriptions table
+3. Cron / Admin action → เรียก sendPushToUsers()
+4. Service Worker รับ push event → แสดง Native Notification
+5. User คลิก notification → navigate ไป /calendar
+6. Endpoint หมดอายุ (404/410) → ลบอัตโนมัติ (cleanup)
 ```
 
-### Permission Matrix
+### In-App Notifications (Bell)
 
-| ฟีเจอร์ | Admin | Sub-Admin | บุคลากร |
-|---------|:-----:|:---------:|:-------:|
-| ดูตารางเวร | ✅ | ✅ | ✅ |
-| แลก/โอนเวร | ❌ | ✅ | ✅ |
-| Upload Excel | ✅ | ✅ (role ตัวเอง) | ❌ |
-| Edit Mode | ✅ | ✅ (role ตัวเอง) | ❌ |
-| ประกาศตาราง | ✅ | ✅ (ทุก role + เตือน) | ❌ |
-| จัดการวันหยุด | ✅ | ❌ | ❌ |
-| จัดการผู้ใช้ | ✅ | ❌ | ❌ |
-| Export Excel/PDF | ✅ | ✅ | ❌ |
-| ดูประวัติการแก้ไข | ✅ | ✅ | ❌ |
+- แสดงใน Panel "จากระบบ" (แท็บที่ 2)
+- Realtime อัปเดตผ่าน Supabase postgres_changes
+- Badge นับ unread
+- คลิก → navigate ตาม `url` field
+
+### ประเภทแจ้งเตือน
+
+| Type | เหตุการณ์ |
+|------|----------|
+| `shift_reminder` | แจ้งเตือนเวรล่วงหน้า (Cron อัตโนมัติ) |
+| `schedule_published` | ประกาศตารางเวรใหม่ |
+| `shift_assigned` | ถูกกำหนดเวร |
+| `shift_changed` | เวรถูกเปลี่ยน |
+| `shift_removed` | เวรถูกลบ |
 
 ---
 
-## 🔔 ระบบแจ้งเตือน
+## ฟีเจอร์ Export
 
-### ภาพรวม
+### 1. ตารางเวร Excel (Schedule Table Export)
 
-```
-┌───────────────────────────────────────────────────────────┐
-│                    ระบบแจ้งเตือน 2 ชั้น                    │
-│                                                           │
-│  In-App Notification         Push Notification            │
-│  (กระดิ่ง ใน web)            (OS notification)            │
-│                                                           │
-│  ✓ ทุก device ที่ login      ✓ แม้ไม่ได้เปิดเว็บ          │
-│  ✓ เก็บใน DB                 ✓ ต้องกด Allow browser       │
-│  ✓ มี unread count           ✓ PWA ให้ประสบการณ์ดีกว่า   │
-└───────────────────────────────────────────────────────────┘
-```
+ทุก User สามารถ Export ได้
 
-### In-App Notification Types
+- Calendar Grid รายเดือน (7 คอลัมน์ = 7 วัน)
+- แสดง Nickname ในช่องเวร
+- สีแยกประเภทเวร (เช้า/บ่าย/ดึก/รุ่งอรุณ/SMC)
+- Position codes (OPD, ER, HIV, D/C, Cont)
+- Header วัน/เดือน (ปีพุทธศักราช)
+- Merged cells + ขอบตาราง
 
-| Type | เกิดเมื่อ | อายุ |
-|------|---------|-----|
-| `shift_assigned` | Admin เพิ่ม/แก้ไขเวรให้ user | 1 สัปดาห์ |
-| `shift_changed` | เวรของ user ถูกเปลี่ยน | 1 สัปดาห์ |
-| `shift_removed` | เวรของ user ถูกลบ | 1 สัปดาห์ |
-| `schedule_published` | Admin ประกาศตารางเวร | 1 สัปดาห์ |
-| `shift_reminder` | Cron แจ้งเตือนก่อนเวร | **12 ชั่วโมง** |
+### 2. หลักฐานการจัดตารางเวร (Evidence Export)
 
-### lib/notifyUsers.ts — insertNotifications()
+สำหรับ Admin
 
-```typescript
-/**
- * Fire-and-forget — ส่ง in-app notification ผ่าน POST /api/notifications
- * ไม่ block main flow, error จะแค่ log ไม่ throw
- */
-export function insertNotifications(
-  userIds: string[],          // UUID ผู้รับ
-  type: AppNotificationType,
-  title: string,
-  body: string,
-  url: string = '/calendar',
-): void
-```
+- แสดงผู้ปฏิบัติงาน **ตามที่จัดจริงก่อน Swap** (resolve จาก shift_logs)
+- แยก Worksheet ตามประเภทเวร:
+  - รุ่งอรุณ | โครงการ | เช้า-บ่าย-ดึก | SMC | Chemo
+- รูปแบบราชการ (ลายเซ็น, คำรับรอง)
 
-**ตัวอย่างการเรียกใช้:**
-```typescript
-// หลัง admin เพิ่มเวร
-insertNotifications(
-  ownerIds,
-  'shift_assigned',
-  '📋 คุณได้รับมอบหมายเวรใหม่',
-  `Admin เพิ่มเวรเช้า ER วันที่ 15/03/69 — 15 มี.ค. 14:30 น.`,
-);
+### 3. หลักฐานค่าตอบแทน (Compensation Export)
 
-// หลังประกาศตาราง
-insertNotifications(
-  allStaffIds,
-  'schedule_published',
-  '📋 ตารางเวรประกาศแล้ว',
-  `ภก.สมชาย ประกาศตารางเวรเดือน มีนาคม 69 แล้ว — 15 มี.ค. 09:00 น.`,
-);
-```
+สำหรับ Admin
 
-### Realtime Subscription
+- คำนวณค่าตอบแทนตาม Rate ของแต่ละ Role
+- แปลงจำนวนเงินเป็นตัวอักษรภาษาไทย (เช่น "สองร้อยบาทถ้วน")
+- Multi-page รองรับหลายคน
+- รูปแบบเบิกจ่ายราชการ
 
-```typescript
-// hooks/useShifts.ts — useNotifications()
-// Subscribe ไปที่ Supabase Realtime
-// เมื่อมี INSERT ใหม่ใน notifications table → fetch ใหม่อัตโนมัติ
-supabase
-  .channel('notifications-realtime')
-  .on('postgres_changes', {
-    event: 'INSERT',
-    schema: 'public',
-    table: 'notifications',
-    filter: `user_id=eq.${userId}`,
-  }, () => fetchNotifications())
-  .subscribe();
-```
+### 4. ใบเซ็นชื่อ PDF (Sign Sheet Export)
 
-### Push Notification Flow
-
-```
-lib/pushNotifications.ts (client)         lib/pushSender.ts (server)
-───────────────────────────────           ──────────────────────────
-subscribeToPush(userId)                   sendPushToUsers(userIds, payload)
-  │                                             │
-  ├─ navigator.serviceWorker.register()         ├─ query push_subscriptions by user_id
-  ├─ Notification.requestPermission()           ├─ webpush.sendNotification() ต่อ device
-  ├─ registration.pushManager.subscribe()       └─ ลบ stale subscriptions (404/410 response)
-  └─ POST /api/push/subscribe
-       { userId, endpoint, p256dh, auth }
-```
+- HTML-to-PDF ผ่าน jsPDF + html2canvas
+- ตารางลงชื่อปฏิบัติงานรายเดือน
 
 ---
 
-## ⏰ Cron Jobs
+## Environment Variables
 
-```
-vercel.json
-┌──────────────────────────────────────────────────────────────┐
-│  Schedule              │  UTC    │  Bangkok  │  ทำงาน        │
-├──────────────────────────────────────────────────────────────┤
-│ shift-reminders (1)    │ 01:00   │ 08:00     │ เตือนวันนี้   │
-│ shift-reminders (2)    │ 11:00   │ 18:00     │ เตือนพรุ่งนี้ │
-│ cleanup                │ 21:00   │ 04:00+1   │ ลบข้อมูลเก่า  │
-└──────────────────────────────────────────────────────────────┘
-```
-
-### shift-reminders — Logic
-
-```
-รัน 08:00 BKK → เตือนเวรวันนี้ (ยกเว้น รุ่งอรุณ)
-รัน 18:00 BKK → เตือนเวรพรุ่งนี้ (รวม รุ่งอรุณ)
-
-สำหรับแต่ละ user ที่มีเวรในวันนั้น:
-  1. ตรวจว่าเดือนนั้น published แล้วหรือไม่
-  2. รวม shift ของ user นั้นเป็น string "เวรเช้า (MED), เวรดึก (ER)"
-  3. Insert notification: { type: 'shift_reminder', title: '⏰ วันนี้คุณมีเวร', body: '15/03/69 — เวรเช้า (MED)' }
-  4. ส่ง push notification ด้วย
-```
-
-### cleanup — Logic
-
-```
-1. ลบ swap_requests อายุ > 2 เดือน
-2. ลบ swap_requests ที่ rejected อายุ > 1 วัน
-3. ลบ notifications type='shift_reminder' อายุ > 12 ชั่วโมง
-4. ลบ notifications ประเภทอื่น อายุ > 7 วัน
-```
-
----
-
-## 🪝 Custom Hooks
-
-### useShifts(year, month)
-
-```typescript
-// hooks/useShifts.ts
-const {
-  shifts,          // Shift[]
-  holidays,        // Holiday[]
-  isPublished,     // boolean (เดือนนี้ประกาศแล้ว?)
-  publishedRoles,  // Set<string> (role ไหนประกาศแล้วบ้าง)
-  loading,
-  refetch,
-} = useShifts(year, month);
-```
-
-- ดึงเวรจาก Supabase ทุกครั้งที่ month เปลี่ยน
-- Subscribe Supabase Realtime → shifts/swap_requests changes → refetch อัตโนมัติ
-
-### useSwapRequests(userId?)
-
-```typescript
-const {
-  swapRequests,    // SwapRequest[]
-  pendingCount,    // จำนวน pending ที่รอฉัน action
-  acceptSwap,      // (req, force?) => Promise<void>
-  rejectSwap,      // (swapId) => Promise<void>
-  cancelSwap,      // (swapId) => Promise<void>
-  markRequesterRead,
-} = useSwapRequests(userId);
-```
-
-**acceptSwap logic:**
-1. ตรวจ collision (เวรชน) ก่อน
-2. ถ้าชน → throw error ให้ UI แสดง warning
-3. ถ้า `force=true` → ข้าม collision check
-4. อัพเดต `shifts.user_id` (สลับกัน)
-5. Insert `shift_logs`
-6. reject คำขออื่นที่ pending อยู่สำหรับ shift เดิม (auto-cancel)
-7. ส่ง push notification ให้ requester
-
-### useNotifications(userId?)
-
-```typescript
-// อยู่ใน hooks/useShifts.ts (exported separately)
-const {
-  notifications,   // AppNotification[]
-  unreadCount,     // number
-  markAllRead,     // () => Promise<void>
-} = useNotifications(userId);
-```
-
-- Fetch จาก GET /api/notifications
-- Subscribe Supabase Realtime INSERT → refetch
-- markAllRead → PUT /api/notifications
-
----
-
-## 🛠 Utilities & Helpers
-
-### lib/types.ts — ฟังก์ชันสำคัญ
-
-```typescript
-// ชื่อแสดงผล
-userFullName(user)        // "นาย สมชาย ใจดี"
-userDisplayName(user)     // "ชาย" (nickname) หรือ f_name
-
-// ตรวจสิทธิ์
-isAdmin(user)             // boolean
-isAdminLike(user)         // admin หรือ sub_admin
-canManageRoleGroup(user, role)  // boolean
-
-// Config เวร
-SHIFT_CONFIG = {
-  'เช้า':      { startHour: 8,  startMin: 30, endHour: 16, endMin: 30 },
-  'บ่าย':      { startHour: 16, startMin: 30, endHour: 24, endMin: 0  },
-  'ดึก':       { startHour: 0,  startMin: 0,  endHour: 8,  endMin: 30 },
-  'รุ่งอรุณ': { startHour: 7,  startMin: 0,  endHour: 8,  endMin: 30 },
-  'smc':       { startHour: 16, startMin: 30, endHour: 20, endMin: 30 },
-}
-
-// สีแผนก
-DEPT_COLORS  // Record<string, string>
-DEPT_STYLES  // Record<string, string>
-```
-
-### lib/utils.ts
-
-```typescript
-cn(...classes)                           // Tailwind class merging
-buildCalendarDays(year, month, shifts)   // สร้าง array 42 วัน (6×7)
-formatThaiMonth(year, month)             // "มีนาคม 2569"
-toMonthYear(year, month)                 // "2026-03"
-shiftsOverlap(typeA, typeB)              // boolean (เวรชนกันไหม)
-findConflictingShifts(shifts, newType)   // Shift[] (เวรที่ชน)
-getInitials(name)                        // "สช" (2 ตัวอักษรแรก)
-THAI_MONTHS[]                            // ['มกราคม', ...]
-THAI_DAYS[]                              // ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส']
-```
-
-### lib/supabase.ts / lib/supabaseServer.ts
-
-```typescript
-// Browser (client components)
-import { supabase } from '@/lib/supabase';
-
-// Server (API routes, Server Components)
-import { createSupabaseServer } from '@/lib/supabaseServer';
-const supabase = createSupabaseServer();
-
-// Service Role (bypass RLS — ใช้ใน cron + notifications API)
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
-```
-
----
-
-## 🌿 Environment Variables
+สร้างไฟล์ `.env.local` ตามนี้:
 
 ```bash
-# .env.local
+# ── Supabase ──────────────────────────────────────────────
+NEXT_PUBLIC_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGci...
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGci...    # ใช้ใน Server-side / Cron เท่านั้น
 
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...        # ใช้เป็น JWT secret ด้วย
-SUPABASE_SERVICE_ROLE_KEY=eyJ...            # ใช้ใน API routes ฝั่ง server
+# ── Iron Session (JWT Cookie) ─────────────────────────────
+SESSION_SECRET=your-secret-at-least-32-chars-long
 
-# Web Push (VAPID)
-NEXT_PUBLIC_VAPID_PUBLIC_KEY=BNxx...        # ส่งให้ browser
-VAPID_PRIVATE_KEY=xxxx                      # ใช้ server เท่านั้น
-VAPID_SUBJECT=mailto:your@email.com         # contact email
+# ── Web Push (VAPID) ──────────────────────────────────────
+NEXT_PUBLIC_VAPID_PUBLIC_KEY=BxxxxxxxxxxxxxxX   # Public key ใส่ client ได้
+VAPID_PRIVATE_KEY=xxxxxxxxxxxxxxxxxxx            # Private key ห้ามเปิดเผย
+VAPID_SUBJECT=mailto:pharmacy@your-hospital.go.th
 
-# Cron security
-CRON_SECRET=your-secret-here               # Vercel ใส่ใน header อัตโนมัติ
-
-# Node
-NODE_ENV=production
+# ── Vercel Cron ───────────────────────────────────────────
+CRON_SECRET=your-cron-secret    # Vercel ตั้งให้อัตโนมัติ
 ```
 
-**สร้าง VAPID keys:**
+> ⚠️ **อย่า commit `.env.local`** — เพิ่มไว้ใน `.gitignore` เรียบร้อยแล้ว
+
+### สร้าง VAPID Keys
+
 ```bash
 npx web-push generate-vapid-keys
 ```
 
 ---
 
-## 🚀 การ Deploy
+## การติดตั้งและรัน
+
+### ความต้องการเบื้องต้น
+
+- Node.js 18+
+- npm / yarn / pnpm
+- Supabase project (สร้างฟรีได้ที่ supabase.com)
+
+### ขั้นตอน
+
+```bash
+# 1. Clone repository
+git clone https://github.com/codex074/utth-shift.git
+cd utth-shift
+
+# 2. ติดตั้ง dependencies
+npm install
+
+# 3. ตั้งค่า environment variables
+cp .env.example .env.local
+# แก้ไข .env.local ด้วยค่าจริง
+
+# 4. รัน database migrations (ใน Supabase SQL Editor)
+# ดูที่ supabase/schema.sql และ supabase/migrations/
+
+# 5. รัน Development Server
+npm run dev
+```
+
+เปิด [http://localhost:3000](http://localhost:3000)
+
+### Scripts
+
+```bash
+npm run dev      # รัน development server
+npm run build    # Build production
+npm run start    # รัน production server
+npm run lint     # ตรวจ TypeScript / ESLint
+```
+
+---
+
+## การ Deploy
 
 ### Vercel (แนะนำ)
 
+1. Push code ขึ้น GitHub
+2. Import project ใน [vercel.com](https://vercel.com)
+3. ตั้ง Environment Variables ใน Vercel Dashboard
+4. Vercel จะ Auto-deploy ทุกครั้งที่ push ไป `main`
+5. Cron jobs จะทำงานตาม schedule ใน `vercel.json` อัตโนมัติ
+
+> ⚠️ Cron jobs ต้องใช้ **Vercel Pro** หรือสูงกว่า
+
+### ตรวจสอบ Cron Jobs
+
+ใน Vercel Dashboard → Project → Cron Jobs
+หรือทดสอบ endpoint ตรงๆ (development):
+
 ```bash
-# 1. ติดตั้ง dependencies
-npm install
-
-# 2. Build ทดสอบ
-npm run build
-
-# 3. Deploy
-vercel --prod
+curl http://localhost:3000/api/cron/shift-reminders
 ```
 
-**vercel.json — Cron Schedule:**
-```json
-{
-  "crons": [
-    { "path": "/api/cron/cleanup",         "schedule": "0 21 * * *"  },
-    { "path": "/api/cron/shift-reminders", "schedule": "0 1 * * *"   },
-    { "path": "/api/cron/shift-reminders", "schedule": "0 11 * * *"  }
-  ]
+---
+
+## Database Migrations
+
+สร้างตารางและ setup ตามลำดับ:
+
+```sql
+-- 1. Schema หลัก
+supabase/schema.sql
+
+-- 2. Migrations (ตามลำดับ)
+supabase/migrations/20260318_create_push_subscriptions.sql
+supabase/migrations/add_is_sub_admin_to_users.sql
+supabase/migrations/add_salary_number_to_users.sql
+supabase/migrations/create_holidays_table.sql
+supabase/migrations/create_shift_logs_table.sql
+supabase/migrations/add_new_roles.sql
+
+-- 3. Run scripts
+supabase/run_add_notifications.sql
+supabase/run_add_published_months.sql
+```
+
+### Realtime (Supabase Dashboard)
+
+ใน Supabase Dashboard → Database → Replication เปิด Realtime สำหรับ:
+- `shifts`
+- `swap_requests`
+- `notifications`
+- `published_months`
+
+---
+
+## Custom Hooks
+
+| Hook | หน้าที่ | Return |
+|------|--------|--------|
+| `useShifts(year, month)` | Fetch shifts + holidays + publish status | `shifts[], holidays[], isPublished, publishedRoles, loading` |
+| `useSwapRequests(userId)` | Swap requests + Realtime | `swapRequests[], pendingCount` |
+| `useCurrentUser()` | Auth state จาก Session | `user, loading, error` |
+| `useNotifications(userId)` | In-app notifications + Realtime | `notifications[], unreadCount, markAllRead()` |
+| `useIsMobile()` | Detect viewport < 768px | `boolean` |
+| `useSwipeGesture()` | Touch swipe detection | `onSwipeLeft, onSwipeRight` |
+
+---
+
+## ข้อมูลทางเทคนิค
+
+### Shift Collision Detection
+
+```typescript
+// lib/utils.ts — shiftsOverlap()
+// ตรวจสอบว่า 2 shift types ช่วงเวลาทับซ้อนกันไหม
+const SHIFT_RANGES = {
+  'เช้า':     { start: 8.5,  end: 16.5 },  // 08:30–16:30
+  'บ่าย':     { start: 16.5, end: 24.0 },  // 16:30–24:00
+  'ดึก':      { start: 0.0,  end: 8.5  },  // 00:00–08:30
+  'รุ่งอรุณ': { start: 7.0,  end: 8.5  },  // 07:00–08:30
+  'smc':      { start: 16.5, end: 20.5 },  // 16:30–20:30
 }
 ```
 
-### Development
-
-```bash
-npm run dev      # http://localhost:3000
-npm run lint     # ESLint
-npx tsc --noEmit # TypeScript check
-```
-
----
-
-## 🗃 SQL Migrations
-
-รัน SQL เหล่านี้ใน **Supabase SQL Editor** ตามลำดับ:
-
-### 1. เพิ่ม is_readonly column
-
-```sql
--- supabase/run_add_is_readonly.sql
-ALTER TABLE users
-  ADD COLUMN IF NOT EXISTS is_readonly BOOLEAN NOT NULL DEFAULT FALSE;
-```
-
-### 2. สร้างตาราง notifications
-
-```sql
--- supabase/run_add_notifications.sql
-CREATE TABLE IF NOT EXISTS notifications (
-  id         UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id    UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type       TEXT        NOT NULL,
-  title      TEXT        NOT NULL,
-  body       TEXT        NOT NULL,
-  is_read    BOOLEAN     NOT NULL DEFAULT FALSE,
-  url        TEXT        DEFAULT '/calendar',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS idx_notifications_user_created
-  ON notifications(user_id, created_at DESC);
-
--- ปิด RLS (app ใช้ iron-session ไม่ใช่ Supabase Auth)
-ALTER TABLE notifications DISABLE ROW LEVEL SECURITY;
-
--- เปิด Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE notifications;
-```
-
-> **ไม่ต้อง GRANT** เพราะ API ใช้ `SUPABASE_SERVICE_ROLE_KEY` โดยตรง
-
----
-
-## 🏗 สถาปัตยกรรมหลักที่ Dev ต้องรู้
-
-### 1. ทำไมไม่ใช้ Supabase Auth?
-
-แอปใช้ **iron-session** (JWT cookie แบบ custom) เพราะต้องการ:
-- ควบคุม session ได้เองอย่างสมบูรณ์
-- ใช้ `pha_id` แทน email/password ของ Supabase
-- ผลที่ตามมา: `auth.uid()` ใน RLS policy จะ return `NULL` เสมอ
-
-### 2. วิธีเข้าถึง DB อย่างปลอดภัย
-
-```
-Client-side query    → supabase (anon key) + RLS ที่ไม่อิง auth.uid()
-Server API routes    → createSupabaseServer() หรือ service role key
-Cron jobs            → service role key เสมอ
-Notification insert  → POST /api/notifications → service role key
-```
-
-### 3. Pattern การส่ง Notification
+### Session (iron-session JWT)
 
 ```typescript
-// component (client) → lib/notifyUsers.ts → POST /api/notifications (server) → Supabase
-// ไม่ insert ตรงจาก client เพราะ anon key อาจไม่มีสิทธิ์
+// lib/session.ts
+// Cookie: HttpOnly + Secure + SameSite=lax
+// Duration: 30 วัน
+// Payload: { id, pha_id, role, is_sub_admin, ... }
 ```
 
-### 4. Realtime Pattern
+### Realtime Subscriptions
 
 ```typescript
-// ทุก realtime subscription ต้องทำ cleanup ใน useEffect return
-useEffect(() => {
-  const channel = supabase.channel('...').on(...).subscribe();
-  return () => { supabase.removeChannel(channel); };
-}, [deps]);
+// hooks/useShifts.ts
+supabase
+  .channel(`shifts-${monthYear}`)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'shifts',
+    filter: `month_year=eq.${monthYear}`,
+  }, () => fetchShifts())
+  .subscribe()
 ```
 
 ---
 
-## 👨‍💻 ผู้พัฒนา
+## Known Limitations & TODO
 
-ระบบนี้พัฒนาสำหรับงานจัดการตารางเวรกลุ่มงานเภสัชกรรม
-หากมีคำถามหรือต้องการพัฒนาต่อ ติดต่อผ่าน GitHub Issues
+| รายการ | สถานะ |
+|--------|-------|
+| Password hashing (bcrypt) | ⚠️ ยังเป็น plain-text |
+| Rate limiting บน /api/auth/login | ❌ ยังไม่มี |
+| LINE Notify integration | ❌ ยังไม่มี (ใช้ Web Push แทน) |
+| Dashboard สถิติการทำเวร | ❌ ยังไม่มี |
+| SMS fallback notification | ❌ ยังไม่มี |
+| ระบบแนบหลักฐานส่งกองบัญชี | 🔄 TODO |
 
 ---
 
-*Last updated: มีนาคม 2569*
+## License
+
+Internal use — กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
+
+---
+
+<div align="center">
+  <strong>เวรดี๊ดี</strong> — พัฒนาโดยทีมเภสัชกรรม โรงพยาบาลอุตรดิตถ์<br/>
+  Built with Next.js + Supabase
+</div>
