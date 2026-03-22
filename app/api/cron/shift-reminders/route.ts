@@ -22,20 +22,24 @@ function getSupabaseAdmin() {
   );
 }
 
-/** Get current date/time in Bangkok timezone */
-function getBangkokNow(): Date {
-  // Create a date string in Bangkok timezone
+/** Get current date parts in Bangkok timezone (UTC+7) */
+function getBangkokNow(): { year: number; month: number; day: number; hour: number } {
   const now = new Date();
-  const bangkokStr = now.toLocaleString('en-US', { timeZone: 'Asia/Bangkok' });
-  return new Date(bangkokStr);
-}
-
-/** Format date as YYYY-MM-DD */
-function toDateStr(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false,
+  }).formatToParts(now);
+  const get = (t: string) => parseInt(parts.find(p => p.type === t)?.value ?? '0');
+  return {
+    year: get('year'),
+    month: get('month'),   // 1-12
+    day: get('day'),
+    hour: get('hour') % 24, // hour12:false may return 24 for midnight
+  };
 }
 
 /** Get YYYY-MM from date for month_year publish check */
@@ -60,8 +64,8 @@ export async function GET(req: NextRequest) {
     }
 
     const supabase = getSupabaseAdmin();
-    const bkkNow = getBangkokNow();
-    const bkkHour = bkkNow.getHours();
+    const bkk = getBangkokNow();
+    const bkkHour = bkk.hour;
 
     // Determine which date and which shift types to remind
     let targetDate: string;
@@ -70,14 +74,15 @@ export async function GET(req: NextRequest) {
 
     if (bkkHour >= 6 && bkkHour < 12) {
       // Morning run (08:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
-      targetDate = toDateStr(bkkNow);
+      targetDate = `${bkk.year}-${String(bkk.month).padStart(2, '0')}-${String(bkk.day).padStart(2, '0')}`;
       excludeDawn = true;
       timeLabel = 'วันนี้';
     } else {
       // Evening run (18:00 BKK) → remind tomorrow's shifts (ALL)
-      const tomorrow = new Date(bkkNow);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      targetDate = toDateStr(tomorrow);
+      const todayUTC = Date.UTC(bkk.year, bkk.month - 1, bkk.day);
+      const tomorrowUTC = todayUTC + 24 * 60 * 60 * 1000;
+      const t = new Date(tomorrowUTC);
+      targetDate = `${t.getUTCFullYear()}-${String(t.getUTCMonth() + 1).padStart(2, '0')}-${String(t.getUTCDate()).padStart(2, '0')}`;
       timeLabel = 'พรุ่งนี้';
     }
 

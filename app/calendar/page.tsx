@@ -393,12 +393,12 @@ export default function CalendarPage() {
         {/* Stats cards */}
         <div className="grid grid-cols-5 gap-1 sm:gap-2 pdf-hide">
           {[
-            { id: 'all',      label: 'ทั้งหมด',  value: totalCount, bg: 'bg-slate-100 hover:bg-slate-200',    text: 'text-slate-800',    num: 'text-slate-900'  },
-            { id: 'เช้า',     label: 'เช้า',     value: chaoCount,  bg: 'bg-amber-100  hover:bg-amber-200',    text: 'text-amber-700',    num: 'text-amber-900'  },
-            { id: 'บ่าย',     label: 'บ่าย',     value: baiCount,   bg: 'bg-orange-100 hover:bg-orange-200',   text: 'text-orange-700',   num: 'text-orange-900' },
-            { id: 'ดึก',      label: 'ดึก',      value: duekCount,  bg: 'bg-indigo-100 hover:bg-indigo-200',   text: 'text-indigo-700',   num: 'text-indigo-900' },
-            { id: 'รุ่งอรุณ', label: 'รุ่งอรุณ', value: rungCount,  bg: 'bg-rose-100   hover:bg-rose-200',     text: 'text-rose-700',     num: 'text-rose-900'   },
-          ].map(({ id, label, value, bg, text, num }) => (
+            { id: 'all',      label: 'Total',    short: 'Total', value: totalCount, bg: 'bg-slate-100 hover:bg-slate-200',    text: 'text-slate-800',    num: 'text-slate-900'  },
+            { id: 'เช้า',     label: 'เช้า',     short: 'เช้า',  value: chaoCount,  bg: 'bg-amber-100  hover:bg-amber-200',    text: 'text-amber-700',    num: 'text-amber-900'  },
+            { id: 'บ่าย',     label: 'บ่าย',     short: 'บ่าย',  value: baiCount,   bg: 'bg-orange-100 hover:bg-orange-200',   text: 'text-orange-700',   num: 'text-orange-900' },
+            { id: 'ดึก',      label: 'ดึก',      short: 'ดึก',   value: duekCount,  bg: 'bg-indigo-100 hover:bg-indigo-200',   text: 'text-indigo-700',   num: 'text-indigo-900' },
+            { id: 'รุ่งอรุณ', label: 'รุ่งอรุณ', short: 'รุ่ง',  value: rungCount,  bg: 'bg-rose-100   hover:bg-rose-200',     text: 'text-rose-700',     num: 'text-rose-900'   },
+          ].map(({ id, label, short, value, bg, text, num }) => (
             <div
               key={id}
               onClick={() => {
@@ -409,10 +409,10 @@ export default function CalendarPage() {
               }}
               className={cn(`rounded-xl border-0 p-1.5 sm:p-3 transition-all duration-200 ${bg}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
             >
-              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
+              <div className="flex flex-col items-center sm:flex-row sm:items-center sm:gap-2">
                 <p className={cn("text-base sm:text-xl font-extrabold leading-none", num)}>{value}</p>
-                <p className={cn("text-[9px] sm:text-sm font-semibold opacity-90 leading-tight mt-0.5 sm:mt-0 truncate", text)}>
-                  <span className="sm:hidden">{label.slice(0, 2)}</span>
+                <p className={cn("text-[9px] sm:text-sm font-semibold opacity-90 leading-tight mt-0.5 sm:mt-0 text-center sm:text-left", text)}>
+                  <span className="sm:hidden">{short}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </p>
               </div>
