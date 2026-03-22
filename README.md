@@ -783,11 +783,22 @@ supabase
 
 ## License
 
-Internal use — กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
+```
+Copyright (c) 2026 Codex074
+
+All rights reserved.
+
+ซอฟต์แวร์นี้พัฒนาขึ้นเพื่อใช้งานภายในกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์เท่านั้น
+ห้ามทำซ้ำ แจกจ่าย ดัดแปลง หรือนำไปใช้เพื่อวัตถุประสงค์อื่นใด
+โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากเจ้าของลิขสิทธิ์
+```
 
 ---
 
 <div align="center">
-  <strong>เวรดี๊ดี</strong> — พัฒนาโดยทีมเภสัชกรรม โรงพยาบาลอุตรดิตถ์<br/>
-  Built with Next.js + Supabase
+  <strong>เวรดี๊ดี (PharmShift)</strong><br/>
+  พัฒนาโดย <a href="https://github.com/codex074"><strong>Codex074</strong></a><br/>
+  กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์<br/><br/>
+  Built with Next.js + Supabase<br/><br/>
+  © 2026 Codex074. All rights reserved.
 </div>
