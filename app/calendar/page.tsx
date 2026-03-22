@@ -23,6 +23,7 @@ import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAdd
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 import { AdminExportModal } from '@/components/calendar/AdminExportModal';
+import { ScheduleTableExportButton } from '@/components/calendar/ScheduleTableExportButton';
 import { PdfExportButton } from '@/components/PdfExportButton';
 import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
@@ -320,6 +321,7 @@ export default function CalendarPage() {
               </button>
             )}
             <PdfExportButton targetId="pdf-export-target" filename={`ตารางเวร_${format(new Date(year, month - 1), 'MMMM_yyyy', { locale: th })}`} />
+            <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} />
             {currentUser && (
                <button
                  onClick={() => setShowCompensationModal(true)}
