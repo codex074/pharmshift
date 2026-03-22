@@ -89,21 +89,28 @@ export async function GET(req: NextRequest) {
     const monthYear = toMonthYear(targetDate);
 
     // Check if this month is published for any role group
-    const { data: publishFlags } = await supabase
-      .from('role_publish_flags')
-      .select('role, is_published')
+    // The actual table is `published_months` with per-role boolean columns
+    const { data: publishData } = await supabase
+      .from('published_months')
+      .select('is_published, pharmacist_published, pharmacy_technician_published, officer_published')
       .eq('month_year', monthYear)
-      .eq('is_published', true);
+      .maybeSingle();
 
-    if (!publishFlags || publishFlags.length === 0) {
+    // Build set of published roles from the per-role flags
+    const publishedRoles = new Set<string>();
+    if (publishData) {
+      if (publishData.pharmacist_published || publishData.is_published) publishedRoles.add('pharmacist');
+      if (publishData.pharmacy_technician_published || publishData.is_published) publishedRoles.add('pharmacy_technician');
+      if (publishData.officer_published || publishData.is_published) publishedRoles.add('officer');
+    }
+
+    if (publishedRoles.size === 0) {
       return NextResponse.json({
         ok: true,
         message: `No published schedules for ${monthYear}`,
         sent: 0,
       });
     }
-
-    const publishedRoles = new Set(publishFlags.map((f: any) => f.role));
 
     // Get all shifts for the target date with user info via join
     let query = supabase
