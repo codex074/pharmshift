@@ -80,11 +80,11 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
               const hasShifts = day.shifts.length > 0;
 
               return (
-                <div 
-                  key={di} 
+                <div
+                  key={di}
                   onClick={() => onDayClick(day)}
                   className={cn(
-                    'min-h-[80px] sm:min-h-[120px] p-1.5 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
+                    'min-h-[72px] sm:min-h-[120px] p-1 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
                     !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
                     day.isCurrentMonth && 'hover:bg-violet-50/30 cursor-pointer text-gray-700',
                     day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 [.exporting-pdf_&]:ring-0 ring-inset z-20'
@@ -93,26 +93,26 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                   {/* Day Number */}
                   <div className="flex items-center justify-between mb-1 sm:mb-2">
                     <span className={cn(
-                      'text-sm sm:text-base font-medium w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-full',
+                      'text-xs sm:text-base font-medium w-6 h-6 sm:w-9 sm:h-9 flex items-center justify-center rounded-full shrink-0',
                       day.isToday && 'bg-violet-600 text-white shadow-sm',
                       !day.isToday && isWeekend && day.isCurrentMonth && 'text-red-500'
                     )}>
                       {dayNum}
                     </span>
                     {hasShifts && (
-                      <span className="text-[9px] sm:text-[10px] font-medium text-violet-600 bg-violet-100 px-1 sm:px-1.5 py-0.5 rounded-full">
+                      <span className="text-[8px] sm:text-[10px] font-medium text-violet-600 bg-violet-100 px-0.5 sm:px-1.5 py-0.5 rounded-full leading-none">
                         {day.shifts.length}
                       </span>
                     )}
                   </div>
 
                   {/* Shifts List */}
-                  <div className="space-y-1 mt-1 flex flex-col justify-center h-full">
+                  <div className="space-y-0.5 sm:space-y-1 flex flex-col">
                     {day.shifts.map((shift, i) => {
                       const deptName = getDeptName(shift);
                       const position = (shift as any).position;
 
-                      // Build short display label
+                      // Full label (desktop)
                       let shiftLabel: string;
                       if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
                         shiftLabel = `MED ${position}`;
@@ -130,12 +130,29 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                         shiftLabel = `${shift.shift_type} ${deptName}`;
                       }
 
+                      // Short label (mobile) — compact abbreviations for small cells
+                      let mobileLabel: string;
+                      if (shift.shift_type === 'รุ่งอรุณ') {
+                        mobileLabel = 'รุ่ง';
+                      } else if (deptName === 'โครงการ') {
+                        mobileLabel = 'Ext';
+                      } else if (deptName === 'Chemo') {
+                        mobileLabel = 'Chem';
+                      } else if (deptName === 'ส่งยา สอ.' || deptName === 'สอ.') {
+                        mobileLabel = 'สอ.';
+                      } else if (deptName) {
+                        mobileLabel = deptName;
+                      } else {
+                        mobileLabel = shift.shift_type;
+                      }
+
                       return (
                         <div
                           key={i}
-                          className="flex items-center justify-center text-[10px] sm:text-xs p-1 sm:p-1.5 rounded-lg border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
+                          className="flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-sm sm:shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
                         >
-                          <span className="font-bold text-white truncate">{shiftLabel}</span>
+                          <span className="font-bold text-white leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
+                          <span className="font-bold text-white leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
                         </div>
                       );
                     })}
