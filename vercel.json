@@ -1,16 +1,7 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/cleanup",
-      "schedule": "0 21 * * *"
-    },
-    {
-      "path": "/api/cron/shift-reminders",
-      "schedule": "0 1 * * *"
-    },
-    {
-      "path": "/api/cron/shift-reminders",
-      "schedule": "0 11 * * *"
+  "functions": {
+    "app/api/cron/**": {
+      "maxDuration": 30
     }
-  ]
+  }
 }
