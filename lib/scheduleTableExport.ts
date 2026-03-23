@@ -95,7 +95,26 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
 }
 
 // ── Main export ──────────────────────────────────────────────────
-export async function exportScheduleTable(shifts: Shift[], holidays: Holiday[], year: number, month: number) {
+export async function exportScheduleTable(
+  shifts: Shift[],
+  holidays: Holiday[],
+  year: number,
+  month: number,
+  useOriginal: boolean = false,
+) {
+  // ถ้า useOriginal ให้แทนที่ user ด้วย original user (ถ้ามี)
+  if (useOriginal) {
+    // สร้าง lookup: userId → user object จาก shifts ทั้งหมด
+    const userMap = new Map<string, Shift['user']>();
+    for (const s of shifts) {
+      if (s.user && s.user_id) userMap.set(s.user_id, s.user);
+    }
+    shifts = shifts.map(s => {
+      if (!s.original_user_id || s.original_user_id === s.user_id) return s;
+      const origUser = userMap.get(s.original_user_id);
+      return origUser ? { ...s, user: origUser } : s;
+    });
+  }
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Form', {
     pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
@@ -196,8 +215,9 @@ export async function exportScheduleTable(shifts: Shift[], holidays: Holiday[], 
 
   // ── Download ──
   const buf = await wb.xlsx.writeBuffer();
+  const suffix = useOriginal ? '_ตารางเดิม' : '';
   saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `ตารางเวรเภสัชกร_${thaiMonth}_${BY}.xlsx`);
+    `ตารางเวรเภสัชกร_${thaiMonth}_${BY}${suffix}.xlsx`);
 }
 
 // ── Week renderer ────────────────────────────────────────────────
