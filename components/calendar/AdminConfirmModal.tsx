@@ -141,14 +141,16 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '🗑️ เวรของคุณถูกลบ',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
         );
-        // In-app notification per user with details (always — regardless of published status)
+        // In-app notification per user — only if month is published
         const deletesByUser = new Map<string, typeof deletes>();
-        deletes.forEach(s => {
-          if (!s.user_id) return;
-          const list = deletesByUser.get(s.user_id) || [];
-          list.push(s);
-          deletesByUser.set(s.user_id, list);
-        });
+        deletes
+          .filter(s => s.month_year && isPublished(s.month_year, (s.user as any)?.role))
+          .forEach(s => {
+            if (!s.user_id) return;
+            const list = deletesByUser.get(s.user_id) || [];
+            list.push(s);
+            deletesByUser.set(s.user_id, list);
+          });
         deletesByUser.forEach((shifts, userId) => {
           const details = shifts.map(s => fmtShift(s.date, s.shift_type as string, (s as any).department_name)).join(', ');
           insertNotifications(
@@ -193,21 +195,23 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '📋 คุณได้รับมอบหมายเวรใหม่',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
-        // In-app notifications per user with details (always)
+        // In-app notifications per user — only if month is published
         const editsByOldOwner = new Map<string, typeof edits>();
         const editsByNewOwner = new Map<string, typeof edits>();
-        edits.forEach(e => {
-          if (e.shift.user_id) {
-            const list = editsByOldOwner.get(e.shift.user_id) || [];
-            list.push(e);
-            editsByOldOwner.set(e.shift.user_id, list);
-          }
-          if (e.newUser.id) {
-            const list = editsByNewOwner.get(e.newUser.id) || [];
-            list.push(e);
-            editsByNewOwner.set(e.newUser.id, list);
-          }
-        });
+        edits
+          .filter(e => e.shift.month_year && isPublished(e.shift.month_year, (e.shift.user as any)?.role))
+          .forEach(e => {
+            if (e.shift.user_id) {
+              const list = editsByOldOwner.get(e.shift.user_id) || [];
+              list.push(e);
+              editsByOldOwner.set(e.shift.user_id, list);
+            }
+            if (e.newUser.id) {
+              const list = editsByNewOwner.get(e.newUser.id) || [];
+              list.push(e);
+              editsByNewOwner.set(e.newUser.id, list);
+            }
+          });
         editsByOldOwner.forEach((items, userId) => {
           const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
           insertNotifications(
@@ -236,7 +240,8 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           shift_type: add.shift_type,
           position: add.position || null,
           user_id: add.user.id,
-          original_user_id: add.user.id,
+          // Set original_user_id only if month is already published (post-publish admin add)
+          original_user_id: isPublished(add.month_year, add.user.role as any) ? add.user.id : null,
           month_year: add.month_year,
         }));
         const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
@@ -254,14 +259,16 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           '📋 คุณได้รับมอบหมายเวรใหม่',
           `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
         );
-        // In-app notifications per user with details (always)
+        // In-app notifications per user — only if month is published
         const addsByUser = new Map<string, PendingAdd[]>();
-        pendingAdds.forEach(add => {
-          if (!add.user.id) return;
-          const list = addsByUser.get(add.user.id) || [];
-          list.push(add);
-          addsByUser.set(add.user.id, list);
-        });
+        pendingAdds
+          .filter(a => isPublished(a.month_year, a.user.role as any))
+          .forEach(add => {
+            if (!add.user.id) return;
+            const list = addsByUser.get(add.user.id) || [];
+            list.push(add);
+            addsByUser.set(add.user.id, list);
+          });
         addsByUser.forEach((adds, userId) => {
           const details = adds.map(a => fmtShift(a.date, a.shift_type, a.department)).join(', ');
           insertNotifications(
@@ -282,7 +289,8 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           deletes.forEach(s => {
             const ownerName = (s as any).user_f_name || s.user?.f_name || 'ไม่ทราบชื่อ';
             summaryLines.push(`🗑️ ลบเวร ${ownerName}: ${fmtShift(s.date, s.shift_type as string, (s as any).department_name)}`);
-            if (s.user_id) allAffectedIds.add(s.user_id);
+            // Only add to affected list if month is published (for user notifications)
+            if (s.user_id && s.month_year && isPublished(s.month_year, (s.user as any)?.role)) allAffectedIds.add(s.user_id);
           });
         }
 
@@ -291,8 +299,11 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             const oldName = (e.shift as any).user_f_name || e.shift.user?.f_name || 'ไม่ทราบชื่อ';
             const newName = userDisplayName(e.newUser);
             summaryLines.push(`🔄 เปลี่ยนเวร ${oldName} → ${newName}: ${fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)}`);
-            if (e.shift.user_id) allAffectedIds.add(e.shift.user_id);
-            if (e.newUser.id) allAffectedIds.add(e.newUser.id);
+            const pub = e.shift.month_year && isPublished(e.shift.month_year, (e.shift.user as any)?.role);
+            if (pub) {
+              if (e.shift.user_id) allAffectedIds.add(e.shift.user_id);
+              if (e.newUser.id) allAffectedIds.add(e.newUser.id);
+            }
           });
         }
 
@@ -300,7 +311,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           pendingAdds.forEach(a => {
             const userName = userDisplayName(a.user);
             summaryLines.push(`📋 เพิ่มเวร ${userName}: ${fmtShift(a.date, a.shift_type, a.department)}`);
-            if (a.user.id) allAffectedIds.add(a.user.id);
+            if (a.user.id && isPublished(a.month_year, a.user.role as any)) allAffectedIds.add(a.user.id);
           });
         }
 
