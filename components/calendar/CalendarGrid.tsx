@@ -475,7 +475,16 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
           {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
       </div>
-      <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx, undefined, dateStr)}</div>
+      <div className="grid grid-rows-2 border-r-2 border-r-slate-400" style={{ gridArea: '2 / 3 / 4 / 4' }}>
+        {/* MED D/C slot บน */}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'D/C', dateStr)}
+        </div>
+        {/* MED Cont slot ล่าง */}
+        <div className={cn(nameCell('chao'), 'flex-col')}>
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'Cont', dateStr)}
+        </div>
+      </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
