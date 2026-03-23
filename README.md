@@ -35,7 +35,7 @@
 
 - 📅 **ปฏิทินเวรรายเดือน** — แสดงตารางเวรแยกตามแผนกและประเภทเวร
 - 🔄 **ระบบแลก/โอนเวร** — บุคลากรสามารถแลกเปลี่ยนเวรกันได้ พร้อม Collision Detection
-- 📊 **ออกรายงาน Excel/PDF** — หลักฐานการจัดเวร, ค่าตอบแทน, ตารางเวร
+- 📊 **ออกรายงาน Excel** — หลักฐานการจัดเวร, ค่าตอบแทน, ตารางเวร, ใบเซ็นชื่อ
 - 🔔 **แจ้งเตือนล่วงหน้า** — Web Push + In-app notification ก่อนเวรประจำวัน
 - 👥 **จัดการผู้ใช้** — สร้าง/แก้ไข/ปิดบัญชีบุคลากร
 - 📱 **PWA รองรับมือถือ** — ติดตั้งเป็น App บนสมาร์ทโฟนได้
@@ -55,7 +55,6 @@
 | **Push Notifications** | Web Push API + VAPID (`web-push` v3.6.7) |
 | **PWA** | `@ducanh2912/next-pwa` |
 | **Excel Export** | ExcelJS (v4.4.0) |
-| **PDF Export** | jsPDF + html2canvas |
 | **Excel Import** | xlsx (v0.18.5) |
 | **Icons** | Lucide React |
 | **Toast** | Sonner + SweetAlert2 |
@@ -78,7 +77,7 @@
 - **Swap** — แลกเวรระหว่างกัน (2 ฝ่ายยืนยัน)
 - **Transfer** — โอนเวรให้คนอื่น (เจ้าของเวรยืนยัน)
 - ตรวจสอบ **Collision** — ป้องกันเวรซ้อนทับตามช่วงเวลา
-- บันทึก Audit Log ทุก Action (swap / transfer / admin_edit / admin_delete)
+- **ล็อกเดือนที่ยังไม่ประกาศ** — ไม่อนุญาตให้ขอแลก/โอนเวรในเดือนที่ยังไม่ได้ประกาศตาราง
 - Realtime — อัปเดตสถานะทันทีผ่าน Supabase Realtime
 
 ### 🛠️ Admin — จัดการตาราง
@@ -88,8 +87,10 @@
 | **Upload Excel** | นำเข้าเวรทีละมากจาก Template Excel |
 | **สร้าง/แก้ไขเวร** | เพิ่ม/ย้าย/ลบเวรทีละรายการ |
 | **แทนเวร** | ย้ายเวรระหว่างบุคลากร |
-| **ประกาศตาราง** | Publish ตารางแยกตาม Role (เภสัชกร / เจ้าพนักงาน / เจ้าหน้าที่) |
-| **จัดการวันหยุด** | เพิ่ม/ลบวันหยุดราชการ (กระทบ Slot ของเวร) |
+| **ประกาศตาราง** | Publish ตารางแยกตาม Role พร้อม stamp `original_user_id` ทันที |
+| **ตั้งค่าระบบ** | รวม: จัดการวันหยุด / จัดการผู้ใช้ / ทดสอบแจ้งเตือน ในหน้าต่างเดียว |
+
+> ⚠️ **Admin สามารถเพิ่ม/แก้ไขเวรก่อนประกาศได้โดยไม่แจ้งเตือนใคร** — การแจ้งเตือนจะเริ่มทำงานหลังจาก Publish ตารางเดือนนั้นแล้วเท่านั้น
 
 ### 👤 Admin — จัดการผู้ใช้
 
@@ -103,10 +104,10 @@
 
 | รายงาน | ฟอร์แมต | รายละเอียด |
 |--------|---------|-----------|
-| **หลักฐานการจัดตารางเวร** | Excel (.xlsx) | แสดงผู้ปฏิบัติงาน Original ก่อน Swap, แยกแผ่นตามประเภทเวร |
+| **หลักฐานการจัดตารางเวร** | Excel (.xlsx) | แสดงผู้ปฏิบัติงาน Original (จาก `original_user_id`) ก่อน Swap, แยกแผ่นตามประเภทเวร |
 | **หลักฐานค่าตอบแทน** | Excel (.xlsx) | คำนวณค่าตอบแทนรายบุคคล, แปลงเป็นตัวอักษรภาษาไทย |
 | **ตารางเวร (ปฏิทิน)** | Excel (.xlsx) | Calendar Grid พร้อมสี, Nickname, Position |
-| **ตารางเซ็นชื่อ** | PDF | Sign-in sheet รายเดือน |
+| **ใบเซ็นชื่อ** | Excel (.xlsx) | Sign-in sheet รายเดือน |
 
 ### 🔔 ระบบแจ้งเตือน
 
@@ -218,33 +219,42 @@ pharmshift/
 │
 ├── components/
 │   ├── calendar/
-│   │   ├── CalendarGrid.tsx         Grid ปฏิทิน Desktop
-│   │   ├── MobileCalendar.tsx       Calendar สำหรับมือถือ
-│   │   ├── DayCell.tsx              ช่องวันในปฏิทิน
-│   │   ├── ShiftBadge.tsx           Badge แสดงเวร
-│   │   ├── AdminShiftModal.tsx      Modal จัดการเวร (Admin)
-│   │   ├── DeployModal.tsx          Modal ประกาศตาราง
-│   │   ├── AdminConfirmModal.tsx    Modal ยืนยัน Admin Action
-│   │   ├── HolidayModal.tsx         Modal จัดการวันหยุด
-│   │   ├── ScheduleTableExportButton.tsx  Export ตารางเวร Excel
-│   │   └── UserManagementModal.tsx  Modal จัดการผู้ใช้
+│   │   ├── CalendarGrid.tsx              Grid ปฏิทิน Desktop (เภสัชกร)
+│   │   ├── MyCalendarGrid.tsx            Grid เวรของฉัน
+│   │   ├── PharmacyTechCalendarGrid.tsx  Grid เจ้าพนักงานเภสัชกรรม
+│   │   ├── OfficeCalendarGrid.tsx        Grid เจ้าหน้าที่
+│   │   ├── MobileCalendarGrid.tsx        Grid มือถือ
+│   │   ├── MobileCalendarList.tsx        List view มือถือ
+│   │   ├── DayCell.tsx                   ช่องวันในปฏิทิน
+│   │   ├── ShiftBadge.tsx                Badge แสดงเวร
+│   │   ├── DayDetailModal.tsx            Modal รายละเอียดวัน
+│   │   ├── AdminAddShiftModal.tsx        Modal เพิ่มเวร (Admin)
+│   │   ├── AdminShiftSubstituteModal.tsx Modal แทนเวร (Admin)
+│   │   ├── AdminConfirmModal.tsx         Modal ยืนยัน Batch Action (Admin)
+│   │   ├── AdminExportModal.tsx          Modal เลือกประเภท Export
+│   │   ├── AdminSettingsModal.tsx        Modal ตั้งค่าระบบ (วันหยุด / ผู้ใช้ / แจ้งเตือน)
+│   │   ├── AdminUserManagementModal.tsx  Modal จัดการผู้ใช้
+│   │   ├── ManageHolidaysModal.tsx       Modal จัดการวันหยุด
+│   │   ├── DeployModal.tsx               Modal ประกาศตารางเวร
+│   │   ├── ShiftUploadModal.tsx          Modal Upload Excel
+│   │   ├── PersonalShiftsModal.tsx       Modal กรองเวรตัวเอง
+│   │   ├── CompensationModal.tsx         Modal แบบฟอร์มค่าตอบแทน
+│   │   ├── CompensationExportModal.tsx   Modal Export ค่าตอบแทน
+│   │   └── ScheduleTableExportButton.tsx Export ตารางเวร Excel
 │   ├── swap/
 │   │   ├── SwapModal.tsx            Modal แลก/โอนเวร
-│   │   ├── NotificationsPanel.tsx   Panel แจ้งเตือน (Bell)
-│   │   └── ShiftLogsModal.tsx       Modal ประวัติการเปลี่ยนเวร
+│   │   └── NotificationsPanel.tsx   Panel แจ้งเตือน (Bell)
 │   ├── layout/
 │   │   ├── Header.tsx               Header + Navigation
 │   │   ├── MobileBottomNav.tsx      Bottom Nav บนมือถือ
 │   │   └── MobileAdminMenu.tsx      Admin Menu บนมือถือ
 │   ├── ExcelExportButton.tsx        Export หลักฐาน/ค่าตอบแทน
-│   ├── PdfExportButton.tsx          Export PDF
+│   ├── ExportButton.tsx             Generic export button
+│   ├── HelpGuideModal.tsx           Modal คู่มือการใช้งาน
 │   └── UserProfileModal.tsx         Modal โปรไฟล์ผู้ใช้
 │
 ├── hooks/
-│   ├── useShifts.ts            Fetch shifts + publish status + Realtime
-│   ├── useSwapRequests.ts      Swap requests + Realtime
-│   ├── useCurrentUser.ts       Auth state (session)
-│   ├── useNotifications.ts     In-app notifications + Realtime
+│   ├── useShifts.ts            Fetch shifts + holidays + publish status + Realtime
 │   ├── useIsMobile.ts          Responsive breakpoint detection
 │   └── useSwipeGesture.ts      Touch swipe handler
 │
@@ -254,9 +264,9 @@ pharmshift/
 │   ├── supabase.ts             Supabase client (browser)
 │   ├── supabaseServer.ts       Supabase client (server / service role)
 │   ├── utils.ts                Date formatting, shift overlap detection
-│   ├── excelExport.ts          Export หลักฐาน + ค่าตอบแทน
+│   ├── excelExport.ts          Export หลักฐาน + ค่าตอบแทน (ใช้ original_user_id)
 │   ├── scheduleTableExport.ts  Export ตารางเวร Calendar Grid
-│   ├── signSheetExport.ts      Export ใบเซ็นชื่อ
+│   ├── signSheetExport.ts      Export ใบเซ็นชื่อ Excel (ใช้ original_user_id)
 │   ├── pushNotifications.ts    Web Push API (client-side)
 │   ├── pushSender.ts           Web Push sender (server-side, VAPID)
 │   ├── notifyUsers.ts          Insert in-app notifications
@@ -284,7 +294,7 @@ pharmshift/
 
 ## Database Schema
 
-### ตารางหลัก (10 Tables + 1 View)
+### ตารางหลัก (9 Tables + 1 View)
 
 #### `users`
 ```sql
@@ -307,21 +317,25 @@ created_at      TIMESTAMPTZ
 
 #### `shifts`
 ```sql
-id             UUID PRIMARY KEY
-date           DATE                  -- วันที่เวร
-department_id  INTEGER → departments
-shift_type     TEXT                  -- เช้า | บ่าย | ดึก | รุ่งอรุณ | smc
-position       TEXT                  -- OPD | ER | HIV | Cont | D/C (optional)
-user_id        UUID → users
-month_year     TEXT                  -- 'YYYY-MM' (สำหรับ batch query)
-created_at     TIMESTAMPTZ
+id               UUID PRIMARY KEY
+date             DATE                  -- วันที่เวร
+department_id    INTEGER → departments
+shift_type       TEXT                  -- เช้า | บ่าย | ดึก | รุ่งอรุณ | smc
+position         TEXT                  -- OPD | ER | HIV | Cont | D/C (optional)
+user_id          UUID → users          -- ผู้ปฏิบัติงานปัจจุบัน
+original_user_id UUID → users          -- ผู้ปฏิบัติงานตอนประกาศ (stamp ครั้งเดียวตอน Publish)
+month_year       TEXT                  -- 'YYYY-MM' (สำหรับ batch query)
+created_at       TIMESTAMPTZ
 -- Index: date, user_id, month_year
+-- Constraint: unique(user_id, date, shift_type, position)
 ```
+
+> **หมายเหตุ `original_user_id`:** ถูก stamp ครั้งเดียวตอน Admin กด "ประกาศตาราง" (Publish) และไม่เปลี่ยนแปลงหลังจากนั้น ใช้สำหรับออกรายงานหลักฐานการจัดเวรก่อน Swap
 
 #### `departments`
 ```sql
 id    SERIAL PRIMARY KEY
-name  TEXT UNIQUE   -- โครงการ | SURG | MED | ER | SMC | รุ่งอรุณ | Chemo
+name  TEXT UNIQUE   -- โครงการ | SURG | MED | ER | SMC | รุ่งอรุณ | Chemo | ส่งยา สอ.
 ```
 
 #### `swap_requests`
@@ -373,18 +387,6 @@ p256dh     TEXT             -- VAPID encryption key
 auth       TEXT             -- VAPID auth secret
 user_agent TEXT
 created_at TIMESTAMPTZ
-```
-
-#### `shift_logs`
-```sql
-id           UUID PRIMARY KEY
-shift_id     UUID → shifts
-action       TEXT    -- 'swap' | 'transfer' | 'admin_edit' | 'admin_delete'
-old_user_id  UUID → users
-new_user_id  UUID → users
-performed_by UUID → users
-details      TEXT
-created_at   TIMESTAMPTZ
 ```
 
 #### `holidays`
@@ -535,6 +537,13 @@ LEFT JOIN users u ON s.user_id = u.id
 - Badge นับ unread
 - คลิก → navigate ตาม `url` field
 
+### เงื่อนไขการแจ้งเตือนจาก Admin
+
+| สถานะตาราง | เพิ่ม/แก้ไข/ลบเวร | ผลที่ตามมา |
+|-----------|------------------|----------|
+| **ยังไม่ประกาศ** | ทำได้อิสระ | ไม่แจ้งเตือนบุคลากรใดๆ |
+| **ประกาศแล้ว** | แก้ไขได้ | แจ้งเตือนบุคลากรที่ได้รับผลกระทบทันที |
+
 ### ประเภทแจ้งเตือน
 
 | Type | เหตุการณ์ |
@@ -564,7 +573,7 @@ LEFT JOIN users u ON s.user_id = u.id
 
 สำหรับ Admin
 
-- แสดงผู้ปฏิบัติงาน **ตามที่จัดจริงก่อน Swap** (resolve จาก shift_logs)
+- แสดงผู้ปฏิบัติงาน **ตอนประกาศ** (ดึงจาก `original_user_id` ใน shifts table)
 - แยก Worksheet ตามประเภทเวร:
   - รุ่งอรุณ | โครงการ | เช้า-บ่าย-ดึก | SMC | Chemo
 - รูปแบบราชการ (ลายเซ็น, คำรับรอง)
@@ -578,10 +587,10 @@ LEFT JOIN users u ON s.user_id = u.id
 - Multi-page รองรับหลายคน
 - รูปแบบเบิกจ่ายราชการ
 
-### 4. ใบเซ็นชื่อ PDF (Sign Sheet Export)
+### 4. ใบเซ็นชื่อ (Sign Sheet Export)
 
-- HTML-to-PDF ผ่าน jsPDF + html2canvas
-- ตารางลงชื่อปฏิบัติงานรายเดือน
+- ตารางลงชื่อปฏิบัติงานรายเดือน (Excel .xlsx)
+- แสดงผู้ปฏิบัติงาน Original ก่อน Swap (ดึงจาก `original_user_id`)
 
 ---
 
@@ -695,13 +704,18 @@ supabase/migrations/20260318_create_push_subscriptions.sql
 supabase/migrations/add_is_sub_admin_to_users.sql
 supabase/migrations/add_salary_number_to_users.sql
 supabase/migrations/create_holidays_table.sql
-supabase/migrations/create_shift_logs_table.sql
 supabase/migrations/add_new_roles.sql
 
 -- 3. Run scripts
 supabase/run_add_notifications.sql
 supabase/run_add_published_months.sql
+
+-- 4. เพิ่ม original_user_id (ต้องรันใน Supabase SQL Editor)
+ALTER TABLE shifts
+  ADD COLUMN IF NOT EXISTS original_user_id UUID REFERENCES users(id) ON DELETE SET NULL;
 ```
+
+> **หมายเหตุ:** ไม่จำเป็นต้อง backfill `original_user_id` สำหรับข้อมูลเก่า — ค่าจะถูก stamp ครั้งต่อไปที่ Admin กด "ประกาศตาราง"
 
 ### Realtime (Supabase Dashboard)
 
@@ -717,12 +731,11 @@ supabase/run_add_published_months.sql
 
 | Hook | หน้าที่ | Return |
 |------|--------|--------|
-| `useShifts(year, month)` | Fetch shifts + holidays + publish status | `shifts[], holidays[], isPublished, publishedRoles, loading` |
-| `useSwapRequests(userId)` | Swap requests + Realtime | `swapRequests[], pendingCount` |
-| `useCurrentUser()` | Auth state จาก Session | `user, loading, error` |
-| `useNotifications(userId)` | In-app notifications + Realtime | `notifications[], unreadCount, markAllRead()` |
+| `useShifts(year, month)` | Fetch shifts + holidays + publish status + Realtime | `shifts[], holidays[], isPublished(), publishedRoles, loading, refetch()` |
 | `useIsMobile()` | Detect viewport < 768px | `boolean` |
 | `useSwipeGesture()` | Touch swipe detection | `onSwipeLeft, onSwipeRight` |
+
+> **หมายเหตุ:** `useSwapRequests`, `useCurrentUser`, `useNotifications` รวมอยู่ใน `useShifts.ts` แล้ว
 
 ---
 
@@ -766,6 +779,23 @@ supabase
   .subscribe()
 ```
 
+### Original User Logic (Publish Flow)
+
+```
+ก่อน Publish:
+  shifts.original_user_id = NULL
+  Admin แก้ไขเวรได้อิสระ ไม่แจ้งเตือนใคร
+
+ตอน Publish (DeployModal):
+  shifts WHERE month_year = X AND original_user_id IS NULL
+    → UPDATE original_user_id = user_id  (stamp ทีเดียวแบบ batch)
+
+หลัง Publish:
+  - เวรที่แลก/โอน: user_id เปลี่ยน แต่ original_user_id คงเดิม
+  - Admin แก้ไขเวร: แจ้งเตือนบุคลากรที่ได้รับผลกระทบ
+  - Export รายงาน: ใช้ original_user_id แสดงเวรตอนประกาศ
+```
+
 ---
 
 ## Known Limitations & TODO
@@ -792,13 +822,3 @@ All rights reserved.
 ห้ามทำซ้ำ แจกจ่าย ดัดแปลง หรือนำไปใช้เพื่อวัตถุประสงค์อื่นใด
 โดยไม่ได้รับอนุญาตเป็นลายลักษณ์อักษรจากเจ้าของลิขสิทธิ์
 ```
-
----
-
-<div align="center">
-  <strong>เวรดี๊ดี (PharmShift)</strong><br/>
-  พัฒนาโดย <a href="https://github.com/codex074"><strong>Codex074</strong></a><br/>
-  กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์<br/><br/>
-  Built with Next.js + Supabase<br/><br/>
-  © 2026 Codex074. All rights reserved.
-</div>
