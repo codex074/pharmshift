@@ -15,7 +15,6 @@ import { MobileCalendarGrid } from '@/components/calendar/MobileCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
-import { ShiftLogsModal } from '@/components/swap/ShiftLogsModal';
 import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
 import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
 import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
@@ -46,7 +45,6 @@ export default function CalendarPage() {
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null); // kept for MyCalendarGrid only
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showSwapHistory, setShowSwapHistory] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showPersonalShiftsModal, setShowPersonalShiftsModal] = useState(false);
@@ -204,7 +202,6 @@ export default function CalendarPage() {
         currentUser={currentUser}
         pendingCount={pendingCount + notifUnreadCount}
         onBellClick={() => setShowNotifications(true)}
-        onHistoryClick={() => setShowSwapHistory(true)}
         year={year}
         month={month}
         onMonthChange={handleMonthChange}
@@ -593,13 +590,7 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Shift Logs History Modal */}
-      {showSwapHistory && (
-        <ShiftLogsModal
-          currentUser={currentUser}
-          onClose={() => setShowSwapHistory(false)}
-        />
-      )}
+
 
       {/* Upload Modal */}
       {showUploadModal && (
@@ -688,7 +679,6 @@ export default function CalendarPage() {
           onViewModeChange={setViewMode}
           onBellClick={() => setShowNotifications(true)}
           pendingCount={pendingCount}
-          onHistoryClick={() => setShowSwapHistory(true)}
         />
       )}
 

@@ -57,7 +57,7 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
       const { data: shiftsData, error: shiftsError } = await supabase
         .from('shifts')
         .select(`
-          *,
+          id, date, shift_type, position, user_id, original_user_id, month_year,
           department:departments(id, name),
           user:users(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
         `)
@@ -67,45 +67,25 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
       if (shiftsError) throw new Error('ไม่สามารถดึงข้อมูลเวรได้');
       if (!shiftsData?.length) throw new Error('ไม่พบข้อมูลเวรในเดือนที่ระบุ');
 
-      const shiftIds = shiftsData.map((s) => s.id);
-
       if (selected === 'compensation') {
         await exportCompensationExcel(shiftsData as any, year, month);
       } else {
-        // Fetch shift logs for original user resolution
-        const { data: logsData } = await supabase
-          .from('shift_logs')
-          .select('shift_id, old_user_id, new_user_id, action, created_at')
-          .in('shift_id', shiftIds)
-          .in('action', ['swap', 'transfer'])
-          .order('created_at', { ascending: true });
+        // Collect all user IDs (current + original) for lookup
+        const userIds = new Set<string>();
+        shiftsData.forEach((s: any) => {
+          if (s.user_id) userIds.add(s.user_id);
+          if (s.original_user_id) userIds.add(s.original_user_id);
+        });
 
-        const logs = logsData || [];
+        const { data: usersData } = await supabase
+          .from('users')
+          .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
+          .in('id', Array.from(userIds));
 
         if (selected === 'sign-sheet') {
-          // Fetch all users referenced in shifts + logs
-          const userIds = new Set<string>();
-          shiftsData.forEach((s) => { if (s.user_id) userIds.add(s.user_id); });
-          logs.forEach((l) => { if (l.old_user_id) userIds.add(l.old_user_id); });
-
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
-            .in('id', Array.from(userIds));
-
-          await exportSignSheet(shiftsData as any, logs, usersData || [], year, month);
+          await exportSignSheet(shiftsData as any, usersData || [], year, month);
         } else {
-          // evidence - same as compensation but original names + different title
-          const userIds = new Set<string>();
-          shiftsData.forEach((s) => { if (s.user_id) userIds.add(s.user_id); });
-          logs.forEach((l) => { if (l.old_user_id) userIds.add(l.old_user_id); });
-
-          const { data: usersData } = await supabase
-            .from('users')
-            .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
-            .in('id', Array.from(userIds));
-
-          await exportEvidenceExcel(shiftsData as any, logs, usersData || [], year, month);
+          await exportEvidenceExcel(shiftsData as any, usersData || [], year, month);
         }
       }
 

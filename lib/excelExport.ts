@@ -91,39 +91,8 @@ interface UserRowData {
   totalAmount: number;
 }
 
-interface ShiftLog {
-  shift_id: string;
-  old_user_id: string;
-  action: string;
-  created_at: string;
-}
-
-/** Returns shifts with user_id replaced by the original user (before any swaps) */
-function resolveOriginalShifts(shifts: Shift[], logs: ShiftLog[]): Shift[] {
-  // Build map: shift_id → earliest old_user_id
-  const logsByShift = new Map<string, ShiftLog[]>();
-  for (const log of logs) {
-    if (!log.shift_id) continue;
-    if (!logsByShift.has(log.shift_id)) logsByShift.set(log.shift_id, []);
-    logsByShift.get(log.shift_id)!.push(log);
-  }
-  return shifts.map((s) => {
-    const shiftLogs = logsByShift.get(s.id) || [];
-    if (shiftLogs.length === 0) return s;
-    const sorted = [...shiftLogs].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    // Return shift with original user data overriding current
-    const origUserId = sorted[0].old_user_id;
-    // We need user info for origUserId - it should be in the shift's joined data if unchanged,
-    // otherwise we keep the shift but mark the user_id as original
-    return { ...s, _originalUserId: origUserId } as any;
-  });
-}
-
 export async function exportEvidenceExcel(
   shifts: Shift[],
-  logs: ShiftLog[],
   users: Array<{ id: string; f_name: string; l_name: string; prefix: string; role: string; pha_id: string | number; salary_number: string; nickname: string }>,
   year: number,
   month: number
@@ -131,21 +100,10 @@ export async function exportEvidenceExcel(
   // Build usersMap for quick lookup
   const usersMap = new Map(users.map((u) => [u.id, u]));
 
-  // Resolve original user for each shift
-  const logsByShift = new Map<string, ShiftLog[]>();
-  for (const log of logs) {
-    if (!log.shift_id) continue;
-    if (!logsByShift.has(log.shift_id)) logsByShift.set(log.shift_id, []);
-    logsByShift.get(log.shift_id)!.push(log);
-  }
-
+  // Resolve original user using original_user_id stored on each shift
   const resolvedShifts: Shift[] = shifts.map((s) => {
-    const shiftLogs = logsByShift.get(s.id) || [];
-    if (shiftLogs.length === 0) return s;
-    const sorted = [...shiftLogs].sort(
-      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-    );
-    const origUserId = sorted[0].old_user_id;
+    const origUserId = s.original_user_id;
+    if (!origUserId || origUserId === s.user_id) return s;
     const origUser = usersMap.get(origUserId);
     if (!origUser) return s;
     return {

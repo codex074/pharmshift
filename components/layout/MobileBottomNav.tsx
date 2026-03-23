@@ -1,6 +1,6 @@
 'use client';
 
-import { Users, User, Bell, History } from 'lucide-react';
+import { Users, User, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface MobileBottomNavProps {
@@ -8,11 +8,10 @@ interface MobileBottomNavProps {
   onViewModeChange: (mode: 'all' | 'mine') => void;
   onBellClick: () => void;
   pendingCount: number;
-  onHistoryClick: () => void;
 }
 
 export function MobileBottomNav({
-  viewMode, onViewModeChange, onBellClick, pendingCount, onHistoryClick,
+  viewMode, onViewModeChange, onBellClick, pendingCount,
 }: MobileBottomNavProps) {
   const tabs = [
     {
@@ -36,13 +35,6 @@ export function MobileBottomNav({
       action: onBellClick,
       active: false,
       badge: pendingCount,
-    },
-    {
-      id: 'history' as const,
-      label: 'ประวัติ',
-      icon: History,
-      action: onHistoryClick,
-      active: false,
     },
   ];
 
