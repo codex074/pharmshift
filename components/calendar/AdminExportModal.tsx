@@ -1,20 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Download, Loader2, FileSpreadsheet, ClipboardList } from 'lucide-react';
+import { X, Download, Loader2, FileSpreadsheet } from 'lucide-react';
 import { THAI_MONTHS } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { exportCompensationExcel, exportEvidenceExcel } from '@/lib/excelExport';
 import { exportSignSheet } from '@/lib/signSheetExport';
+import { cn } from '@/lib/utils';
 
 type ExportType = 'compensation' | 'sign-sheet' | 'evidence';
+type UserRole = 'pharmacist' | 'pharmacy_technician' | 'officer';
 
-interface Props {
-  onClose: () => void;
-  defaultMonth: number;
-  defaultYear: number;
-}
+const ROLES: { id: UserRole; label: string; short: string; color: string }[] = [
+  { id: 'pharmacist',          label: 'เภสัชกร',                  short: 'ภก.',   color: 'bg-violet-100 border-violet-400 text-violet-800' },
+  { id: 'pharmacy_technician', label: 'เจ้าพนักงานเภสัชกรรม',    short: 'จพ.',   color: 'bg-sky-100 border-sky-400 text-sky-800' },
+  { id: 'officer',             label: 'เจ้าหน้าที่',              short: 'จนท.',  color: 'bg-amber-100 border-amber-400 text-amber-800' },
+];
 
 const EXPORT_TYPES: { id: ExportType; label: string; desc: string; icon: string; color: string }[] = [
   {
@@ -40,20 +42,41 @@ const EXPORT_TYPES: { id: ExportType; label: string; desc: string; icon: string;
   },
 ];
 
+interface Props {
+  onClose: () => void;
+  defaultMonth: number;
+  defaultYear: number;
+}
+
 export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) {
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState(defaultMonth);
   const [year, setYear] = useState(defaultYear);
   const [selected, setSelected] = useState<ExportType>('compensation');
+  const [selectedRoles, setSelectedRoles] = useState<Set<UserRole>>(
+    new Set<UserRole>(['pharmacist', 'pharmacy_technician', 'officer'])
+  );
 
   const currentYear = new Date().getFullYear();
+  const hasRoleFilter = selected === 'compensation' || selected === 'evidence';
+
+  function toggleRole(role: UserRole) {
+    setSelectedRoles(prev => {
+      const next = new Set(prev);
+      next.has(role) ? next.delete(role) : next.add(role);
+      return next;
+    });
+  }
 
   const handleExport = async () => {
+    if (hasRoleFilter && selectedRoles.size === 0) {
+      toastError('กรุณาเลือก Role อย่างน้อย 1 อย่าง');
+      return;
+    }
     setLoading(true);
     try {
       const monthYear = `${year}-${String(month).padStart(2, '0')}`;
 
-      // Fetch shifts
       const { data: shiftsData, error: shiftsError } = await supabase
         .from('shifts')
         .select(`
@@ -67,12 +90,20 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
       if (shiftsError) throw new Error('ไม่สามารถดึงข้อมูลเวรได้');
       if (!shiftsData?.length) throw new Error('ไม่พบข้อมูลเวรในเดือนที่ระบุ');
 
+      // กรอง role ถ้า compensation หรือ evidence
+      const filteredShifts = hasRoleFilter
+        ? shiftsData.filter((s: any) => selectedRoles.has(s.user?.role))
+        : shiftsData;
+
+      if (hasRoleFilter && !filteredShifts.length) {
+        throw new Error('ไม่พบข้อมูลเวรของ Role ที่เลือกในเดือนนี้');
+      }
+
       if (selected === 'compensation') {
-        await exportCompensationExcel(shiftsData as any, year, month);
+        await exportCompensationExcel(filteredShifts as any, year, month);
       } else {
-        // Collect all user IDs (current + original) for lookup
         const userIds = new Set<string>();
-        shiftsData.forEach((s: any) => {
+        filteredShifts.forEach((s: any) => {
           if (s.user_id) userIds.add(s.user_id);
           if (s.original_user_id) userIds.add(s.original_user_id);
         });
@@ -83,9 +114,9 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           .in('id', Array.from(userIds));
 
         if (selected === 'sign-sheet') {
-          await exportSignSheet(shiftsData as any, usersData || [], year, month);
+          await exportSignSheet(filteredShifts as any, usersData || [], year, month);
         } else {
-          await exportEvidenceExcel(shiftsData as any, usersData || [], year, month);
+          await exportEvidenceExcel(filteredShifts as any, usersData || [], year, month);
         }
       }
 
@@ -172,10 +203,68 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
             ))}
           </div>
 
+          {/* Role checkboxes — แสดงเฉพาะ compensation / evidence */}
+          {hasRoleFilter && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">เลือก Role</label>
+                <button
+                  onClick={() =>
+                    selectedRoles.size === ROLES.length
+                      ? setSelectedRoles(new Set<UserRole>())
+                      : setSelectedRoles(new Set<UserRole>(ROLES.map(r => r.id)))
+                  }
+                  className="text-xs text-indigo-500 hover:text-indigo-700 font-medium transition-colors"
+                >
+                  {selectedRoles.size === ROLES.length ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
+                </button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {ROLES.map((r) => {
+                  const checked = selectedRoles.has(r.id);
+                  return (
+                    <button
+                      key={r.id}
+                      onClick={() => toggleRole(r.id)}
+                      className={cn(
+                        'flex items-center gap-3 px-4 py-2.5 rounded-xl border-2 text-left transition-all',
+                        checked
+                          ? r.color + ' shadow-sm'
+                          : 'bg-gray-50 border-gray-200 text-gray-500 hover:bg-gray-100'
+                      )}
+                    >
+                      {/* Custom checkbox */}
+                      <div className={cn(
+                        'w-4 h-4 rounded flex items-center justify-center border-2 flex-shrink-0 transition-all',
+                        checked ? 'bg-current border-current' : 'border-gray-300 bg-white'
+                      )}>
+                        {checked && (
+                          <svg className="w-2.5 h-2.5 text-white" viewBox="0 0 10 8" fill="none">
+                            <path d="M1 4l3 3 5-6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        )}
+                      </div>
+                      <span className="text-sm font-semibold">{r.label}</span>
+                      <span className={cn(
+                        'ml-auto text-xs font-medium px-2 py-0.5 rounded-full',
+                        checked ? 'bg-white/60' : 'bg-gray-200 text-gray-400'
+                      )}>
+                        {r.short}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedRoles.size === 0 && (
+                <p className="text-xs text-red-500 font-medium">กรุณาเลือก Role อย่างน้อย 1 อย่าง</p>
+              )}
+            </div>
+          )}
+
           {/* Export button */}
           <button
             onClick={handleExport}
-            disabled={loading}
+            disabled={loading || (hasRoleFilter && selectedRoles.size === 0)}
             className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
