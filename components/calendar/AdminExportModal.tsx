@@ -245,12 +245,6 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
                         )}
                       </div>
                       <span className="text-sm font-semibold">{r.label}</span>
-                      <span className={cn(
-                        'ml-auto text-xs font-medium px-2 py-0.5 rounded-full',
-                        checked ? 'bg-white/60' : 'bg-gray-200 text-gray-400'
-                      )}>
-                        {r.short}
-                      </span>
                     </button>
                   );
                 })}
