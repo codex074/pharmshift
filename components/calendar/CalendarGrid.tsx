@@ -468,6 +468,32 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
   const dateStr = format(day.date, 'yyyy-MM-dd');
   const smcShifts = day.shifts.filter(s => s.shift_type === 'บ่าย' && getDeptName(s) === 'SMC');
 
+  // SMC slot logic (same pattern as SURG)
+  const smcPendingItems = (ctx.pendingAdds || [])
+    .map((add, globalIdx) => ({ add, globalIdx }))
+    .filter(({ add: a }) =>
+      a.date === dateStr && a.shift_type === 'บ่าย' && a.department === 'SMC' && (a.position || '') === ''
+    );
+
+  type SmcSlot =
+    | { type: 'real'; shift: (typeof smcShifts)[0] }
+    | { type: 'pending'; add: (typeof smcPendingItems)[0]['add']; globalIdx: number }
+    | null;
+
+  const smcSlot0: SmcSlot = smcShifts[0]
+    ? { type: 'real', shift: smcShifts[0] }
+    : smcPendingItems[0]
+    ? { type: 'pending', ...smcPendingItems[0] }
+    : null;
+
+  const pendingConsumedBySmcSlot0 = smcShifts[0] ? 0 : smcPendingItems[0] ? 1 : 0;
+
+  const smcSlot1: SmcSlot = smcShifts[1]
+    ? { type: 'real', shift: smcShifts[1] }
+    : smcPendingItems[pendingConsumedBySmcSlot0]
+    ? { type: 'pending', ...smcPendingItems[pendingConsumedBySmcSlot0] }
+    : null;
+
   return (
     <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
 
@@ -479,15 +505,17 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
 
       {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
-        {renderPersonalShift(smcShifts[0], ctx)}
-        {!smcShifts[0] && renderPendingAddsForCell(dateStr, 'บ่าย', 'SMC', ctx)}
-        {!smcShifts[0] && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+      {/* SMC slot บน */}
+      <div className={cn(nameCell('bai'), 'flex-col border-b border-orange-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
+        {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
+        {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
+        {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
       </div>
-      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
-        {renderPersonalShift(smcShifts[1], ctx)}
-        {!smcShifts[1] && renderPendingAddsForCell(dateStr, 'บ่าย', 'SMC', ctx)}
-        {!smcShifts[1] && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+      {/* SMC slot ล่าง */}
+      <div className={cn(nameCell('bai'), 'flex-col')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
+        {smcSlot1?.type === 'real'    && renderPersonalShift(smcSlot1.shift, ctx)}
+        {smcSlot1?.type === 'pending' && renderPendingAddBadge(smcSlot1.add, smcSlot1.globalIdx, ctx)}
+        {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
       </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
