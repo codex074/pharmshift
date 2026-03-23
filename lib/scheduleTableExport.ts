@@ -193,7 +193,6 @@ export async function exportScheduleTable(
   const legendFont = { name: F, size: 13 };
   const legendBold = { ...legendFont, bold: true };
   const legends = [
-    { label: 'SURG', items: ['รายชื่อ 1 = เช้า SURG (บน)', 'รายชื่อ 2 = เช้า SURG (ล่าง)'], color: PAL.chao.hdr },
     { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
     { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
     { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
