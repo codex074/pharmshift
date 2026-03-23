@@ -306,20 +306,30 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ct
   const pendingBadges = dateStr ? renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, position) : null;
   const hasPendingAdds = pendingBadges?.some(Boolean);
 
+  // MED เช้า (ไม่ระบุ position) — แยก D/C และ Cont เป็น 2 slot อิสระ
+  if (deptName === 'MED' && shiftType === 'เช้า' && !position && dateStr) {
+    const dcShift   = matching.find(s => (s as any).position === 'D/C');
+    const contShift = matching.find(s => (s as any).position === 'Cont');
+    const dcPending   = renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, 'D/C');
+    const contPending = renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, 'Cont');
+    const hasDC   = !!dcShift   || dcPending?.some(Boolean);
+    const hasCont = !!contShift || contPending?.some(Boolean);
+    return (
+      <>
+        {dcShift   && renderShiftBadge(dcShift, ctx)}
+        {!dcShift  && dcPending}
+        {!hasDC    && renderAddButton(dateStr, shiftType, deptName, ctx, 'D/C')}
+        {contShift   && renderShiftBadge(contShift, ctx)}
+        {!contShift  && contPending}
+        {!hasCont    && renderAddButton(dateStr, shiftType, deptName, ctx, 'Cont')}
+      </>
+    );
+  }
+
   // Only show + button when there are NO existing shifts and NO pending adds
   let addBtn: React.ReactNode = null;
   if (dateStr && matching.length === 0 && !hasPendingAdds) {
-    // For morning MED without specific position: show D/C and Cont buttons
-    if (deptName === 'MED' && shiftType === 'เช้า' && !position) {
-      addBtn = (
-        <div className="flex flex-col gap-1 mt-0.5">
-          {renderAddButton(dateStr, shiftType, deptName, ctx, 'D/C')}
-          {renderAddButton(dateStr, shiftType, deptName, ctx, 'Cont')}
-        </div>
-      );
-    } else {
-      addBtn = renderAddButton(dateStr, shiftType, deptName, ctx, position);
-    }
+    addBtn = renderAddButton(dateStr, shiftType, deptName, ctx, position);
   }
 
   if (badges.length === 0 && !hasPendingAdds && !addBtn) return null;
@@ -410,6 +420,32 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
     ? { type: 'pending', ...surgPendingItems[pendingConsumedBySlot0] }
     : null;
 
+  // Chemo slot logic (same pattern as SURG — 1 person per slot)
+  const chemoPendingItems = (ctx.pendingAdds || [])
+    .map((add, globalIdx) => ({ add, globalIdx }))
+    .filter(({ add: a }) =>
+      a.date === dateStr && a.shift_type === 'เช้า' && a.department === 'Chemo' && (a.position || '') === ''
+    );
+
+  type ChemoSlot =
+    | { type: 'real'; shift: (typeof chemoShifts)[0] }
+    | { type: 'pending'; add: (typeof chemoPendingItems)[0]['add']; globalIdx: number }
+    | null;
+
+  const chemoSlot0: ChemoSlot = chemoShifts[0]
+    ? { type: 'real', shift: chemoShifts[0] }
+    : chemoPendingItems[0]
+    ? { type: 'pending', ...chemoPendingItems[0] }
+    : null;
+
+  const pendingConsumedByChemoSlot0 = chemoShifts[0] ? 0 : chemoPendingItems[0] ? 1 : 0;
+
+  const chemoSlot1: ChemoSlot = chemoShifts[1]
+    ? { type: 'real', shift: chemoShifts[1] }
+    : chemoPendingItems[pendingConsumedByChemoSlot0]
+    ? { type: 'pending', ...chemoPendingItems[pendingConsumedByChemoSlot0] }
+    : null;
+
   // Weekend bg tint
   const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
 
@@ -452,15 +488,15 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
 
       <div className="grid grid-rows-2" style={{ gridArea: '5 / 2 / 8 / 3' }}>
-        <div className={cn(nameCell('chao'), 'flex-col')}>
-          {renderPersonalShift(chemoShifts[0], ctx)}
-          {!chemoShifts[0] && renderPendingAddsForCell(dateStr, 'เช้า', 'Chemo', ctx)}
-          {!chemoShifts[0] && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+          {chemoSlot0?.type === 'real'    && renderPersonalShift(chemoSlot0.shift, ctx)}
+          {chemoSlot0?.type === 'pending' && renderPendingAddBadge(chemoSlot0.add, chemoSlot0.globalIdx, ctx)}
+          {!chemoSlot0                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
         </div>
         <div className={cn(nameCell('chao'), 'flex-col')}>
-          {renderPersonalShift(chemoShifts[1], ctx)}
-          {!chemoShifts[1] && renderPendingAddsForCell(dateStr, 'เช้า', 'Chemo', ctx)}
-          {!chemoShifts[1] && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
+          {chemoSlot1?.type === 'real'    && renderPersonalShift(chemoSlot1.shift, ctx)}
+          {chemoSlot1?.type === 'pending' && renderPendingAddBadge(chemoSlot1.add, chemoSlot1.globalIdx, ctx)}
+          {!chemoSlot1                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
         </div>
       </div>
 
