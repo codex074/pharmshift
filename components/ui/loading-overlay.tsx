@@ -38,10 +38,14 @@ export function LoadingOverlay({ variant = 'fixed' }: LoadingOverlayProps) {
         .wheel-and-hamster {
           --dur: 1s;
           position: relative;
-          /* mobile: 9em, desktop: 12em */
-          width: clamp(8em, 20vw, 12em);
-          height: clamp(8em, 20vw, 12em);
-          font-size: clamp(12px, 2vw, 16px);
+          width: 12em;
+          height: 12em;
+          font-size: 10px;
+        }
+        @media (min-width: 640px) {
+          .wheel-and-hamster {
+            font-size: 14px;
+          }
         }
         .wheel,
         .hamster,
