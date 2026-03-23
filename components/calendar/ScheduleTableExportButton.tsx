@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { Loader2, X } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { exportScheduleTable } from '@/lib/scheduleTableExport';
 import type { Shift, Holiday } from '@/lib/types';
@@ -15,20 +15,10 @@ interface Props {
 
 export function ScheduleTableExportButton({ shifts, holidays, year, month }: Props) {
   const [loading, setLoading] = useState(false);
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  // ปิด dropdown เมื่อคลิกนอก
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const [showModal, setShowModal] = useState(false);
 
   const handleExport = async (useOriginal: boolean) => {
-    setOpen(false);
+    setShowModal(false);
     setLoading(true);
     try {
       const pharmacistShifts = shifts.filter(s => (s.user as any)?.role === 'pharmacist');
@@ -43,60 +33,77 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month }: Pro
   };
 
   return (
-    <div className="relative" ref={ref}>
-      {/* Main button + chevron */}
-      <div className="flex items-stretch rounded-xl overflow-hidden shadow-sm border border-green-200">
-        {/* Left: export ปัจจุบัน (default) */}
-        <button
-          onClick={() => handleExport(false)}
-          disabled={loading}
-          className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 disabled:opacity-50 font-medium px-3 sm:px-4 py-2 text-xs sm:text-sm transition-colors flex items-center gap-1.5"
+    <>
+      {/* Trigger button */}
+      <button
+        onClick={() => setShowModal(true)}
+        disabled={loading}
+        className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 disabled:opacity-50 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+      >
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>📅</span>}
+        <span className="sm:hidden">ตารางเวร</span>
+        <span className="hidden sm:inline">ตารางเวร Excel</span>
+      </button>
+
+      {/* Modal */}
+      {showModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={() => setShowModal(false)}
         >
-          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>📅</span>}
-          <span className="sm:hidden">ตารางเวร</span>
-          <span className="hidden sm:inline">ตารางเวร Excel</span>
-        </button>
-
-        {/* Divider */}
-        <div className="w-px bg-green-200" />
-
-        {/* Right: chevron dropdown */}
-        <button
-          onClick={() => setOpen(v => !v)}
-          disabled={loading}
-          className="bg-green-100 text-green-600 hover:bg-green-200 hover:text-green-800 disabled:opacity-50 px-1.5 transition-colors flex items-center"
-          aria-label="เพิ่มเติม"
-        >
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${open ? 'rotate-180' : ''}`} />
-        </button>
-      </div>
-
-      {/* Dropdown */}
-      {open && (
-        <div className="absolute right-0 mt-1.5 z-50 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden min-w-[200px]">
-          <button
-            onClick={() => handleExport(false)}
-            className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2.5"
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
           >
-            <span className="text-base">👤</span>
-            <div>
-              <p className="font-semibold text-gray-800">ตารางปัจจุบัน</p>
-              <p className="text-xs text-gray-400">user ล่าสุด (หลัง swap)</p>
+            {/* Header */}
+            <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">📅</span>
+                <h3 className="text-base font-bold text-gray-900">Export ตารางเวร Excel</h3>
+              </div>
+              <button
+                onClick={() => setShowModal(false)}
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-          </button>
-          <div className="h-px bg-gray-100" />
-          <button
-            onClick={() => handleExport(true)}
-            className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50 transition-colors flex items-center gap-2.5"
-          >
-            <span className="text-base">📋</span>
-            <div>
-              <p className="font-semibold text-gray-800">ตารางเดิม</p>
-              <p className="text-xs text-gray-400">original user (ตอนประกาศ)</p>
+
+            {/* Options */}
+            <div className="p-4 space-y-3">
+              <p className="text-xs text-gray-500 mb-1">เลือกประเภทข้อมูลที่ต้องการ Export</p>
+
+              {/* ตารางปัจจุบัน */}
+              <button
+                onClick={() => handleExport(false)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-emerald-400 hover:bg-emerald-50 transition-all text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-emerald-200 transition-colors">
+                  👤
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">ตารางปัจจุบัน</p>
+                  <p className="text-xs text-gray-400 mt-0.5">แสดง user ล่าสุด (รวมการแลก/โอนเวรแล้ว)</p>
+                </div>
+              </button>
+
+              {/* ตารางเดิม */}
+              <button
+                onClick={() => handleExport(true)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-indigo-200 transition-colors">
+                  📋
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">ตารางเดิม</p>
+                  <p className="text-xs text-gray-400 mt-0.5">แสดง original user ตอนที่ประกาศตาราง</p>
+                </div>
+              </button>
             </div>
-          </button>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
