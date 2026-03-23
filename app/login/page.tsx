@@ -34,9 +34,7 @@ function LoginForm() {
 
       const res = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phaId: loginId, password }),
       });
 
@@ -44,28 +42,21 @@ function LoginForm() {
 
       if (!res.ok) {
         toast.error('เข้าสู่ระบบไม่สำเร็จ', { description: data.error || 'โปรดตรวจสอบรหัสผู้ใช้งานและรหัสผ่าน' });
+        setLoading(false);
         return;
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ');
-
+      // success — ไม่ setLoading(false) ให้หนูวิ่งต่อจนกว่าหน้าจะเปลี่ยน
       if (data.user) {
-        // ลงทะเบียน push notification หลัง login สำเร็จ
         if (!data.user.must_change_password) {
           import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported }) => {
             if (isPushSupported()) subscribeToPush(data.user.id).catch(() => {});
           });
         }
-
-        if (data.user.must_change_password) {
-          router.push('/change-password');
-        } else {
-          router.push('/calendar');
-        }
+        router.push(data.user.must_change_password ? '/change-password' : '/calendar');
       }
     } catch (err: any) {
       toast.error('เกิดข้อผิดพลาด', { description: err.message || 'ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้' });
-    } finally {
       setLoading(false);
     }
   }
