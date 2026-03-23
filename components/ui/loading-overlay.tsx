@@ -7,8 +7,8 @@ interface LoadingOverlayProps {
 export function LoadingOverlay({ variant = 'fixed' }: LoadingOverlayProps) {
   const base =
     variant === 'screen'
-      ? 'min-h-screen w-full flex items-center justify-center bg-[#111]'
-      : 'fixed inset-0 z-50 flex items-center justify-center bg-[#111]/90 backdrop-blur-sm';
+      ? 'min-h-screen w-full flex items-center justify-center bg-white'
+      : 'fixed inset-0 z-50 flex items-center justify-center bg-white/90 backdrop-blur-sm';
 
   return (
     <div className={base}>
