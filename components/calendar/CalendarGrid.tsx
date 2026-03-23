@@ -348,12 +348,19 @@ function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext) {
   return (
     <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea: '5 / 1 / 8 / 2' }}>
       {positions.map((pos, idx) => {
-        const matchingShifts = day.shifts.filter(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
+        const realShift = day.shifts.find(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
+        // Find pending add for this specific position (with its global index for remove callback)
+        const pendingEntry = (ctx.pendingAdds || [])
+          .map((add, globalIdx) => ({ add, globalIdx }))
+          .find(({ add: a }) =>
+            a.date === dateStr && a.shift_type === 'รุ่งอรุณ' && a.department === 'รุ่งอรุณ' && (a.position || '') === pos
+          );
+        const isFilled = !!realShift || !!pendingEntry;
         return (
-          <div key={idx} className={cn(nameCell('rung'), 'flex-wrap gap-1')}>
-            {matchingShifts.map((s, i) => <div key={i}>{renderPersonalShift(s, ctx)}</div>)}
-            {renderPendingAddsForCell(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
-            {renderAddButton(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
+          <div key={idx} className={cn(nameCell('rung'), 'flex-col')}>
+            {realShift && renderPersonalShift(realShift, ctx)}
+            {pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIdx, ctx)}
+            {!isFilled && renderAddButton(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
           </div>
         );
       })}
