@@ -49,13 +49,23 @@ export function toMonthYear(year: number, month: number): string {
 
 // ─── Shift Overlap Detection ─────────────────────────────────────────────────
 
-/** Time range in minutes from midnight */
+/**
+ * Time ranges in minutes used for same-date overlap detection.
+ *
+ * Convention for เวรดึก:
+ *   ดึก is recorded under the date the night BEGINS (e.g., ดึก 27/3 = คืน 27/3 → ออกเช้า 28/3).
+ *   It actually runs from midnight (24:00 of that date) to 08:30 the next morning.
+ *   We model this as start = 1440 (24 * 60) so it lies AFTER all same-date shifts end,
+ *   preventing false collisions with เช้า / บ่าย / รุ่งอรุณ / smc on the same date.
+ *
+ * Overlap check uses strict inequality: touching endpoints (e.g., 08:30–08:30) = no conflict.
+ */
 const SHIFT_MINUTES: Record<ShiftType, { start: number; end: number }> = {
-  'เช้า':    { start: 8 * 60 + 30,  end: 16 * 60 + 30 },
-  'บ่าย':    { start: 16 * 60 + 30, end: 23 * 60 + 59 },
-  'ดึก':     { start: 0,            end: 8 * 60 + 30  },
-  'รุ่งอรุณ': { start: 7 * 60,       end: 8 * 60 + 30  },
-  'smc':     { start: 16 * 60 + 30, end: 20 * 60 + 30 },
+  'เช้า':    { start:  8 * 60 + 30, end: 16 * 60 + 30 },  //  510 –  990
+  'บ่าย':    { start: 16 * 60 + 30, end: 23 * 60 + 59 },  //  990 – 1439
+  'ดึก':     { start: 24 * 60,      end: 32 * 60 + 30 },  // 1440 – 1950  (คืนวันนั้น → เช้าวันถัดไป)
+  'รุ่งอรุณ': { start:  7 * 60,      end:  8 * 60 + 30 },  //  420 –  510
+  'smc':     { start: 16 * 60 + 30, end: 20 * 60 + 30 },  //  990 – 1230
 };
 
 /**
