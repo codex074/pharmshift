@@ -1,0 +1,84 @@
+name: Cron Jobs
+
+on:
+  schedule:
+    # ── Shift Reminders ────────────────────────────────────────
+    # 01:00 UTC = 08:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
+    - cron: '0 1 * * *'
+    # 11:00 UTC = 18:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
+    - cron: '0 11 * * *'
+    # ── Cleanup ────────────────────────────────────────────────
+    # 21:00 UTC = 04:00 Bangkok  →  ลบข้อมูลเก่า
+    - cron: '0 21 * * *'
+
+  # รันมือได้จาก GitHub Actions tab (ใช้ทดสอบ)
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'เลือก job ที่ต้องการรัน'
+        required: true
+        default: 'reminders'
+        type: choice
+        options:
+          - reminders
+          - cleanup
+          - all
+
+jobs:
+  # ─────────────────────────────────────────────────────────────
+  # แจ้งเตือนเวร (08:00 + 18:00 Bangkok)
+  # ─────────────────────────────────────────────────────────────
+  shift-reminders:
+    name: Shift Reminders
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.job == 'reminders' || github.event.inputs.job == 'all')
+      || (
+        github.event_name == 'schedule' &&
+        (github.event.schedule == '0 1 * * *' || github.event.schedule == '0 11 * * *')
+      )
+    steps:
+      - name: Call shift-reminders API
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/shift-reminders" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+
+          echo "HTTP Status: $RESPONSE"
+
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
+            echo "✅ Shift reminders sent successfully"
+          else
+            echo "❌ Failed with status $RESPONSE"
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────
+  # ลบข้อมูลเก่า (04:00 Bangkok)
+  # ─────────────────────────────────────────────────────────────
+  cleanup:
+    name: Cleanup Old Data
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.job == 'cleanup' || github.event.inputs.job == 'all')
+      || (
+        github.event_name == 'schedule' &&
+        github.event.schedule == '0 21 * * *'
+      )
+    steps:
+      - name: Call cleanup API
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/cleanup" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+
+          echo "HTTP Status: $RESPONSE"
+
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
+            echo "✅ Cleanup completed successfully"
+          else
+            echo "❌ Failed with status $RESPONSE"
+            exit 1
+          fi
