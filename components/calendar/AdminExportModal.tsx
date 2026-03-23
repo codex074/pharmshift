@@ -59,7 +59,7 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
         .select(`
           id, date, shift_type, position, user_id, original_user_id, month_year,
           department:departments(id, name),
-          user:users(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
+          user:users!user_id(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
         `)
         .eq('month_year', monthYear)
         .order('date', { ascending: true });

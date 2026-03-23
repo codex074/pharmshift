@@ -120,7 +120,7 @@ export async function GET(req: NextRequest) {
     // Get all shifts for the target date with user info via join
     let query = supabase
       .from('shifts')
-      .select('shift_type, user_id, department:departments(name), user:users!inner(role)')
+      .select('shift_type, user_id, department:departments(name), user:users!user_id(role)')
       .eq('month_year', monthYear)
       .eq('date', targetDate);
 
