@@ -41,7 +41,7 @@ jobs:
     steps:
       - name: Call shift-reminders API
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
             -X GET "${{ secrets.APP_URL }}/api/cron/shift-reminders" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
 
@@ -70,7 +70,7 @@ jobs:
     steps:
       - name: Call cleanup API
         run: |
-          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
             -X GET "${{ secrets.APP_URL }}/api/cron/cleanup" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
 
