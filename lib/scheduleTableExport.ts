@@ -134,7 +134,7 @@ export async function exportScheduleTable(
     const sc = DAY_COL[dow], nc = DAY_W[dow];
     for (let c = 0; c < nc; c++) {
       const ci = sc + c;
-      ws.getColumn(ci).width = c === nc - 1 ? 3.8 : (nc === 5 ? 7.5 : 7.5);
+      ws.getColumn(ci).width = c === nc - 1 ? 5 : 10;
     }
   }
 
@@ -144,9 +144,9 @@ export async function exportScheduleTable(
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
   const tc = ws.getCell(1, 1);
   tc.value = `ตารางเวรเภสัชกรประจำเดือน ${thaiMonth} ${BY}`;
-  tc.font = { name: F, size: 22, bold: true, color: { argb: 'FF1E293B' } };
+  tc.font = { name: F, size: 26, bold: true, color: { argb: 'FF1E293B' } };
   tc.alignment = { horizontal: 'center', vertical: 'middle' };
-  ws.getRow(1).height = 30;
+  ws.getRow(1).height = 38;
 
   // ── Row 2: spacer ──
   ws.getRow(2).height = 4;
@@ -157,7 +157,7 @@ export async function exportScheduleTable(
     ws.mergeCells(3, sc, 3, sc + nc - 1);
     const c = ws.getCell(3, sc);
     c.value = DOW_NAMES[dow];
-    c.font = { name: F, size: 14, bold: true, color: { argb: DOW_TEXT[dow] } };
+    c.font = { name: F, size: 16, bold: true, color: { argb: DOW_TEXT[dow] } };
     c.fill = fill(DOW_COLORS[dow]);
     c.alignment = center;
     c.border = { top: med, bottom: med, left: med, right: med };
@@ -166,7 +166,7 @@ export async function exportScheduleTable(
       mc.border = { top: med, bottom: med, left: thin, right: i === sc + nc - 1 ? med : thin };
     }
   }
-  ws.getRow(3).height = 22;
+  ws.getRow(3).height = 28;
 
   // ── Build weeks ──
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -190,7 +190,7 @@ export async function exportScheduleTable(
 
   // ── Legend ──
   row += 1;
-  const legendFont = { name: F, size: 13 };
+  const legendFont = { name: F, size: 15 };
   const legendBold = { ...legendFont, bold: true };
   const legends = [
     { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
@@ -228,7 +228,7 @@ function renderWeek(
   fill: (argb: string) => ExcelJS.Fill,
 ) {
   // Row heights
-  const rh = [15, 16, 16, 15, 16, 16, 14];
+  const rh = [22, 28, 28, 22, 28, 28, 20];
   for (let r = 0; r < ROWS_PER_WEEK; r++) ws.getRow(sr + r).height = rh[r];
 
   // Helper: set a cell with value, font, fill, alignment, border
@@ -264,9 +264,9 @@ function renderWeek(
   };
 
   // Section header font & name font
-  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 11, bold: true, color: { argb: pal.hdrText } });
-  const dateFont = { name: F, size: 16, bold: true, color: { argb: 'FF334155' } };
-  const nameFont = { name: F, size: 13 };
+  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 13, bold: true, color: { argb: pal.hdrText } });
+  const dateFont = { name: F, size: 20, bold: true, color: { argb: 'FF334155' } };
+  const nameFont = { name: F, size: 16 };
 
   for (let dow = 0; dow < 7; dow++) {
     const day = days[dow];
