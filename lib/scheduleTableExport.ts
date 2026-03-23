@@ -264,7 +264,7 @@ function renderWeek(
   };
 
   // Section header font & name font
-  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 13, bold: true, color: { argb: pal.hdrText } });
+  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 16, bold: true, color: { argb: pal.hdrText } });
   const dateFont = { name: F, size: 20, bold: true, color: { argb: 'FF334155' } };
   const nameFont = { name: F, size: 16 };
 
