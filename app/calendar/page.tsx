@@ -28,8 +28,7 @@ import { ShiftUploadModal } from '@/components/calendar/ShiftUploadModal';
 import { PersonalShiftsModal } from '@/components/calendar/PersonalShiftsModal';
 import { CompensationModal } from '@/components/calendar/CompensationModal';
 import { DeployModal } from '@/components/calendar/DeployModal';
-import { ManageHolidaysModal } from '@/components/calendar/ManageHolidaysModal';
-import { AdminUserManagementModal } from '@/components/calendar/AdminUserManagementModal';
+import { AdminSettingsModal } from '@/components/calendar/AdminSettingsModal';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
@@ -54,9 +53,7 @@ export default function CalendarPage() {
   const [showCompensationModal, setShowCompensationModal] = useState(false);
   const [showAdminExportModal, setShowAdminExportModal] = useState(false);
   const [personalShiftsFilter, setPersonalShiftsFilter] = useState<ShiftType | 'all'>('all');
-  const [showHolidaysModal, setShowHolidaysModal] = useState(false);
-  const [showUserManagement, setShowUserManagement] = useState(false);
-  const [testReminderLoading, setTestReminderLoading] = useState<'morning' | 'evening' | null>(null);
+  const [showAdminSettings, setShowAdminSettings] = useState(false);
   const [viewMode, setViewMode] = useState<'all' | 'mine'>('all');
   const [viewRoleGroup, setViewRoleGroup] = useState<UserRole>('pharmacist');
   
@@ -196,26 +193,6 @@ export default function CalendarPage() {
     onSwipeRight: handleSwipeRight,
   });
 
-  async function handleTestReminder(run: 'morning' | 'evening') {
-    setTestReminderLoading(run);
-    try {
-      const res = await fetch('/api/cron/test-reminders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ run }),
-      });
-      const data = await res.json();
-      if (res.ok && data.ok) {
-        toastSuccess(`ส่งแจ้งเตือน${run === 'morning' ? 'เช้า' : 'เย็น'}สำเร็จ — แจ้ง ${data.usersNotified ?? 0} คน (push ${data.sent ?? 0})`);
-      } else {
-        toastError(data.error || data.message || 'ไม่มีข้อมูลเวร');
-      }
-    } catch {
-      toastError('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
-    } finally {
-      setTestReminderLoading(null);
-    }
-  }
 
   if (authLoading) {
     return <LoadingOverlay variant="screen" />;
@@ -323,45 +300,13 @@ export default function CalendarPage() {
             )}
             {userIsAdmin && (
               <button
-                onClick={() => setShowHolidaysModal(true)}
-                className="bg-orange-100 text-orange-700 hover:bg-orange-200 hover:text-orange-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                onClick={() => setShowAdminSettings(true)}
+                className="bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
               >
-                <span>🗓️</span>
-                <span className="sm:hidden">วันหยุด</span>
-                <span className="hidden sm:inline">จัดการวันหยุด</span>
+                <span>⚙️</span>
+                <span className="sm:hidden">ตั้งค่า</span>
+                <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
-            )}
-            {userIsAdmin && (
-              <button
-                onClick={() => setShowUserManagement(true)}
-                className="bg-teal-100 text-teal-700 hover:bg-teal-200 hover:text-teal-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
-              >
-                <span>👥</span>
-                <span className="sm:hidden">ผู้ใช้</span>
-                <span className="hidden sm:inline">จัดการผู้ใช้</span>
-              </button>
-            )}
-            {userIsAdmin && (
-              <div className="flex gap-1">
-                <button
-                  onClick={() => handleTestReminder('morning')}
-                  disabled={testReminderLoading !== null}
-                  title="ทดสอบส่งแจ้งเตือน 08:00 (วันนี้ ยกเว้นรุ่งอรุณ)"
-                  className="bg-sky-100 text-sky-700 hover:bg-sky-200 font-medium px-2.5 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1 disabled:opacity-50"
-                >
-                  {testReminderLoading === 'morning' ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>🕗</span>}
-                  <span className="hidden sm:inline">ทดสอบ 08:00</span>
-                </button>
-                <button
-                  onClick={() => handleTestReminder('evening')}
-                  disabled={testReminderLoading !== null}
-                  title="ทดสอบส่งแจ้งเตือน 18:00 (พรุ่งนี้ ทุกเวร)"
-                  className="bg-sky-100 text-sky-700 hover:bg-sky-200 font-medium px-2.5 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1 disabled:opacity-50"
-                >
-                  {testReminderLoading === 'evening' ? <Loader2 className="w-3 h-3 animate-spin" /> : <span>🕕</span>}
-                  <span className="hidden sm:inline">ทดสอบ 18:00</span>
-                </button>
-              </div>
             )}
 <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} />
             {currentUser && (
@@ -675,17 +620,11 @@ export default function CalendarPage() {
         />
       )}
 
-      {/* Holidays Modal */}
-      {showHolidaysModal && (
-        <ManageHolidaysModal
-          onClose={() => setShowHolidaysModal(false)}
-          onSuccess={() => refetch()}
-        />
-      )}
-      {/* Admin User Management Modal */}
-      {showUserManagement && (
-        <AdminUserManagementModal
-          onClose={() => setShowUserManagement(false)}
+      {/* Admin Settings Modal (วันหยุด + ผู้ใช้ + แจ้งเตือน) */}
+      {showAdminSettings && (
+        <AdminSettingsModal
+          onClose={() => setShowAdminSettings(false)}
+          onHolidaysChange={() => refetch()}
         />
       )}
 
@@ -762,8 +701,7 @@ export default function CalendarPage() {
           onShowConfirm={() => setShowAdminConfirm(true)}
           onDeploy={() => setShowDeployModal(true)}
           onUpload={() => setShowUploadModal(true)}
-          onHolidays={() => setShowHolidaysModal(true)}
-          onUserManagement={() => setShowUserManagement(true)}
+          onSettings={() => setShowAdminSettings(true)}
           onCompensation={() => setShowCompensationModal(true)}
         />
       )}
