@@ -157,7 +157,7 @@ export async function exportScheduleTable(
     ws.mergeCells(3, sc, 3, sc + nc - 1);
     const c = ws.getCell(3, sc);
     c.value = DOW_NAMES[dow];
-    c.font = { name: F, size: 16, bold: true, color: { argb: DOW_TEXT[dow] } };
+    c.font = { name: F, size: 20, bold: true, color: { argb: DOW_TEXT[dow] } };
     c.fill = fill(DOW_COLORS[dow]);
     c.alignment = center;
     c.border = { top: med, bottom: med, left: med, right: med };
