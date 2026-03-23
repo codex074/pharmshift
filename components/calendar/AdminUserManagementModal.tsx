@@ -12,13 +12,14 @@ import { cn } from '@/lib/utils';
 
 interface AdminUserManagementModalProps {
   onClose: () => void;
+  embedded?: boolean;
 }
 
 type ViewMode = 'list' | 'edit' | 'add';
 
 const ALL_ROLES: UserRole[] = ['pharmacist', 'pharmacy_technician', 'officer', 'admin'];
 
-export function AdminUserManagementModal({ onClose }: AdminUserManagementModalProps) {
+export function AdminUserManagementModal({ onClose, embedded }: AdminUserManagementModalProps) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -259,51 +260,35 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
     admin: 'bg-rose-100 text-rose-700',
   };
 
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={onClose}
-    >
-      <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-teal-50 to-white">
-          <div className="flex items-center gap-3">
-            {(view === 'edit' || view === 'add') && (
-              <button
-                onClick={backToList}
-                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors mr-1"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            )}
-            <div className="p-2 bg-teal-100 text-teal-600 rounded-xl">
-              {view === 'list' ? <Users className="w-5 h-5" /> : view === 'add' ? <UserPlus className="w-5 h-5" /> : <UserCog className="w-5 h-5" />}
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">
-                {view === 'list' ? 'จัดการผู้ใช้' : view === 'add' ? 'เพิ่มผู้ใช้ใหม่' : `แก้ไขข้อมูล — ${editingUser ? userFullName(editingUser) : ''}`}
-              </h2>
-              <p className="text-sm text-gray-500">
-                {view === 'list'
-                  ? `ทั้งหมด ${users.length} คน`
-                  : view === 'add'
-                    ? 'รหัสผ่านเริ่มต้น: 1234'
-                    : `รหัส: ${editingUser?.pha_id}`}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
+  const viewHeader = (
+    <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-teal-50 to-white">
+      <div className="flex items-center gap-3">
+        {(view === 'edit' || view === 'add') && (
+          <button onClick={backToList} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors mr-1">
+            <ChevronLeft className="w-5 h-5" />
           </button>
+        )}
+        <div className="p-2 bg-teal-100 text-teal-600 rounded-xl">
+          {view === 'list' ? <Users className="w-5 h-5" /> : view === 'add' ? <UserPlus className="w-5 h-5" /> : <UserCog className="w-5 h-5" />}
         </div>
+        <div>
+          <h2 className="text-lg font-bold text-gray-900">
+            {view === 'list' ? 'จัดการผู้ใช้' : view === 'add' ? 'เพิ่มผู้ใช้ใหม่' : `แก้ไขข้อมูล — ${editingUser ? userFullName(editingUser) : ''}`}
+          </h2>
+          <p className="text-sm text-gray-500">
+            {view === 'list' ? `ทั้งหมด ${users.length} คน` : view === 'add' ? 'รหัสผ่านเริ่มต้น: 1234' : `รหัส: ${editingUser?.pha_id}`}
+          </p>
+        </div>
+      </div>
+      {!embedded && (
+        <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+          <X className="w-5 h-5" />
+        </button>
+      )}
+    </div>
+  );
 
-        {/* Body */}
+  const bodyContent = (
         <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50">
           {view === 'list' ? (
             <>
@@ -859,6 +844,22 @@ export function AdminUserManagementModal({ onClose }: AdminUserManagementModalPr
             </div>
           )}
         </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col h-full overflow-hidden">
+        {viewHeader}
+        {bodyContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+        {viewHeader}
+        {bodyContent}
       </div>
     </div>
   );

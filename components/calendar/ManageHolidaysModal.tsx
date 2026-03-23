@@ -11,9 +11,10 @@ import type { Holiday } from '@/lib/types';
 interface ManageHolidaysModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  embedded?: boolean;
 }
 
-export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalProps) {
+export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHolidaysModalProps) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -121,30 +122,7 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
     }
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
-        
-        {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-violet-50 to-white">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-violet-100 text-violet-600 rounded-xl">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-gray-900">จัดการวันหยุดนักขัตฤกษ์</h2>
-              <p className="text-sm text-gray-500">เพิ่มหรือลบวันหยุดพิเศษ</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Form Body */}
+  const bodyContent = (
         <div className="p-6 overflow-y-auto flex-1 bg-gray-50/50">
           
           {/* Add Form */}
@@ -277,6 +255,29 @@ export function ManageHolidaysModal({ onClose, onSuccess }: ManageHolidaysModalP
           </div>
 
         </div>
+  );
+
+  if (embedded) return bodyContent;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-violet-50 to-white">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-violet-100 text-violet-600 rounded-xl">
+              <Calendar className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">จัดการวันหยุดนักขัตฤกษ์</h2>
+              <p className="text-sm text-gray-500">เพิ่มหรือลบวันหยุดพิเศษ</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        {bodyContent}
       </div>
     </div>
   );
