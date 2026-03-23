@@ -126,14 +126,6 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       // 1. Delete shifts
       if (deletes.length > 0) {
         const delIds = deletes.map(s => s.id);
-        const logs = deletes.map(s => ({
-          shift_id: s.id,
-          action: 'admin_delete',
-          old_user_id: s.user_id,
-          performed_by: currentUser?.id,
-          details: `Admin deleted shift: ${s.date} ${s.shift_type}`,
-        }));
-        await supabase.from('shift_logs').insert(logs);
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
 
@@ -175,14 +167,6 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             .update({ user_id: e.newUser.id })
             .eq('id', e.shift.id);
           if (error) throw error;
-          await supabase.from('shift_logs').insert({
-            shift_id: e.shift.id,
-            action: 'admin_edit',
-            old_user_id: e.shift.user_id,
-            new_user_id: e.newUser.id,
-            performed_by: currentUser?.id,
-            details: 'Admin changed shift owner',
-          });
         });
         await Promise.all(promises);
 
@@ -252,19 +236,11 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           shift_type: add.shift_type,
           position: add.position || null,
           user_id: add.user.id,
+          original_user_id: add.user.id,
           month_year: add.month_year,
         }));
         const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
         if (insertError) throw insertError;
-
-        const addLogs = pendingAdds.map(add => ({
-          shift_id: null as any,
-          action: 'admin_edit',
-          new_user_id: add.user.id,
-          performed_by: currentUser?.id,
-          details: `Admin added new shift: ${add.date} ${add.shift_type} ${add.department}`,
-        }));
-        try { await supabase.from('shift_logs').insert(addLogs); } catch { /* ignore */ }
 
         // Notify only if month is published
         const addOwnerIds = Array.from(new Set(

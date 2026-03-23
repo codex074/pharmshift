@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, History, HelpCircle } from 'lucide-react';
+import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, HelpCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
 import { userFullName, isAdminLike } from '@/lib/types';
@@ -16,7 +16,6 @@ interface HeaderProps {
   currentUser: UserType | null;
   pendingCount: number;
   onBellClick: () => void;
-  onHistoryClick: () => void;
   year: number;
   month: number;
   onMonthChange: (year: number, month: number) => void;
@@ -25,7 +24,7 @@ interface HeaderProps {
 }
 
 export function Header({
-  currentUser, pendingCount, onBellClick, onHistoryClick, year, month, onMonthChange, viewMode, onViewModeChange,
+  currentUser, pendingCount, onBellClick, year, month, onMonthChange, viewMode, onViewModeChange,
 }: HeaderProps) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
@@ -122,15 +121,6 @@ export function Header({
               className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-all flex items-center justify-center"
             >
               <HelpCircle className="w-5 h-5" />
-            </button>
-
-            {/* History button */}
-            <button
-              onClick={onHistoryClick}
-              title="ประวัติการแลกเวร"
-              className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-all flex items-center justify-center"
-            >
-              <History className="w-5 h-5" />
             </button>
 
             {/* Notification bell */}

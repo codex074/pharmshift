@@ -8,14 +8,6 @@ function getDeptName(s: Shift) {
   return s.department?.name || s.department_name || '';
 }
 
-interface ShiftLog {
-  shift_id: string;
-  old_user_id: string;
-  new_user_id: string;
-  action: string;
-  created_at: string;
-}
-
 interface UserInfo {
   id: string;
   f_name: string;
@@ -25,30 +17,11 @@ interface UserInfo {
   pha_id: string | number;
 }
 
-/** Build map: shift_id → original user_id (before any swap/transfer) */
-function buildOriginalUserMap(
-  shifts: Shift[],
-  logs: ShiftLog[]
-): Map<string, string> {
-  // For each shift, find earliest log → old_user_id = original
-  const logsByShift = new Map<string, ShiftLog[]>();
-  for (const log of logs) {
-    if (!log.shift_id) continue;
-    if (!logsByShift.has(log.shift_id)) logsByShift.set(log.shift_id, []);
-    logsByShift.get(log.shift_id)!.push(log);
-  }
-
+/** Build map: shift_id → original user_id (from original_user_id column, falls back to user_id) */
+function buildOriginalUserMap(shifts: Shift[]): Map<string, string> {
   const map = new Map<string, string>();
   for (const s of shifts) {
-    const shiftLogs = logsByShift.get(s.id) || [];
-    if (shiftLogs.length === 0) {
-      map.set(s.id, s.user_id!);
-    } else {
-      const sorted = [...shiftLogs].sort(
-        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      );
-      map.set(s.id, sorted[0].old_user_id);
-    }
+    map.set(s.id, s.original_user_id || s.user_id!);
   }
   return map;
 }
@@ -215,7 +188,6 @@ function styleHeaderRow(row: ExcelJS.Row, totalCols: number) {
 
 export async function exportSignSheet(
   shifts: Shift[],
-  logs: ShiftLog[],
   users: UserInfo[],
   year: number,
   month: number
@@ -224,7 +196,7 @@ export async function exportSignSheet(
   const monthName = format(new Date(year, month - 1), 'MMMM', { locale: th });
   const bweYear = year + 543;
 
-  const originalUserMap = buildOriginalUserMap(shifts, logs);
+  const originalUserMap = buildOriginalUserMap(shifts);
   const usersMap = new Map<string, UserInfo>(users.map((u) => [u.id, u]));
 
   for (const config of SHEET_CONFIGS) {

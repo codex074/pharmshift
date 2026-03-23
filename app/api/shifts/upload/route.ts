@@ -254,6 +254,7 @@ export async function POST(req: NextRequest) {
             shift_type: shiftData.type,
             position: shiftData.position,
             user_id: userId,
+            original_user_id: userId,
             month_year: monthYear,
           });
         }

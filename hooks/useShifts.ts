@@ -228,25 +228,6 @@ export function useSwapRequests(userId?: string) {
         .update({ user_id: req.requester_id })
         .eq('id', req.target_shift_id);
 
-      // Log both shift changes
-      await supabase.from('shift_logs').insert([
-        {
-          shift_id: req.shift_id,
-          action: 'swap',
-          old_user_id: req.requester_id,
-          new_user_id: req.target_user_id,
-          performed_by: req.target_user_id, // Acceptor is target_user
-          details: 'Swap accepted (outgoing shift)',
-        },
-        {
-          shift_id: req.target_shift_id,
-          action: 'swap',
-          old_user_id: req.target_user_id,
-          new_user_id: req.requester_id,
-          performed_by: req.target_user_id, // Acceptor is target_user
-          details: 'Swap accepted (incoming shift)',
-        }
-      ]);
     } else {
       // For transfer, the new owner is whoever is currently NOT the owner
       const currentOwnerId = req.shift?.user_id;
@@ -257,15 +238,6 @@ export function useSwapRequests(userId?: string) {
         .update({ user_id: newUserId })
         .eq('id', req.shift_id);
 
-      // Log transfer
-      await supabase.from('shift_logs').insert({
-        shift_id: req.shift_id,
-        action: 'transfer',
-        old_user_id: currentOwnerId,
-        new_user_id: newUserId,
-        performed_by: req.target_user_id, // Acceptor
-        details: 'Transfer accepted',
-      });
     }
 
     // Send push notification to requester (swap accepted)

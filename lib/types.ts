@@ -85,6 +85,7 @@ export interface Shift {
   user_prefix?: string;
   user_f_name?: string;
   user_l_name?: string;
+  original_user_id?: string;   // original assignee when first created; never changes on swap
   month_year?: string;
   created_at?: string;
 }
@@ -137,20 +138,6 @@ export interface AppNotification {
   created_at: string;
 }
 
-export interface ShiftLog {
-  id: string;
-  shift_id: string;
-  shift?: Shift;
-  action: 'swap' | 'transfer' | 'admin_edit' | 'admin_delete';
-  old_user_id?: string;
-  old_user?: User;
-  new_user_id?: string;
-  new_user?: User;
-  performed_by?: string;
-  performer?: User;
-  details?: string;
-  created_at?: string;
-}
 
 // ─── Shift Structure Config ─────────────────────────
 
