@@ -373,6 +373,36 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const surgShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG');
   const chemoShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'Chemo');
 
+  // SURG pending adds for this cell (with original index in ctx.pendingAdds for remove callback)
+  const surgPendingItems = (ctx.pendingAdds || [])
+    .map((add, globalIdx) => ({ add, globalIdx }))
+    .filter(({ add: a }) =>
+      a.date === dateStr && a.shift_type === 'เช้า' && a.department === 'SURG' && (a.position || '') === ''
+    );
+
+  // Build unified slot content: real shifts fill first, remaining slots filled by pending adds
+  // slot0 → real[0]  OR pending[0]  OR null (show +)
+  // slot1 → real[1]  OR pending[0 or 1]  OR null (show +)
+  type SurgSlot =
+    | { type: 'real'; shift: (typeof surgShifts)[0] }
+    | { type: 'pending'; add: (typeof surgPendingItems)[0]['add']; globalIdx: number }
+    | null;
+
+  const surgSlot0: SurgSlot = surgShifts[0]
+    ? { type: 'real', shift: surgShifts[0] }
+    : surgPendingItems[0]
+    ? { type: 'pending', ...surgPendingItems[0] }
+    : null;
+
+  // How many pending adds were consumed by slot 0?
+  const pendingConsumedBySlot0 = surgShifts[0] ? 0 : surgPendingItems[0] ? 1 : 0;
+
+  const surgSlot1: SurgSlot = surgShifts[1]
+    ? { type: 'real', shift: surgShifts[1] }
+    : surgPendingItems[pendingConsumedBySlot0]
+    ? { type: 'pending', ...surgPendingItems[pendingConsumedBySlot0] }
+    : null;
+
   // Weekend bg tint
   const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
 
@@ -389,15 +419,17 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       {/* ROW 2 & 3 — morning / afternoon cells */}
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
       <div className="grid grid-rows-2 border-r-2 border-r-slate-400" style={{ gridArea: '2 / 2 / 4 / 3' }}>
-        <div className={cn(nameCell('chao'), 'flex-col')}>
-          {renderPersonalShift(surgShifts[0], ctx)}
-          {!surgShifts[0] && renderPendingAddsForCell(dateStr, 'เช้า', 'SURG', ctx)}
-          {!surgShifts[0] && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+        {/* SURG slot บน */}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+          {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
+          {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
+          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
+        {/* SURG slot ล่าง */}
         <div className={cn(nameCell('chao'), 'flex-col')}>
-          {renderPersonalShift(surgShifts[1], ctx)}
-          {!surgShifts[1] && renderPendingAddsForCell(dateStr, 'เช้า', 'SURG', ctx)}
-          {!surgShifts[1] && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+          {surgSlot1?.type === 'real'    && renderPersonalShift(surgSlot1.shift, ctx)}
+          {surgSlot1?.type === 'pending' && renderPendingAddBadge(surgSlot1.add, surgSlot1.globalIdx, ctx)}
+          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
       </div>
       <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx, undefined, dateStr)}</div>
