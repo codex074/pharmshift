@@ -46,7 +46,7 @@ function fmtDate(d: Date): string {
 
 interface DayShifts {
   date: number; dow: number; isHoliday: boolean;
-  project: string; surg: string; medDC: string; medCont: string; er: string;
+  project: string; surg1: string; surg2: string; medDC: string; medCont: string; er: string;
   chemo1: string; chemo2: string;
   baiER: string; baiMED: string; baiProject: string;
   smc1: string; smc2: string;
@@ -75,11 +75,12 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
 
   const smc = findAll('บ่าย', 'SMC');
   const chemo = findAll('เช้า', 'Chemo');
+  const surg = findAll('เช้า', 'SURG');
 
   return {
     date: dayNum, dow, isHoliday,
     project: isHoliday ? find('เช้า', 'โครงการ') : '',
-    surg: find('เช้า', 'SURG'),
+    surg1: surg[0] || '', surg2: surg[1] || '',
     medDC: find('เช้า', 'MED', 'D/C'), medCont: find('เช้า', 'MED', 'Cont'),
     er: find('เช้า', 'ER'),
     chemo1: chemo[0] || '', chemo2: chemo[1] || '',
@@ -173,6 +174,7 @@ export async function exportScheduleTable(shifts: Shift[], holidays: Holiday[], 
   const legendFont = { name: F, size: 13 };
   const legendBold = { ...legendFont, bold: true };
   const legends = [
+    { label: 'SURG', items: ['รายชื่อ 1 = เช้า SURG (บน)', 'รายชื่อ 2 = เช้า SURG (ล่าง)'], color: PAL.chao.hdr },
     { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
     { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
     { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
@@ -282,9 +284,10 @@ function renderWeek(
       set(0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: PAL.bai.hdr });
       set(0, c5, day.date, { font: dateFont, fill: dow === 0 ? 'FFFEE2E2' : PAL.date.hdr }); // red-100 for Sunday
 
-      // ROW 1-2: โครงการ merged, SURG merged, MED separate rows, บ่าย separate rows
+      // ROW 1-2: โครงการ merged, SURG 2 rows, MED separate rows, บ่าย separate rows
       merge(1, c1, 2, c1, day.project, { font: nameFont, fill: PAL.chao.cell });
-      merge(1, c2, 2, c2, day.surg, { font: nameFont, fill: PAL.chao.cell });
+      set(1, c2, day.surg1, { font: nameFont, fill: PAL.chao.cell });
+      set(2, c2, day.surg2, { font: nameFont, fill: PAL.chao.cell });
       set(1, c3, day.medDC, { font: nameFont, fill: PAL.chao.cell });
       set(2, c3, day.medCont, { font: nameFont, fill: PAL.chao.cell });
       // บ่าย spans c4-c5
@@ -323,7 +326,8 @@ function renderWeek(
       merge(3, c3, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: PAL.duek.hdr });
 
       merge(4, c1, 6, c1, day.er, { font: nameFont, fill: PAL.chao.cell });
-      merge(4, c2, 6, c2, day.surg, { font: nameFont, fill: PAL.chao.cell });
+      merge(4, c2, 5, c2, day.surg1, { font: nameFont, fill: PAL.chao.cell });
+      set(6, c2, day.surg2, { font: nameFont, fill: PAL.chao.cell });
       merge(4, c3, 6, c4, day.duek, { font: nameFont, fill: PAL.duek.cell });
 
     } else if (dow >= 1 && dow <= 4) {

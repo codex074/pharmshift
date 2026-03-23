@@ -370,6 +370,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const isSundayOrHoliday = dow === 0 || day.isHoliday;
   const isSat = dow === 6 && !day.isHoliday;
 
+  const surgShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG');
   const chemoShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'Chemo');
 
   // Weekend bg tint
@@ -387,7 +388,18 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
 
       {/* ROW 2 & 3 — morning / afternoon cells */}
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 2 / 4 / 3' }}>{renderNames(day.shifts, 'เช้า', 'SURG', ctx, undefined, dateStr)}</div>
+      <div className="grid grid-rows-2 border-r-2 border-r-slate-400" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+        <div className={cn(nameCell('chao'), 'flex-col')}>
+          {renderPersonalShift(surgShifts[0], ctx)}
+          {!surgShifts[0] && renderPendingAddsForCell(dateStr, 'เช้า', 'SURG', ctx)}
+          {!surgShifts[0] && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+        </div>
+        <div className={cn(nameCell('chao'), 'flex-col')}>
+          {renderPersonalShift(surgShifts[1], ctx)}
+          {!surgShifts[1] && renderPendingAddsForCell(dateStr, 'เช้า', 'SURG', ctx)}
+          {!surgShifts[1] && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+        </div>
+      </div>
       <div className={cn(nameCell('chao'), 'border-r-2 border-r-slate-400')} style={{ gridArea: '2 / 3 / 4 / 4' }}>{renderNames(day.shifts, 'เช้า', 'MED', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>

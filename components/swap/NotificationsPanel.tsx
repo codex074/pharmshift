@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2 } from 'lucide-react';
+import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2, BellOff, BellRing } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionStatus } from '@/lib/pushNotifications';
 
 interface NotificationsPanelProps {
   swapRequests: SwapRequest[];
@@ -40,6 +41,14 @@ export function NotificationsPanel({
   const [collisionMsg, setCollisionMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+
+  // Push notification state
+  const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [isSubscribing, setIsSubscribing] = useState(false);
+
+  useEffect(() => {
+    setPushPermission(getPermissionStatus());
+  }, []);
 
   // Mark requester results as read when panel opens
   useEffect(() => {
@@ -113,6 +122,40 @@ export function NotificationsPanel({
       toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
     } finally {
       setProcessingId(null);
+    }
+  }
+
+  async function handleEnablePush() {
+    if (!currentUser?.id) return;
+    setIsSubscribing(true);
+    try {
+      const ok = await subscribeToPush(currentUser.id);
+      const newStatus = getPermissionStatus();
+      setPushPermission(newStatus);
+      if (ok) {
+        toast.success('เปิดการแจ้งเตือนเรียบร้อย — ระบบจะแจ้งเวรให้ทุกวัน');
+      } else if (newStatus === 'denied') {
+        toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
+      } else {
+        toast.info('ไม่สามารถเปิดการแจ้งเตือนได้ในขณะนี้');
+      }
+    } catch {
+      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setIsSubscribing(false);
+    }
+  }
+
+  async function handleDisablePush() {
+    setIsSubscribing(true);
+    try {
+      await unsubscribeFromPush();
+      setPushPermission(getPermissionStatus());
+      toast.success('ปิดการแจ้งเตือนแล้ว');
+    } catch {
+      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } finally {
+      setIsSubscribing(false);
     }
   }
 
@@ -371,6 +414,55 @@ export function NotificationsPanel({
         {/* System Tab Content */}
         {tab === 'system' && (
         <div className="overflow-y-auto flex-1 p-3 space-y-2">
+
+          {/* Push Notification Settings */}
+          {isPushSupported() ? (
+            <div className={cn(
+              'rounded-xl border p-3 space-y-2',
+              pushPermission === 'granted' ? 'border-green-200 bg-green-50/50' :
+              pushPermission === 'denied'  ? 'border-red-200 bg-red-50/50' :
+              'border-violet-200 bg-violet-50/40'
+            )}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {pushPermission === 'granted'
+                    ? <BellRing className="w-4 h-4 text-green-600 flex-shrink-0" />
+                    : <BellOff  className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  }
+                  <div>
+                    <p className="text-xs font-semibold text-gray-800">การแจ้งเตือน Push</p>
+                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                      {pushPermission === 'granted' && 'เปิดอยู่ — ระบบจะแจ้งเวรล่วงหน้าให้'}
+                      {pushPermission === 'denied'  && 'ถูกบล็อก — กรุณาอนุญาตใน ⚙️ เบราว์เซอร์'}
+                      {pushPermission === 'default' && 'ยังไม่ได้เปิด — กดเพื่อรับแจ้งเตือนเวร'}
+                    </p>
+                  </div>
+                </div>
+                {pushPermission !== 'denied' && (
+                  <button
+                    onClick={pushPermission === 'granted' ? handleDisablePush : handleEnablePush}
+                    disabled={isSubscribing}
+                    className={cn(
+                      'flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all disabled:opacity-50',
+                      pushPermission === 'granted'
+                        ? 'border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
+                        : 'bg-violet-600 text-white hover:bg-violet-700'
+                    )}
+                  >
+                    {isSubscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                    {pushPermission === 'granted' ? 'ปิด' : 'เปิดรับแจ้งเตือน'}
+                  </button>
+                )}
+              </div>
+              {pushPermission === 'granted' && (
+                <div className="text-[10px] text-gray-500 space-y-0.5 pl-6 border-t border-green-100 pt-2">
+                  <p>🕕 18:00 วันก่อน — แจ้งเตือนเวรวันรุ่งขึ้นทุกเวร</p>
+                  <p>🕗 08:00 วันนั้น — แจ้งเตือนเวรวันนี้ (ยกเว้นเวรรุ่งอรุณ)</p>
+                </div>
+              )}
+            </div>
+          ) : null}
+
           {notifications.length === 0 ? (
             <div className="text-center py-8">
               <Settings2 className="w-8 h-8 text-gray-200 mx-auto mb-2" />
