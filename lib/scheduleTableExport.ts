@@ -264,9 +264,9 @@ function renderWeek(
   };
 
   // Section header font & name font
-  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 16, bold: true, color: { argb: pal.hdrText } });
+  const hdrFont = (pal: { hdrText: string }) => ({ name: F, size: 18, bold: true, color: { argb: pal.hdrText } });
   const dateFont = { name: F, size: 20, bold: true, color: { argb: 'FF334155' } };
-  const nameFont = { name: F, size: 16 };
+  const nameFont = { name: F, size: 18 };
 
   for (let dow = 0; dow < 7; dow++) {
     const day = days[dow];
