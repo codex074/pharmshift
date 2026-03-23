@@ -114,7 +114,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       setSuccessMsg('ประกาศตารางเวรสำเร็จแล้ว!');
       toast.success('ประกาศตารางเวรสำเร็จแล้ว!');
 
-      // Notifications
+      // Notifications + stamp original_user_id
       try {
         const rolesToNotify = Array.from(selectedRoles);
         const { data: staffUsers } = await supabase
@@ -123,6 +123,30 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
           .in('role', rolesToNotify);
 
         if (staffUsers?.length) {
+          // Stamp original_user_id = user_id for all shifts in this publish batch
+          // that haven't been stamped yet (first time published)
+          const publishedUserIds = staffUsers.map(u => u.id);
+          const { data: shiftsToStamp } = await supabase
+            .from('shifts')
+            .select('id, user_id')
+            .eq('month_year', monthYear)
+            .in('user_id', publishedUserIds)
+            .is('original_user_id', null);
+
+          if (shiftsToStamp?.length) {
+            const byUser = new Map<string, string[]>();
+            for (const s of shiftsToStamp) {
+              const ids = byUser.get(s.user_id) || [];
+              ids.push(s.id);
+              byUser.set(s.user_id, ids);
+            }
+            await Promise.all(
+              Array.from(byUser.entries()).map(([uid, ids]) =>
+                supabase.from('shifts').update({ original_user_id: uid }).in('id', ids)
+              )
+            );
+          }
+
           const now = new Date();
           const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
           const roleNames = rolesToNotify.map(r => ROLE_LABELS[r as UserRole]).join(', ');
