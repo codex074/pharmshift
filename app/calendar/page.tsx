@@ -569,6 +569,7 @@ export default function CalendarPage() {
         <SwapModal
           shift={selectedShift}
           currentUser={currentUser}
+          publishedRoles={publishedRoles}
           onClose={() => setSelectedShift(null)}
         />
       )}

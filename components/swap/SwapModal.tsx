@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search, AlertTriangle } from 'lucide-react';
+import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search, AlertTriangle, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
@@ -13,10 +13,11 @@ import { th } from 'date-fns/locale';
 interface SwapModalProps {
   shift: Shift | null;
   currentUser: UserType | null;
+  publishedRoles: Record<string, boolean>;
   onClose: () => void;
 }
 
-export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
+export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapModalProps) {
   const [users, setUsers] = useState<UserType[]>([]);
   const [selectedUser, setSelectedUser] = useState<UserType | null>(null);
   const [message, setMessage] = useState('');
@@ -28,6 +29,8 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
   const [collisionConfirmed, setCollisionConfirmed] = useState(false);
 
   const isOwnShift = currentUser && shift ? currentUser.id === shift.user_id : false;
+  const ownerRoleForPublish: UserRole = ((shift?.user as any)?.role || currentUser?.role || 'pharmacist') as UserRole;
+  const isMonthPublished = !!publishedRoles[ownerRoleForPublish];
 
   useEffect(() => {
     if (!shift) return;
@@ -65,6 +68,10 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
 
   async function handleSubmit() {
     if (!currentUser || !shift) return;
+    if (!isMonthPublished) {
+      setSubmitError('ตารางเวรเดือนนี้ยังไม่ได้ประกาศ ไม่สามารถขอแลกหรืออยู่แทนเวรได้');
+      return;
+    }
 
     setLoading(true);
     setSubmitError(null);
@@ -222,6 +229,17 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
         </div>
 
         <div className="p-5 overflow-y-auto space-y-5">
+          {/* Not-published lock banner */}
+          {!isMonthPublished && (
+            <div className="flex items-start gap-3 p-3.5 bg-red-50 border border-red-200 rounded-xl">
+              <Lock className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
+              <p className="text-sm text-red-700 font-medium">
+                ตารางเวรเดือนนี้ยังไม่ได้ประกาศ<br />
+                <span className="font-normal text-red-600">ไม่สามารถขอแลกหรืออยู่แทนเวรได้จนกว่าจะมีการประกาศตารางเวร</span>
+              </p>
+            </div>
+          )}
+
           {/* Mode Badge */}
           <div className={cn(
             "p-3 rounded-xl border text-center text-sm font-medium",
@@ -397,16 +415,18 @@ export function SwapModal({ shift, currentUser, onClose }: SwapModalProps) {
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !isValidSubmit || !!collisionWarning}
+            disabled={loading || !isValidSubmit || !!collisionWarning || !isMonthPublished}
             className={cn(
               "flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
-              isOwnShift
-                ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20"
-                : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/20"
+              !isMonthPublished
+                ? "bg-gray-400 cursor-not-allowed"
+                : isOwnShift
+                  ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20"
+                  : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/20"
             )}
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : isOwnShift ? <ArrowRightLeft className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-            {isOwnShift ? 'ส่งคำขอให้อยู่แทน' : 'ส่งคำขออยู่เวรแทน'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : !isMonthPublished ? <Lock className="w-4 h-4" /> : isOwnShift ? <ArrowRightLeft className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
+            {!isMonthPublished ? 'ยังไม่ได้ประกาศตารางเวร' : isOwnShift ? 'ส่งคำขอให้อยู่แทน' : 'ส่งคำขออยู่เวรแทน'}
           </button>
         </div>
       </div>
