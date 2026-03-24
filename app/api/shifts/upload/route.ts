@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
       }, { status: 409 });
     }
 
-    // If overwriting, verify admin password
+    // If overwriting, verify admin password first (actual DELETE is deferred until after validation)
     if (overwrite) {
       if (!adminPassword) {
         return NextResponse.json({ error: 'ต้องใส่รหัสผ่าน Admin เพื่อยืนยันการวางทับ' }, { status: 400 });
@@ -155,20 +155,7 @@ export async function POST(req: NextRequest) {
       if (adminErr || !adminUser || adminUser.password !== adminPassword) {
         return NextResponse.json({ error: 'รหัสผ่าน Admin ไม่ถูกต้อง' }, { status: 403 });
       }
-
-      // Delete ONLY existing shifts for this month and for users of this role
-      if (roleUserIds.length > 0) {
-        const { error: deleteError } = await supabase
-          .from('shifts')
-          .delete()
-          .eq('month_year', monthYear)
-          .in('user_id', roleUserIds);
-
-        if (deleteError) {
-          console.error('Delete error:', deleteError);
-          return NextResponse.json({ error: 'ไม่สามารถลบข้อมูลเดิมได้', details: [deleteError.message] }, { status: 500 });
-        }
-      }
+      // Password verified — DELETE will run after we confirm the Excel has valid data
     }
 
     // Fetch all departments
@@ -285,6 +272,20 @@ export async function POST(req: NextRequest) {
     if (duplicateErrors.length > 0) {
       console.warn("Skipped duplicate shifts in Excel:", duplicateErrors);
       errors.push(...duplicateErrors);
+    }
+
+    // ── Deferred DELETE: only now that we know the Excel has valid data ──
+    if (overwrite && roleUserIds.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('shifts')
+        .delete()
+        .eq('month_year', monthYear)
+        .in('user_id', roleUserIds);
+
+      if (deleteError) {
+        console.error('Delete error:', deleteError);
+        return NextResponse.json({ error: 'ไม่สามารถลบข้อมูลเดิมได้', details: [deleteError.message] }, { status: 500 });
+      }
     }
 
     // Batch upsert into shifts table (ignore conflicts from DB)
