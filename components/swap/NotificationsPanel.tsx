@@ -298,75 +298,133 @@ export function NotificationsPanel({
                     'border-gray-100 bg-white'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1.5 flex-1 min-w-0">
+                  <div className="space-y-2">
 
-                      {/* Type badge + status */}
-                      <div className="flex items-center gap-1.5">
-                        <span className={cn(
-                          'text-[9px] font-semibold px-1.5 py-0.5 rounded',
-                          req.request_type === 'swap'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-violet-100 text-violet-700'
-                        )}>
-                          {req.request_type === 'swap' ? '🔄 แลกเวร' : '📌 โอนเวร'}
-                        </span>
-                        {statusBadge(req.status)}
-                      </div>
-
-                      {/* Descriptive sentence */}
-                      <p className="text-xs font-medium text-gray-800 leading-snug">
-                        {describeRequest(req, currentUser?.id)}
-                      </p>
-
-                      {/* Shift detail badges */}
-                      {req.request_type === 'transfer' ? (
-                        shiftDate && (
-                          <div className="flex items-center gap-1 text-[10px] text-gray-500">
-                            <span className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
-                              <Calendar className="w-2.5 h-2.5" />
-                              {format(shiftDate, 'd MMM', { locale: th })} · {shift?.shift_type}{deptName ? ` · ${deptName}` : ''}
-                            </span>
-                          </div>
-                        )
-                      ) : (
-                        /* Swap: show both shifts clearly labelled */
-                        <div className="space-y-1">
-                          {/* For target (incoming): req.shift = my shift, req.target_shift = their shift */}
-                          {/* For requester (outgoing): req.shift = their shift, req.target_shift = my shift */}
-                          {req.target_shift && (() => {
-                            const iAmTarget = req.target_user_id === currentUser?.id;
-                            const myShift    = iAmTarget ? req.shift : req.target_shift;
-                            const theirShift = iAmTarget ? req.target_shift : req.shift;
-                            const theirName  = iAmTarget
-                              ? ((req.requester as any)?.nickname || (req.requester as any)?.f_name)
-                              : ((req.target_user as any)?.nickname || (req.target_user as any)?.f_name);
-                            return (
-                              <>
-                                <div className="flex items-center gap-1 text-[10px]">
-                                  <span className="text-gray-400 w-12 shrink-0">เวรคุณ:</span>
-                                  <span className="flex items-center gap-1 bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-medium">
-                                    <Calendar className="w-2.5 h-2.5" />
-                                    {shiftLabel(myShift)}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-1 text-[10px]">
-                                  <span className="text-gray-400 w-12 shrink-0">เวร{theirName}:</span>
-                                  <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
-                                    <Calendar className="w-2.5 h-2.5" />
-                                    {shiftLabel(theirShift)}
-                                  </span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
-
-                      {req.message && (
-                        <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
-                      )}
+                    {/* Row 1: type badge + who + status */}
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className={cn(
+                        'text-[9px] font-semibold px-1.5 py-0.5 rounded-full',
+                        req.request_type === 'swap'
+                          ? 'bg-blue-100 text-blue-700'
+                          : 'bg-violet-100 text-violet-700'
+                      )}>
+                        {req.request_type === 'swap' ? '🔄 แลกเวร' : '📌 โอนเวร'}
+                      </span>
+                      <span className="text-xs font-semibold text-gray-800 flex-1">
+                        {req.request_type === 'swap'
+                          ? (req.target_user_id === currentUser?.id
+                              ? `${(req.requester as any)?.nickname || (req.requester as any)?.f_name} เสนอแลกกับคุณ`
+                              : `คุณเสนอแลกกับ ${(req.target_user as any)?.nickname || (req.target_user as any)?.f_name}`)
+                          : (req.target_user_id === currentUser?.id
+                              ? `${(req.requester as any)?.nickname || (req.requester as any)?.f_name} ขอโอนเวรให้คุณ`
+                              : `คุณขอโอนเวรให้ ${(req.target_user as any)?.nickname || (req.target_user as any)?.f_name}`)
+                        }
+                      </span>
+                      {statusBadge(req.status)}
                     </div>
+
+                    {/* Row 2: shift exchange visual */}
+                    {req.request_type === 'swap' && req.target_shift ? (() => {
+                      // Always show from viewer's POV: left = คุณให้, right = คุณได้
+                      const iAmTarget  = req.target_user_id === currentUser?.id;
+                      const giveShift  = iAmTarget ? req.shift        : req.target_shift;  // what viewer gives
+                      const getShift   = iAmTarget ? req.target_shift : req.shift;          // what viewer receives
+                      const otherName  = iAmTarget
+                        ? ((req.requester as any)?.nickname   || (req.requester as any)?.f_name)
+                        : ((req.target_user as any)?.nickname || (req.target_user as any)?.f_name);
+
+                      const ShiftBox = ({ s, label, color }: { s: any; label: string; color: 'violet' | 'green' }) => {
+                        const d  = s?.date  ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
+                        const dp = s?.department?.name || '';
+                        return (
+                          <div className={cn(
+                            'flex-1 rounded-xl border p-2 text-center space-y-0.5',
+                            color === 'violet'
+                              ? 'bg-violet-50 border-violet-200'
+                              : 'bg-green-50  border-green-200',
+                          )}>
+                            <p className={cn(
+                              'text-[9px] font-semibold uppercase tracking-wide',
+                              color === 'violet' ? 'text-violet-500' : 'text-green-600',
+                            )}>
+                              {label}
+                            </p>
+                            <p className={cn(
+                              'text-xs font-bold leading-tight',
+                              color === 'violet' ? 'text-violet-800' : 'text-green-800',
+                            )}>
+                              {s?.shift_type || '?'}
+                            </p>
+                            <p className={cn(
+                              'text-[10px]',
+                              color === 'violet' ? 'text-violet-600' : 'text-green-600',
+                            )}>
+                              {d}
+                            </p>
+                            {dp && (
+                              <p className={cn(
+                                'text-[9px]',
+                                color === 'violet' ? 'text-violet-400' : 'text-green-500',
+                              )}>
+                                ({dp})
+                              </p>
+                            )}
+                          </div>
+                        );
+                      };
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <ShiftBox s={giveShift} label="คุณให้" color="violet" />
+                          <div className="flex flex-col items-center gap-0.5 shrink-0">
+                            <ArrowRightLeft className="w-4 h-4 text-gray-300" />
+                          </div>
+                          <ShiftBox s={getShift} label={`ได้จาก ${otherName}`} color="green" />
+                        </div>
+                      );
+                    })() : req.request_type === 'transfer' && shiftDate ? (
+                      /* Transfer: one shift box */
+                      (() => {
+                        const iAmTarget = req.target_user_id === currentUser?.id;
+                        const boxColor  = iAmTarget ? 'green' : 'violet';
+                        const boxLabel  = iAmTarget ? 'คุณจะได้รับ' : 'คุณโอนออก';
+                        return (
+                          <div className={cn(
+                            'rounded-xl border p-2.5 flex items-center gap-2',
+                            boxColor === 'green'
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-violet-50 border-violet-200',
+                          )}>
+                            <div className="flex-1">
+                              <p className={cn(
+                                'text-[9px] font-semibold uppercase tracking-wide mb-0.5',
+                                boxColor === 'green' ? 'text-green-600' : 'text-violet-500',
+                              )}>
+                                {boxLabel}
+                              </p>
+                              <p className={cn(
+                                'text-sm font-bold',
+                                boxColor === 'green' ? 'text-green-800' : 'text-violet-800',
+                              )}>
+                                {shift?.shift_type}
+                                <span className={cn(
+                                  'text-xs font-normal ml-1.5',
+                                  boxColor === 'green' ? 'text-green-600' : 'text-violet-600',
+                                )}>
+                                  {format(shiftDate, 'd MMM', { locale: th })}
+                                  {deptName ? ` · ${deptName}` : ''}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()
+                    ) : null}
+
+                    {/* Message */}
+                    {req.message && (
+                      <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
+                    )}
                   </div>
 
                   {/* Collision Confirm Dialog */}
