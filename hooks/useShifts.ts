@@ -157,8 +157,23 @@ export function useSwapRequests(userId?: string) {
     let collisionMsg = '';
     const checks = [];
 
-    // Determine the new owner and check for collisions
-    if (req.shift) {
+    // Check collisions based on request type
+    if (req.request_type === 'swap' && req.target_shift && req.shift) {
+      // Swap: check if requester collides on target's date, and vice versa
+      checks.push(
+        supabase.from('shifts').select('id, shift_type')
+          .eq('user_id', req.requester_id)
+          .eq('date', req.target_shift.date)
+          .neq('id', req.target_shift.id)
+      );
+      checks.push(
+        supabase.from('shifts').select('id, shift_type')
+          .eq('user_id', req.target_user_id)
+          .eq('date', req.shift.date)
+          .neq('id', req.shift.id)
+      );
+    } else if (req.shift) {
+      // Transfer: check if new owner collides on that date
       const currentOwnerId = req.shift.user_id;
       const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
       checks.push(
@@ -170,7 +185,21 @@ export function useSwapRequests(userId?: string) {
 
     const checkResults = await Promise.all(checks);
 
-    if (req.shift) {
+    if (req.request_type === 'swap' && req.target_shift && req.shift) {
+      const [requesterOtherShifts, targetOtherShifts] = checkResults;
+      if ((requesterOtherShifts.data || []).some(s =>
+        shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
+      )) {
+        collisionMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+      }
+      if ((targetOtherShifts.data || []).some(s =>
+        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
+      )) {
+        collisionMsg = collisionMsg
+          ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน'
+          : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+      }
+    } else if (req.shift) {
       const [newUserShifts] = checkResults;
       if ((newUserShifts.data || []).some(s =>
         shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
@@ -190,19 +219,26 @@ export function useSwapRequests(userId?: string) {
       .update({ status: 'accepted', requester_read: false })
       .eq('id', req.id);
 
-    // Transfer: the new owner is whoever is currently NOT the owner
-    const currentOwnerId = req.shift?.user_id;
-    const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
+    // Execute the shift owner change(s)
+    if (req.request_type === 'swap' && req.target_shift_id) {
+      // Swap: exchange owners of both shifts
+      await supabase.from('shifts').update({ user_id: req.target_user_id }).eq('id', req.shift_id);
+      await supabase.from('shifts').update({ user_id: req.requester_id }).eq('id', req.target_shift_id);
+    } else {
+      // Transfer: move single shift to new owner
+      const currentOwnerId = req.shift?.user_id;
+      const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
+      await supabase.from('shifts').update({ user_id: newUserId }).eq('id', req.shift_id);
+    }
 
-    await supabase
-      .from('shifts')
-      .update({ user_id: newUserId })
-      .eq('id', req.shift_id);
-
-    // Notify requester (push + in-app) — swap accepted
+    // Notify requester (push + in-app) — accepted
     const acceptorName = (req.target_user as any)?.f_name || (req.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
-    const acceptTitle = '✅ คำขอโอนเวรได้รับการอนุมัติ';
-    const acceptBody = `${acceptorName} อนุมัติการโอนเวรแล้ว กรุณาตรวจสอบตารางเวร`;
+    const acceptTitle = req.request_type === 'swap'
+      ? '✅ คำขอแลกเวรได้รับการอนุมัติ'
+      : '✅ คำขอโอนเวรได้รับการอนุมัติ';
+    const acceptBody = req.request_type === 'swap'
+      ? `${acceptorName} ยอมรับการแลกเวรแล้ว กรุณาตรวจสอบตารางเวร`
+      : `${acceptorName} อนุมัติการโอนเวรแล้ว กรุณาตรวจสอบตารางเวร`;
     fetch('/api/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -293,8 +329,12 @@ export function useSwapRequests(userId?: string) {
     // Notify requester (push + in-app) — swap rejected
     if (reqData) {
       const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
-      const rejectTitle = '❌ คำขอโอนเวรถูกปฏิเสธ';
-      const rejectBody = `${rejectorName} ปฏิเสธคำขอโอนเวรของคุณ`;
+      const rejectTitle = reqData.request_type === 'swap'
+        ? '❌ คำขอแลกเวรถูกปฏิเสธ'
+        : '❌ คำขอโอนเวรถูกปฏิเสธ';
+      const rejectBody = reqData.request_type === 'swap'
+        ? `${rejectorName} ปฏิเสธคำขอแลกเวรของคุณ`
+        : `${rejectorName} ปฏิเสธคำขอโอนเวรของคุณ`;
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -338,12 +338,12 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 1: Transfer (โอนเวร) -->
+  <!-- Section 1: Transfer vs Swap -->
   <!-- ═══════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title">
-      <div class="icon" style="background:#ede9fe;">📌</div>
-      โอนเวร — ระบบทำงานยังไง?
+      <div class="icon" style="background:#ede9fe;">🔄</div>
+      โอนเวร vs แลกเวร — ต่างกันยังไง?
     </div>
 
     <div class="compare-grid">
@@ -351,22 +351,22 @@
       <div class="compare-card card-swap">
         <h3><span class="emoji-lg">📌</span> โอนเวร (Transfer)</h3>
         <p>
-          <strong>กดที่ชื่อของตัวเอง</strong>ในปฏิทิน → เลือกคนที่ต้องการโอนเวรให้<br>
+          <strong>กดที่ชื่อของตัวเอง</strong> (สีม่วง) → เลือกคนรับ<br>
           เวร <strong>ย้ายเจ้าของฝั่งเดียว</strong><br>
-          หลังอนุมัติ เวรจะเปลี่ยนจากคุณไปเป็นของอีกคน
+          หลังอนุมัติ เวรเปลี่ยนจากคุณเป็นของอีกคน
         </p>
-        <div class="tag">กดที่ "ชื่อของฉัน" เท่านั้น</div>
+        <div class="tag">กดชื่อ ม่วง → โอน</div>
       </div>
 
-      <!-- MUTUAL SWAP -->
+      <!-- SWAP -->
       <div class="compare-card card-transfer">
-        <h3><span class="emoji-lg">🔄</span> แลกเวร (Mutual Swap)</h3>
+        <h3><span class="emoji-lg">🔄</span> แลกเวร (Swap)</h3>
         <p>
-          ถ้าต้องการ <strong>สลับกัน 2 ฝั่ง</strong><br>
-          ทั้ง 2 คนต่างคนต่างกดโอนเวรให้กันและกัน<br>
-          เช่น A โอนเวรให้ B + B โอนเวรให้ A
+          <strong>กดที่ชื่อของคนอื่น</strong> → เลือกเวรของตัวเองที่ต้องการแลก<br>
+          เวร <strong>สลับเจ้าของ 2 ฝั่ง</strong><br>
+          ต้องได้รับการยินยอมจากอีกฝ่ายก่อน
         </p>
-        <div class="tag" style="background:#fde68a; color:#92400e;">ต่างคนต่างกดโอน</div>
+        <div class="tag" style="background:#bfdbfe; color:#1e40af;">กดชื่อคนอื่น → แลก</div>
       </div>
     </div>
 
@@ -387,18 +387,17 @@
       </div>
     </div>
 
-    <!-- MUTUAL SWAP Diagram -->
+    <!-- SWAP Diagram -->
     <div class="diagram" style="margin-top:16px;">
-      <p style="font-weight:700; margin-bottom:8px; color:#b45309;">🔄 แลกเวร — ต่างคนต่างโอน</p>
+      <p style="font-weight:700; margin-bottom:8px; color:#1d4ed8;">🔄 แลกเวร — ก่อน / หลัง</p>
       <div class="diagram-row">
         <div class="diagram-box box-a">👩 A</div>
-        <div class="diagram-box box-shift">โอน เวรดึก จ. ให้ B</div>
-      </div>
-      <div class="diagram-row">
+        <div class="diagram-box box-shift">เวรดึก จ.</div>
+        <span class="diagram-arrow">⟷</span>
         <div class="diagram-box box-b">👨 B</div>
-        <div class="diagram-box box-shift">โอน เวรเช้า อ. ให้ A</div>
+        <div class="diagram-box box-shift">เวรเช้า อ.</div>
       </div>
-      <div class="diagram-label">⬇ หลังทั้งคู่อนุมัติกันและกัน</div>
+      <div class="diagram-label">⬇ หลัง B อนุมัติ</div>
       <div class="diagram-row">
         <div class="diagram-box box-result">👩 A → เวรเช้า อ.</div>
         <span class="diagram-arrow">&</span>
@@ -408,12 +407,12 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 2: How to Transfer Step-by-Step -->
+  <!-- Section 2: Steps -->
   <!-- ═══════════════════════════════════════════════ -->
   <div class="section">
     <div class="section-title">
       <div class="icon" style="background:#dbeafe;">📋</div>
-      ขั้นตอนการโอนเวร
+      ขั้นตอนการโอน / แลกเวร
     </div>
 
     <div class="flow">
@@ -421,16 +420,16 @@
         <div class="flow-dot" style="background:#7c3aed;">1</div>
         <div class="flow-line"></div>
         <div class="flow-content">
-          <strong>กดที่ชื่อของตัวเองในปฏิทิน</strong>
-          <p>กดได้เฉพาะเวรของตัวเองเท่านั้น (ชื่อจะแสดงเป็นสีม่วงเข้ม)</p>
+          <strong>กดที่ชื่อในปฏิทิน</strong>
+          <p>ชื่อสีม่วง (ของคุณ) = โอนเวร · ชื่อสีปกติ (ของคนอื่น) = ขอแลกเวร</p>
         </div>
       </div>
       <div class="flow-step">
         <div class="flow-dot" style="background:#8b5cf6;">2</div>
         <div class="flow-line"></div>
         <div class="flow-content">
-          <strong>เลือกคนที่ต้องการโอนเวรให้</strong>
-          <p>ค้นหาชื่อเพื่อนร่วมงานที่ตำแหน่งเดียวกัน</p>
+          <strong>เลือกเป้าหมาย</strong>
+          <p>โอนเวร: เลือกชื่อคนที่รับเวร | แลกเวร: เลือกเวรของตัวเองจากปฏิทินขนาดเล็ก</p>
         </div>
       </div>
       <div class="flow-step">
@@ -469,7 +468,7 @@
     <div class="warning-box">
       <span class="warn-icon">⚠️</span>
       <div>
-        <strong>หมายเหตุ:</strong> โอนเวรได้เฉพาะเดือนที่ Admin <strong>ประกาศตารางเวร</strong>แล้วเท่านั้น
+        <strong>หมายเหตุ:</strong> โอน/แลกเวรได้เฉพาะเดือนที่ Admin <strong>ประกาศตารางเวร</strong>แล้วเท่านั้น
         ถ้าเดือนยังไม่ประกาศจะเห็นแถบสีแดง 🔒
       </div>
     </div>

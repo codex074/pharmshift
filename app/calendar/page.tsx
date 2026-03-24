@@ -560,7 +560,7 @@ export default function CalendarPage() {
         </div>
 
         <p className="text-[10px] text-gray-400 text-center pb-4 pdf-hide">
-          คลิกที่ชื่อตัวเองเพื่อแลกเวร — คลิกชื่อคนอื่นเพื่อซื้อเวร
+          คลิกชื่อตัวเองเพื่อโอนเวร · คลิกชื่อคนอื่นเพื่อขอแลกเวร
         </p>
       </main>
 
@@ -570,6 +570,7 @@ export default function CalendarPage() {
           shift={selectedShift}
           currentUser={currentUser}
           publishedRoles={publishedRoles}
+          userShifts={currentUser ? allShifts.filter(s => s.user_id === currentUser.id) : []}
           onClose={() => setSelectedShift(null)}
         />
       )}
