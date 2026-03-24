@@ -118,10 +118,8 @@ export function OfficeCalendarGrid({
 
               return (
                 <div key={di} className={cn(
-                  'border-r-2 border-slate-400 relative transition-opacity',
-                  day.isToday
-                    ? 'bg-amber-50/60 z-10'
-                    : 'opacity-50 hover:opacity-80'
+                  'border-r-2 border-slate-400 relative',
+                  day.isToday && 'bg-amber-50/60 z-10'
                 )}>
                   {day.isToday && <div className="absolute inset-0 border-[4px] border-red-500 z-50 pointer-events-none shadow-[inset_0_0_8px_rgba(239,68,68,.25)] [.exporting-pdf_&]:hidden" />}
                   <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
