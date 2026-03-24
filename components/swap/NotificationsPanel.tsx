@@ -9,6 +9,58 @@ import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
 
+/** "เวรดึก 15 ม.ค. (ER)" */
+function shiftLabel(s: any): string {
+  if (!s) return '?';
+  const d = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
+  const dept = s.department?.name || '';
+  return `${s.shift_type}${d ? ` ${d}` : ''}${dept ? ` (${dept})` : ''}`;
+}
+
+/** Human-readable sentence describing the request from the viewer's POV */
+function describeRequest(req: SwapRequest, currentUserId: string | undefined): string {
+  const myId = currentUserId;
+  const rName = (req.requester as any)?.nickname || (req.requester as any)?.f_name || '?';
+  const tName = (req.target_user as any)?.nickname || (req.target_user as any)?.f_name || '?';
+  const iAmRequester = req.requester_id === myId;
+  const iAmTarget    = req.target_user_id === myId;
+
+  const sl  = shiftLabel(req.shift);          // the shift being acted on
+  const tsl = shiftLabel(req.target_shift);   // requester's offered shift (swap only)
+
+  if (req.request_type === 'transfer') {
+    // req.shift belongs to requester; requester wants to give it to target
+    if (req.status === 'pending') {
+      if (iAmTarget)    return `${rName} ขอโอนเวร ${sl} ให้คุณรับแทน`;
+      if (iAmRequester) return `คุณขอโอนเวร ${sl} ให้ ${tName}`;
+    }
+    if (iAmRequester) {
+      if (req.status === 'accepted') return `${tName} ยอมรับรับเวร ${sl} แล้ว ✅`;
+      if (req.status === 'rejected') return `${tName} ปฏิเสธการรับเวร ${sl} ❌`;
+    }
+  } else {
+    // swap: req.shift = target's shift (requester wants it); req.target_shift = requester's shift (offered)
+    if (req.status === 'pending') {
+      if (iAmTarget) {
+        // I'm target: req.shift = my shift, req.target_shift = requester's shift
+        return `${rName} ขอแลก ${tsl} (เวรของเขา) กับ ${sl} (เวรของคุณ)`;
+      }
+      if (iAmRequester) {
+        return `คุณขอแลก ${tsl} (เวรคุณ) กับ ${sl} (เวรของ ${tName})`;
+      }
+    }
+    if (iAmRequester) {
+      if (req.status === 'accepted') return `${tName} ยอมรับการแลกเวร ✅`;
+      if (req.status === 'rejected') return `${tName} ปฏิเสธการแลกเวร ❌`;
+    }
+  }
+
+  // Fallback
+  return iAmRequester
+    ? `${tName} ${req.status === 'accepted' ? 'ยอมรับ ✅' : req.status === 'rejected' ? 'ปฏิเสธ ❌' : 'รอดำเนินการ'}`
+    : `${rName} ส่งคำขอถึงคุณ`;
+}
+
 interface NotificationsPanelProps {
   swapRequests: SwapRequest[];
   notifications: AppNotification[];
@@ -225,8 +277,6 @@ export function NotificationsPanel({
           ) : (
             swapRequests.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((req) => {
               const shift = req.shift as any;
-              const requester = req.requester as any;
-              const targetUser = req.target_user as any;
               const deptName = shift?.department?.name || '';
               const shiftDate = shift?.date ? new Date(shift.date + 'T00:00:00') : null;
               const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
@@ -235,11 +285,6 @@ export function NotificationsPanel({
               const isProcessing = processingId === req.id;
               const showCollisionConfirm = collisionReqId === req.id;
               const showCancelConfirm = cancelConfirmId === req.id;
-
-              // For transfer: requester → target (requester gives away their shift)
-              // For swap: requester ⇄ target (mutual exchange)
-              const leftName = requester?.nickname || requester?.f_name;
-              const rightName = targetUser?.nickname || targetUser?.f_name;
 
               return (
                 <div
@@ -254,39 +299,67 @@ export function NotificationsPanel({
                   )}
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-0.5 flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 w-full">
-                        <ArrowRightLeft className="w-3 h-3 text-gray-400 flex-shrink-0" />
-                        <p className="text-xs font-medium text-gray-800 truncate">
-                          {leftName}
-                          <span className="text-gray-400 font-normal"> → </span>
-                          {rightName}
-                        </p>
+                    <div className="space-y-1.5 flex-1 min-w-0">
+
+                      {/* Type badge + status */}
+                      <div className="flex items-center gap-1.5">
                         <span className={cn(
-                          'ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded',
+                          'text-[9px] font-semibold px-1.5 py-0.5 rounded',
                           req.request_type === 'swap'
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-violet-100 text-violet-700'
                         )}>
-                          {req.request_type === 'swap' ? 'แลกเวร' : 'โอนเวร'}
+                          {req.request_type === 'swap' ? '🔄 แลกเวร' : '📌 โอนเวร'}
                         </span>
+                        {statusBadge(req.status)}
                       </div>
 
-                      {shiftDate && (
-                        <div className="flex items-center gap-2 text-[10px] text-gray-500 flex-wrap">
-                          <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded">
-                            <Calendar className="w-2.5 h-2.5" />
-                            {format(shiftDate, 'd MMM', { locale: th })} {shift?.shift_type} ({deptName})
-                          </span>
-                          {req.request_type === 'swap' && req.target_shift && (
-                            <>
-                              <ArrowRightLeft className="w-2.5 h-2.5 text-gray-300" />
-                              <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded">
-                                <Calendar className="w-2.5 h-2.5" />
-                                {format(new Date((req.target_shift as any).date + 'T00:00:00'), 'd MMM', { locale: th })} {(req.target_shift as any).shift_type}
-                              </span>
-                            </>
-                          )}
+                      {/* Descriptive sentence */}
+                      <p className="text-xs font-medium text-gray-800 leading-snug">
+                        {describeRequest(req, currentUser?.id)}
+                      </p>
+
+                      {/* Shift detail badges */}
+                      {req.request_type === 'transfer' ? (
+                        shiftDate && (
+                          <div className="flex items-center gap-1 text-[10px] text-gray-500">
+                            <span className="flex items-center gap-1 bg-gray-100 px-2 py-0.5 rounded-full font-medium">
+                              <Calendar className="w-2.5 h-2.5" />
+                              {format(shiftDate, 'd MMM', { locale: th })} · {shift?.shift_type}{deptName ? ` · ${deptName}` : ''}
+                            </span>
+                          </div>
+                        )
+                      ) : (
+                        /* Swap: show both shifts clearly labelled */
+                        <div className="space-y-1">
+                          {/* For target (incoming): req.shift = my shift, req.target_shift = their shift */}
+                          {/* For requester (outgoing): req.shift = their shift, req.target_shift = my shift */}
+                          {req.target_shift && (() => {
+                            const iAmTarget = req.target_user_id === currentUser?.id;
+                            const myShift    = iAmTarget ? req.shift : req.target_shift;
+                            const theirShift = iAmTarget ? req.target_shift : req.shift;
+                            const theirName  = iAmTarget
+                              ? ((req.requester as any)?.nickname || (req.requester as any)?.f_name)
+                              : ((req.target_user as any)?.nickname || (req.target_user as any)?.f_name);
+                            return (
+                              <>
+                                <div className="flex items-center gap-1 text-[10px]">
+                                  <span className="text-gray-400 w-12 shrink-0">เวรคุณ:</span>
+                                  <span className="flex items-center gap-1 bg-violet-50 text-violet-700 px-2 py-0.5 rounded-full font-medium">
+                                    <Calendar className="w-2.5 h-2.5" />
+                                    {shiftLabel(myShift)}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-1 text-[10px]">
+                                  <span className="text-gray-400 w-12 shrink-0">เวร{theirName}:</span>
+                                  <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">
+                                    <Calendar className="w-2.5 h-2.5" />
+                                    {shiftLabel(theirShift)}
+                                  </span>
+                                </div>
+                              </>
+                            );
+                          })()}
                         </div>
                       )}
 
@@ -294,7 +367,6 @@ export function NotificationsPanel({
                         <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
                       )}
                     </div>
-                    {statusBadge(req.status)}
                   </div>
 
                   {/* Collision Confirm Dialog */}
