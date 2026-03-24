@@ -20,11 +20,11 @@ const SHIFT_HDR = {
 } as const;
 
 const CELL_BG = {
-  rung:  'bg-[#FEF3DC]/70  hover:bg-[#FEF3DC]',
-  chao:  'bg-[#E8F9FA]/70  hover:bg-[#E8F9FA]',
-  bai:   'bg-[#F3EDF8]/70  hover:bg-[#F3EDF8]',
-  duek:  'bg-[#EEF0FF]/70  hover:bg-[#EEF0FF]',
-  plain: 'bg-white         hover:bg-slate-50',
+  rung:  'bg-[#FEF3DC] hover:bg-[#FFE8A0]',
+  chao:  'bg-[#E8F9FA] hover:bg-[#C5F2F5]',
+  bai:   'bg-[#F3EDF8] hover:bg-[#E8D8F5]',
+  duek:  'bg-[#EEF0FF] hover:bg-[#DDE1FF]',
+  plain: 'bg-white     hover:bg-slate-50',
 } as const;
 
 // Per-weekday header colours (Sun=0 … Sat=6)
