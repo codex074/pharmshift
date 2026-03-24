@@ -560,30 +560,60 @@ export function NotificationsPanel({
             </div>
           ) : (
             <>
-              {notifications.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((notif) => (
+              {notifications.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((notif) => {
+                // Derive icon + color from type & title
+                const t = notif.title || '';
+                const cfg = notif.type === 'shift_reminder'
+                  ? { emoji: '⏰', bg: 'bg-sky-50',    border: 'border-sky-200',    dot: 'bg-sky-500'    }
+                  : notif.type === 'schedule_published'
+                  ? { emoji: '📋', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
+                  : notif.type === 'swap_request'
+                  ? t.includes('🔄')
+                    ? { emoji: '🔄', bg: 'bg-blue-50',   border: 'border-blue-200',   dot: 'bg-blue-500'   }
+                    : { emoji: '📩', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-500' }
+                  : t.includes('✅')
+                  ? { emoji: '✅', bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-500'  }
+                  : t.includes('❌')
+                  ? { emoji: '❌', bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500'    }
+                  : t.includes('⚠️')
+                  ? { emoji: '⚠️', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
+                  : { emoji: '🔔', bg: 'bg-gray-50',   border: 'border-gray-200',   dot: 'bg-gray-400'   };
+
+                return (
                 <div
                   key={notif.id}
                   className={cn(
-                    'rounded-xl border p-3 space-y-1 transition-all',
-                    !notif.is_read
-                      ? 'border-violet-200 bg-violet-50/40 ring-1 ring-violet-100'
-                      : 'border-gray-100 bg-white'
+                    'rounded-xl border flex gap-3 p-3 transition-all',
+                    !notif.is_read ? `${cfg.bg} ${cfg.border} ring-1 ring-inset ring-white/60` : 'border-gray-100 bg-white',
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-gray-900">{notif.title}</p>
-                      <p className="text-[11px] text-gray-500 mt-0.5 leading-relaxed whitespace-pre-line">{notif.body}</p>
-                    </div>
-                    {!notif.is_read && (
-                      <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0 mt-1" />
-                    )}
+                  {/* Left icon */}
+                  <div className={cn(
+                    'w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 mt-0.5',
+                    !notif.is_read ? cfg.bg : 'bg-gray-100',
+                  )}>
+                    {cfg.emoji}
                   </div>
-                  <p className="text-[10px] text-gray-400">
-                    {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: th })}
-                  </p>
+
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 space-y-0.5">
+                    <div className="flex items-start justify-between gap-1">
+                      <p className="text-xs font-semibold text-gray-900 leading-snug">
+                        {/* Strip the leading emoji (first 2 chars) + space if it matches cfg emoji */}
+                        {t.startsWith(cfg.emoji) ? t.slice(cfg.emoji.length).trimStart() : t}
+                      </p>
+                      {!notif.is_read && (
+                        <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1', cfg.dot)} />
+                      )}
+                    </div>
+                    <p className="text-[11px] text-gray-600 leading-relaxed">{notif.body}</p>
+                    <p className="text-[10px] text-gray-400">
+                      {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: th })}
+                    </p>
+                  </div>
                 </div>
-              ))}
+                );
+              })}
               {notifications.length > PAGE_SIZE && (
                 <div className="flex items-center justify-between pt-1 border-t border-gray-100">
                   <button

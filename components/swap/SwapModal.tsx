@@ -136,9 +136,10 @@ export function SwapModal({
         message: message.trim() || null, status: 'pending',
       });
       if (error) throw error;
-      const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
-      const notifTitle = '📩 มีคำขอโอนเวรให้คุณ';
-      const notifBody = `${requesterName} ต้องการโอนเวรให้คุณ${colliding.length > 0 ? ' ⚠️ (มีเวรซ้อน)' : ''}`;
+      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+      const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
+      const notifTitle = '📩 คำขอโอนเวร';
+      const notifBody = `${requesterName} ขอให้คุณรับ เวร${shift.shift_type} ${shiftDateFmt}${deptName ? ` (${deptName})` : ''}${colliding.length > 0 ? ' ⚠️ มีเวรซ้อน' : ''}`;
       fetch('/api/push/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
@@ -187,9 +188,12 @@ export function SwapModal({
         status: 'pending',
       });
       if (error) throw error;
-      const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
-      const notifTitle = '🔄 มีคำขอแลกเวร';
-      const notifBody = `${requesterName} ขอแลกเวรกับคุณ`;
+      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+      const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
+      const yourDateFmt  = format(shiftDate, 'd MMM', { locale: th });
+      const myDept       = (selectedMyShift.department as any)?.name || '';
+      const notifTitle = '🔄 คำขอแลกเวร';
+      const notifBody  = `${requesterName} เสนอแลก เวร${selectedMyShift.shift_type} ${myDateFmt}${myDept ? ` (${myDept})` : ''} ของเขา กับ เวร${shift.shift_type} ${yourDateFmt}${deptName ? ` (${deptName})` : ''} ของคุณ`;
       fetch('/api/push/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
