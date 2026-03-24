@@ -199,11 +199,12 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
-  /* Other people's shifts — non-clickable */
+  /* Other people's shifts — clickable for swap */
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, 'text-slate-800')}
+      className={cn(nameTextStyle, 'text-slate-800 cursor-pointer hover:bg-sky-100 hover:text-sky-800 transition-colors rounded-sm')}
+      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
     >
       {displayName}
     </span>
