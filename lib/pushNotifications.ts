@@ -103,6 +103,18 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
   }
 }
 
+/** Check whether this device has an active push subscription */
+export async function getSubscriptionStatus(): Promise<boolean> {
+  if (!isPushSupported()) return false;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const sub = await registration.pushManager.getSubscription();
+    return sub !== null;
+  } catch {
+    return false;
+  }
+}
+
 /** Unsubscribe this device from push notifications */
 export async function unsubscribeFromPush(): Promise<boolean> {
   if (!isPushSupported()) return false;
