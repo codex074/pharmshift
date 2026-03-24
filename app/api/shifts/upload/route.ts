@@ -231,8 +231,8 @@ export async function POST(req: NextRequest) {
         const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
         const dateStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 
-        // Split by comma in case there are multiple shifts in one cell (e.g., "ชM1,บM1")
-        const shiftCodes = cellValue.split(',').map(s => s.trim()).filter(Boolean);
+        // Split by comma or "/" — multiple shifts in one cell (e.g. "E/ด", "C/ด", "ชM1,บM1")
+        const shiftCodes = cellValue.split(/[,/]/).map(s => s.trim()).filter(Boolean);
 
         for (const code of shiftCodes) {
           const shiftData = mapShiftCode(code, isWeekend, sheetRole);
