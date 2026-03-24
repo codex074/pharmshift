@@ -12,30 +12,30 @@ const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 le
 
 // ── Shift-time colour palettes (shared with CalendarGrid) ───────────
 const SHIFT_HDR = {
-  rung:    'bg-rose-200   text-rose-800   border-rose-300',
-  chao:    'bg-emerald-200 text-emerald-900 border-emerald-300',
-  bai:     'bg-orange-200 text-orange-900 border-orange-300',
-  duek:    'bg-indigo-200 text-indigo-800 border-indigo-300',
-  neutral: 'bg-slate-100  text-slate-700  border-slate-200',
+  rung:    'bg-[#FFCA72] text-amber-900  border-[#FFCA72]',
+  chao:    'bg-[#9FDCE0] text-teal-900   border-[#9FDCE0]',
+  bai:     'bg-[#9E76B4] text-white      border-[#9E76B4]',
+  duek:    'bg-[#99ABFF] text-indigo-900 border-[#99ABFF]',
+  neutral: 'bg-slate-100 text-slate-700  border-slate-200',
 } as const;
 
 const CELL_BG = {
-  rung:  'bg-rose-50/70     hover:bg-rose-100/80',
-  chao:  'bg-emerald-50/70  hover:bg-emerald-100/80',
-  bai:   'bg-orange-50/70   hover:bg-orange-100/80',
-  duek:  'bg-indigo-50/70   hover:bg-indigo-100/80',
-  plain: 'bg-white          hover:bg-slate-50',
+  rung:  'bg-[#FEF3DC]/70  hover:bg-[#FEF3DC]',
+  chao:  'bg-[#E8F9FA]/70  hover:bg-[#E8F9FA]',
+  bai:   'bg-[#F3EDF8]/70  hover:bg-[#F3EDF8]',
+  duek:  'bg-[#EEF0FF]/70  hover:bg-[#EEF0FF]',
+  plain: 'bg-white         hover:bg-slate-50',
 } as const;
 
-// Per-weekday vivid colours (Sun=0 … Sat=6)
+// Per-weekday header colours (Sun=0 … Sat=6)
 const DOW_HDR: Record<number, string> = {
-  0: 'bg-red-600     text-white',
-  1: 'bg-yellow-400  text-gray-900',
-  2: 'bg-pink-600    text-white',
-  3: 'bg-green-600   text-white',
-  4: 'bg-orange-500  text-white',
-  5: 'bg-blue-600    text-white',
-  6: 'bg-purple-600  text-white',
+  0: 'bg-[#F3828A] text-red-900',
+  1: 'bg-[#FEE66A] text-yellow-900',
+  2: 'bg-[#FFB1DC] text-pink-900',
+  3: 'bg-[#B6E666] text-green-900',
+  4: 'bg-[#FEA86F] text-orange-900',
+  5: 'bg-[#A1DDFF] text-sky-900',
+  6: 'bg-[#D0AEEF] text-purple-900',
 };
 
 function hdrPt(palette: keyof typeof SHIFT_HDR, extra = '') {
