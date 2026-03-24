@@ -111,19 +111,33 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
 
         if (error) throw error;
 
-        // Push notification to target user
+        // Notification to target user (push + in-app)
         const collisionNote = hasCollision ? ' ⚠️ (มีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
+        const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
+        const swapTitle = '📩 มีคำขอให้อยู่เวรแทน';
+        const swapBody = `${requesterName} ขอให้คุณมาอยู่เวรแทน${collisionNote}`;
+
+        // Push notification
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: selectedUser.id,
-            title: '📩 มีคำขอให้อยู่เวรแทน',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอให้คุณมาอยู่เวรแทน${collisionNote}`,
+            title: swapTitle,
+            body: swapBody,
             url: '/calendar',
             tag: 'swap-new',
           }),
         }).catch(() => {});
+
+        // In-app notification (so user sees it even if push doesn't arrive)
+        supabase.from('notifications').insert({
+          user_id: selectedUser.id,
+          type: 'swap_request',
+          title: swapTitle,
+          body: swapBody,
+          url: '/calendar',
+        }).then(({ error: nErr }) => { if (nErr) console.error('[Swap] in-app notif error:', nErr); });
 
         toast.success('ส่งคำขอให้อยู่แทนเรียบร้อยแล้ว');
       } else {
@@ -159,19 +173,33 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
 
         if (error) throw error;
 
-        // Push notification to shift owner
+        // Notification to shift owner (push + in-app)
         const collisionNote = hasCollision ? ' ⚠️ (ผู้ขอมีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
+        const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
+        const transferTitle = '📩 มีคำขออยู่เวรแทน';
+        const transferBody = `${requesterName} ขอมาอยู่เวรแทนคุณ${collisionNote}`;
+
+        // Push notification
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId: shift.user_id,
-            title: '📩 มีคำขออยู่เวรแทน',
-            body: `${currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน'} ขอมาอยู่เวรแทนคุณ${collisionNote}`,
+            title: transferTitle,
+            body: transferBody,
             url: '/calendar',
             tag: 'transfer-new',
           }),
         }).catch(() => {});
+
+        // In-app notification
+        supabase.from('notifications').insert({
+          user_id: shift.user_id,
+          type: 'swap_request',
+          title: transferTitle,
+          body: transferBody,
+          url: '/calendar',
+        }).then(({ error: nErr }) => { if (nErr) console.error('[Transfer] in-app notif error:', nErr); });
 
         toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
       }
