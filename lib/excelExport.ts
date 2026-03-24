@@ -280,7 +280,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     worksheet.getColumn('salaryNo').font = { name: 'TH SarabunPSK', size: 16 };
     
     const isRegularShift = config.name === 'เช้า-บ่าย-ดึก';
-    const rowsPerPage = isRegularShift ? 11 : 15;
+    const rowsPerPage = 15;
     const totalPages = Math.ceil(rowsData.length / rowsPerPage) || 1;
 
     let grandTotalValue = 0;
@@ -377,52 +377,31 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         grandTotalAmount += row.totalAmount;
 
         if (isRegularShift) {
-          // Output 2 rows.
-          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' : 
+          // Output 1 row — multiple shifts on the same day are joined with "/"
+          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' :
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
-          const rowValues1: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.getRate(row.role)];
-          const rowValues2: any[] = ['', '', '', '', ''];
+          const rowValues: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.getRate(row.role)];
 
           for (let i = 1; i <= 31; i++) {
             const entries = row.days[i] || [];
-            rowValues1.push(entries[0]?.code || entries[0]?.val || '');
-            rowValues2.push(entries[1]?.code || entries[1]?.val || '');
+            const codes = entries.map(e => e.code || '').filter(Boolean);
+            rowValues.push(codes.length ? codes.join('/') : '');
           }
 
-          rowValues1.push(row.totalValue);
-          rowValues1.push(row.totalAmount);
-          rowValues1.push('');
+          rowValues.push(row.totalValue);
+          rowValues.push(row.totalAmount);
+          rowValues.push('');
 
-          rowValues2.push('');
-          rowValues2.push('');
-          rowValues2.push('');
+          const dRow = worksheet.addRow(rowValues);
+          dRow.height = 22;
+          dRow.font = { name: 'TH SarabunPSK', size: 16 };
 
-          const dRow1 = worksheet.addRow(rowValues1);
-          const dRow2 = worksheet.addRow(rowValues2);
-          dRow1.height = 22;
-          dRow2.height = 22;
-          
-          // Merge identical user info cells vertically
-          worksheet.mergeCells(`A${dRow1.number}:A${dRow2.number}`);
-          worksheet.mergeCells(`B${dRow1.number}:B${dRow2.number}`);
-          worksheet.mergeCells(`C${dRow1.number}:C${dRow2.number}`);
-          worksheet.mergeCells(`D${dRow1.number}:D${dRow2.number}`);
-          worksheet.mergeCells(`E${dRow1.number}:E${dRow2.number}`);
-          worksheet.mergeCells(`AK${dRow1.number}:AK${dRow2.number}`);
-          worksheet.mergeCells(`AL${dRow1.number}:AL${dRow2.number}`);
-          worksheet.mergeCells(`AM${dRow1.number}:AM${dRow2.number}`);
-
-          [dRow1, dRow2].forEach(r => {
-             r.font = { name: 'TH SarabunPSK', size: 16 };
-             r.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-               if (colNumber <= 39) {
-                 cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
-                 cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-                 if (colNumber === 39) {
-                   cell.numFmt = '#,##0.00';
-                 }
-               }
-             });
+          dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+            if (colNumber <= 39) {
+              cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
+              cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+              if (colNumber === 39) cell.numFmt = '#,##0.00';
+            }
           });
         } else {
           // Output 1 row
