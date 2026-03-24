@@ -7,7 +7,7 @@ import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionStatus } from '@/lib/pushNotifications';
+import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
 
 interface NotificationsPanelProps {
   swapRequests: SwapRequest[];
@@ -44,10 +44,13 @@ export function NotificationsPanel({
 
   // Push notification state
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default');
+  const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
+  // Load both browser permission and actual subscription status on mount
   useEffect(() => {
     setPushPermission(getPermissionStatus());
+    getSubscriptionStatus().then(setIsSubscribed);
   }, []);
 
   // Mark requester results as read when panel opens
@@ -125,33 +128,30 @@ export function NotificationsPanel({
     }
   }
 
-  async function handleEnablePush() {
+  async function handleTogglePush() {
     if (!currentUser?.id) return;
     setIsSubscribing(true);
     try {
-      const ok = await subscribeToPush(currentUser.id);
-      const newStatus = getPermissionStatus();
-      setPushPermission(newStatus);
-      if (ok) {
-        toast.success('เปิดการแจ้งเตือนเรียบร้อย — ระบบจะแจ้งเวรให้ทุกวัน');
-      } else if (newStatus === 'denied') {
-        toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
+      if (isSubscribed) {
+        // Turn OFF — unsubscribe from push manager + remove from server
+        await unsubscribeFromPush();
+        setIsSubscribed(false);
+        setPushPermission(getPermissionStatus());
+        toast.success('ปิดการแจ้งเตือนแล้ว');
       } else {
-        toast.info('ไม่สามารถเปิดการแจ้งเตือนได้ในขณะนี้');
+        // Turn ON — request permission (if needed) + subscribe
+        const ok = await subscribeToPush(currentUser.id);
+        const newPerm = getPermissionStatus();
+        setPushPermission(newPerm);
+        if (ok) {
+          setIsSubscribed(true);
+          toast.success('เปิดการแจ้งเตือนเรียบร้อย — ระบบจะแจ้งเวรให้ทุกวัน');
+        } else if (newPerm === 'denied') {
+          toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
+        } else {
+          toast.info('ไม่สามารถเปิดการแจ้งเตือนได้ในขณะนี้');
+        }
       }
-    } catch {
-      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
-    } finally {
-      setIsSubscribing(false);
-    }
-  }
-
-  async function handleDisablePush() {
-    setIsSubscribing(true);
-    try {
-      await unsubscribeFromPush();
-      setPushPermission(getPermissionStatus());
-      toast.success('ปิดการแจ้งเตือนแล้ว');
     } catch {
       toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
     } finally {
@@ -418,43 +418,59 @@ export function NotificationsPanel({
           {/* Push Notification Settings */}
           {isPushSupported() ? (
             <div className={cn(
-              'rounded-xl border p-3 space-y-2',
-              pushPermission === 'granted' ? 'border-green-200 bg-green-50/50' :
-              pushPermission === 'denied'  ? 'border-red-200 bg-red-50/50' :
-              'border-violet-200 bg-violet-50/40'
+              'rounded-xl border p-3 space-y-2 transition-colors',
+              isSubscribed          ? 'border-green-200 bg-green-50/50' :
+              pushPermission === 'denied' ? 'border-red-200 bg-red-50/50' :
+              'border-gray-200 bg-gray-50/50'
             )}>
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  {pushPermission === 'granted'
+              <div className="flex items-center justify-between gap-3">
+                {/* Icon + label */}
+                <div className="flex items-center gap-2 min-w-0">
+                  {isSubscribed
                     ? <BellRing className="w-4 h-4 text-green-600 flex-shrink-0" />
                     : <BellOff  className="w-4 h-4 text-gray-400 flex-shrink-0" />
                   }
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-xs font-semibold text-gray-800">การแจ้งเตือน Push</p>
-                    <p className="text-[10px] text-gray-500 leading-relaxed">
-                      {pushPermission === 'granted' && 'เปิดอยู่ — ระบบจะแจ้งเวรล่วงหน้าให้'}
-                      {pushPermission === 'denied'  && 'ถูกบล็อก — กรุณาอนุญาตใน ⚙️ เบราว์เซอร์'}
-                      {pushPermission === 'default' && 'ยังไม่ได้เปิด — กดเพื่อรับแจ้งเตือนเวร'}
+                    <p className="text-[10px] text-gray-500 leading-tight">
+                      {pushPermission === 'denied'
+                        ? '⚠️ ถูกบล็อก — อนุญาตใน ⚙️ เบราว์เซอร์'
+                        : isSubscribed
+                          ? 'เปิดอยู่ — รับแจ้งเตือนเวรล่วงหน้า'
+                          : 'ปิดอยู่ — กดเพื่อเปิดรับแจ้งเตือนเวร'
+                      }
                     </p>
                   </div>
                 </div>
+
+                {/* Toggle switch */}
                 {pushPermission !== 'denied' && (
                   <button
-                    onClick={pushPermission === 'granted' ? handleDisablePush : handleEnablePush}
+                    role="switch"
+                    aria-checked={isSubscribed}
+                    onClick={handleTogglePush}
                     disabled={isSubscribing}
                     className={cn(
-                      'flex-shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all disabled:opacity-50',
-                      pushPermission === 'granted'
-                        ? 'border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50'
-                        : 'bg-violet-600 text-white hover:bg-violet-700'
+                      'relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500',
+                      isSubscribed ? 'bg-green-500' : 'bg-gray-300',
+                      isSubscribing && 'opacity-50 cursor-not-allowed'
                     )}
                   >
-                    {isSubscribing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                    {pushPermission === 'granted' ? 'ปิด' : 'เปิดรับแจ้งเตือน'}
+                    <span className={cn(
+                      'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform duration-200 flex items-center justify-center',
+                      isSubscribed ? 'translate-x-5' : 'translate-x-0'
+                    )}>
+                      {isSubscribing
+                        ? <Loader2 className="w-3 h-3 animate-spin text-gray-400" />
+                        : null
+                      }
+                    </span>
                   </button>
                 )}
               </div>
-              {pushPermission === 'granted' && (
+
+              {/* Schedule info — only when subscribed */}
+              {isSubscribed && (
                 <div className="text-[10px] text-gray-500 space-y-0.5 pl-6 border-t border-green-100 pt-2">
                   <p>🕕 18:00 วันก่อน — แจ้งเตือนเวรวันรุ่งขึ้นทุกเวร</p>
                   <p>🕗 08:00 วันนั้น — แจ้งเตือนเวรวันนี้ (ยกเว้นเวรรุ่งอรุณ)</p>
