@@ -202,11 +202,23 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
+  if (isMe) {
+    return (
+      <span
+        key={s.id}
+        className={cn(nameTextStyle, 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer')}
+        onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      >
+        {displayName}
+      </span>
+    );
+  }
+
+  /* Other people's shifts — non-clickable */
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer' : 'text-slate-800 cursor-pointer')}
-      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      className={cn(nameTextStyle, 'text-slate-800')}
     >
       {displayName}
     </span>
