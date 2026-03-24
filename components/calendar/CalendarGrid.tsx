@@ -227,12 +227,11 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
-  /* ── Other people's shifts ── */
+  /* ── Other people's shifts — non-clickable ── */
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, 'text-slate-700 cursor-pointer rounded-sm')}
-      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      className={cn(nameTextStyle, 'text-slate-700 rounded-sm')}
     >
       {displayName}
     </span>

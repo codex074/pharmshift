@@ -236,13 +236,9 @@ export function NotificationsPanel({
               const showCollisionConfirm = collisionReqId === req.id;
               const showCancelConfirm = cancelConfirmId === req.id;
 
-              // Determine arrow direction: เจ้าของเวรเดิม → คนใหม่
-              const leftName = req.request_type === 'swap'
-                ? (requester?.nickname || requester?.f_name)   // swap: requester เป็นเจ้าของเวร ขอให้ target มาแทน
-                : (targetUser?.nickname || targetUser?.f_name); // transfer: target เป็นเจ้าของเวร requester ขอรับ
-              const rightName = req.request_type === 'swap'
-                ? (targetUser?.nickname || targetUser?.f_name)
-                : (requester?.nickname || requester?.f_name);
+              // Determine arrow direction: เจ้าของเวรเดิม (requester) → คนรับเวร (target)
+              const leftName = requester?.nickname || requester?.f_name;
+              const rightName = targetUser?.nickname || targetUser?.f_name;
 
               return (
                 <div
@@ -266,7 +262,7 @@ export function NotificationsPanel({
                           {rightName}
                         </p>
                         <span className="ml-auto text-[9px] font-medium px-1.5 py-0.5 rounded bg-violet-100 text-violet-700">
-                          {req.request_type === 'swap' ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
+                          โอนเวร
                         </span>
                       </div>
 
@@ -276,15 +272,6 @@ export function NotificationsPanel({
                             <Calendar className="w-2.5 h-2.5" />
                             {format(shiftDate, 'd MMM', { locale: th })} {shift?.shift_type} ({deptName})
                           </span>
-                          {req.request_type === 'swap' && req.target_shift && (
-                            <>
-                              <ArrowRightLeft className="w-2.5 h-2.5 text-gray-300" />
-                              <span className="flex items-center gap-1 bg-gray-50 px-1.5 py-0.5 rounded">
-                                <Calendar className="w-2.5 h-2.5" />
-                                {format(new Date(req.target_shift.date + 'T00:00:00'), 'd MMM', { locale: th })} {req.target_shift.shift_type} ({(req.target_shift.department as any)?.name || ''})
-                              </span>
-                            </>
-                          )}
                         </div>
                       )}
 

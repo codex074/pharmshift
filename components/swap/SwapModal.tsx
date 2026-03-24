@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, ShoppingCart, Search, AlertTriangle, Lock } from 'lucide-react';
+import { X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun, Loader2, Search, AlertTriangle, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
@@ -28,9 +28,11 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
   const [collisionWarning, setCollisionWarning] = useState<string | null>(null);
   const [collisionConfirmed, setCollisionConfirmed] = useState(false);
 
-  const isOwnShift = currentUser && shift ? currentUser.id === shift.user_id : false;
   const ownerRoleForPublish: UserRole = ((shift?.user as any)?.role || currentUser?.role || 'pharmacist') as UserRole;
   const isMonthPublished = !!publishedRoles[ownerRoleForPublish];
+
+  // Only allow opening for own shifts
+  const isOwnShift = currentUser && shift ? currentUser.id === shift.user_id : false;
 
   useEffect(() => {
     if (!shift) return;
@@ -56,7 +58,7 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
     setCollisionConfirmed(false);
   }, [selectedUser]);
 
-  if (!shift || !currentUser) return null;
+  if (!shift || !currentUser || !isOwnShift) return null;
 
   const deptName = (shift.department as { name: string })?.name || '';
   const displayDeptName = shift.position ? `${deptName} ${shift.position === 'D/C' ? 'D/D' : shift.position}` : deptName;
@@ -69,141 +71,75 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
   async function handleSubmit() {
     if (!currentUser || !shift) return;
     if (!isMonthPublished) {
-      setSubmitError('ตารางเวรเดือนนี้ยังไม่ได้ประกาศ ไม่สามารถขอแลกหรืออยู่แทนเวรได้');
+      setSubmitError('ตารางเวรเดือนนี้ยังไม่ได้ประกาศ ไม่สามารถโอนเวรได้');
+      return;
+    }
+    if (!selectedUser) {
+      setSubmitError(`กรุณาเลือก${roleName}ที่ต้องการให้มาอยู่แทน`);
       return;
     }
 
     setLoading(true);
     setSubmitError(null);
     try {
-      if (isOwnShift) {
-        // ===== SWAP MODE: คลิกชื่อตัวเอง → เลือกคนอื่นเพื่อขอให้มาอยู่แทน =====
-        if (!selectedUser) throw new Error(`กรุณาเลือก${roleName}ที่ต้องการให้มาอยู่แทน`);
+      // Check collision: target user has any overlapping shift on same date
+      const { data: targetShifts } = await supabase
+        .from('shifts')
+        .select('id, shift_type')
+        .eq('user_id', selectedUser.id)
+        .eq('date', shift.date);
 
-        // Check collision: target user has any overlapping shift on same date
-        const { data: targetShifts } = await supabase
-          .from('shifts')
-          .select('id, shift_type')
-          .eq('user_id', selectedUser.id)
-          .eq('date', shift.date);
+      const collidingShifts = (targetShifts || []).filter(s =>
+        shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
+      );
 
-        const collidingShifts = (targetShifts || []).filter(s =>
-          shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
-        );
-
-        if (collidingShifts.length > 0 && !collisionConfirmed) {
-          const targetName = selectedUser.f_name || selectedUser.nickname || 'ปลายทาง';
-          setCollisionWarning(`${targetName} มีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?`);
-          setLoading(false);
-          return;
-        }
-
-        const hasCollision = collidingShifts.length > 0;
-
-        const { error } = await supabase.from('swap_requests').insert({
-          shift_id: shift.id,
-          requester_id: currentUser.id,
-          target_user_id: selectedUser.id,
-          request_type: 'swap',
-          message: message.trim() || null,
-          status: 'pending',
-        });
-
-        if (error) throw error;
-
-        // Notification to target user (push + in-app)
-        const collisionNote = hasCollision ? ' ⚠️ (มีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
-        const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
-        const swapTitle = '📩 มีคำขอให้อยู่เวรแทน';
-        const swapBody = `${requesterName} ขอให้คุณมาอยู่เวรแทน${collisionNote}`;
-
-        // Push notification
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: selectedUser.id,
-            title: swapTitle,
-            body: swapBody,
-            url: '/calendar',
-            tag: 'swap-new',
-          }),
-        }).catch(() => {});
-
-        // In-app notification (so user sees it even if push doesn't arrive)
-        supabase.from('notifications').insert({
-          user_id: selectedUser.id,
-          type: 'swap_request',
-          title: swapTitle,
-          body: swapBody,
-          url: '/calendar',
-        }).then(({ error: nErr }) => { if (nErr) console.error('[Swap] in-app notif error:', nErr); });
-
-        toast.success('ส่งคำขอให้อยู่แทนเรียบร้อยแล้ว');
-      } else {
-        // ===== TRANSFER MODE: คลิกชื่อคนอื่น → ขอมาอยู่เวรแทน =====
-
-        // Check collision: I already have any overlapping shift on same date
-        const { data: myShifts } = await supabase
-          .from('shifts')
-          .select('id, shift_type')
-          .eq('user_id', currentUser.id)
-          .eq('date', shift.date);
-
-        const collidingShifts = (myShifts || []).filter(s =>
-          shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
-        );
-
-        if (collidingShifts.length > 0 && !collisionConfirmed) {
-          setCollisionWarning('คุณมีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?');
-          setLoading(false);
-          return;
-        }
-
-        const hasCollision = collidingShifts.length > 0;
-
-        const { error } = await supabase.from('swap_requests').insert({
-          shift_id: shift.id,
-          requester_id: currentUser.id,
-          target_user_id: shift.user_id,
-          request_type: 'transfer',
-          message: message.trim() || null,
-          status: 'pending',
-        });
-
-        if (error) throw error;
-
-        // Notification to shift owner (push + in-app)
-        const collisionNote = hasCollision ? ' ⚠️ (ผู้ขอมีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
-        const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
-        const transferTitle = '📩 มีคำขออยู่เวรแทน';
-        const transferBody = `${requesterName} ขอมาอยู่เวรแทนคุณ${collisionNote}`;
-
-        // Push notification
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: shift.user_id,
-            title: transferTitle,
-            body: transferBody,
-            url: '/calendar',
-            tag: 'transfer-new',
-          }),
-        }).catch(() => {});
-
-        // In-app notification
-        supabase.from('notifications').insert({
-          user_id: shift.user_id,
-          type: 'swap_request',
-          title: transferTitle,
-          body: transferBody,
-          url: '/calendar',
-        }).then(({ error: nErr }) => { if (nErr) console.error('[Transfer] in-app notif error:', nErr); });
-
-        toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
+      if (collidingShifts.length > 0 && !collisionConfirmed) {
+        const targetName = selectedUser.f_name || selectedUser.nickname || 'ปลายทาง';
+        setCollisionWarning(`${targetName} มีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?`);
+        setLoading(false);
+        return;
       }
 
+      const hasCollision = collidingShifts.length > 0;
+
+      const { error } = await supabase.from('swap_requests').insert({
+        shift_id: shift.id,
+        requester_id: currentUser.id,
+        target_user_id: selectedUser.id,
+        request_type: 'transfer',
+        message: message.trim() || null,
+        status: 'pending',
+      });
+
+      if (error) throw error;
+
+      // Notification to target user (push + in-app)
+      const collisionNote = hasCollision ? ' ⚠️ (มีเวรซ้อนในช่วงเวลาเดียวกัน)' : '';
+      const requesterName = currentUser.f_name || currentUser.nickname || 'เพื่อนร่วมงาน';
+      const notifTitle = '📩 มีคำขอโอนเวรให้คุณ';
+      const notifBody = `${requesterName} ต้องการโอนเวรให้คุณ${collisionNote}`;
+
+      fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          title: notifTitle,
+          body: notifBody,
+          url: '/calendar',
+          tag: 'transfer-new',
+        }),
+      }).catch(() => {});
+
+      supabase.from('notifications').insert({
+        user_id: selectedUser.id,
+        type: 'swap_request',
+        title: notifTitle,
+        body: notifBody,
+        url: '/calendar',
+      }).then(({ error: nErr }) => { if (nErr) console.error('[Transfer] in-app notif error:', nErr); });
+
+      toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
       setSubmitError(err.message || 'เกิดข้อผิดพลาด กรุณาลองใหม่');
@@ -216,40 +152,23 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
   function handleConfirmCollision() {
     setCollisionConfirmed(true);
     setCollisionWarning(null);
-    // Re-trigger submit
     setTimeout(() => handleSubmit(), 50);
   }
 
-  const isValidSubmit = isOwnShift ? !!selectedUser : true;
-
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4">
-      {/* Backdrop */}
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      {/* Modal */}
       <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-fade-in max-h-[90vh] flex flex-col">
-        {/* Mobile drag indicator */}
         <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
+
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-gray-100 shrink-0">
           <div className="flex items-center gap-2">
-            <div className={cn(
-              "w-8 h-8 rounded-lg flex items-center justify-center",
-              isOwnShift ? "bg-violet-100" : "bg-amber-100"
-            )}>
-              {isOwnShift ? (
-                <ArrowRightLeft className="w-4 h-4 text-violet-600" />
-              ) : (
-                <ShoppingCart className="w-4 h-4 text-amber-600" />
-              )}
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-violet-100">
+              <ArrowRightLeft className="w-4 h-4 text-violet-600" />
             </div>
-            <h2 className="font-semibold text-gray-900">
-              {isOwnShift ? 'ขอให้อยู่แทน' : 'ขออยู่เวรแทน'}
-            </h2>
+            <h2 className="font-semibold text-gray-900">โอนเวร</h2>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
             <X className="w-4 h-4" />
@@ -263,29 +182,19 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
               <Lock className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
               <p className="text-sm text-red-700 font-medium">
                 ตารางเวรเดือนนี้ยังไม่ได้ประกาศ<br />
-                <span className="font-normal text-red-600">ไม่สามารถขอแลกหรืออยู่แทนเวรได้จนกว่าจะมีการประกาศตารางเวร</span>
+                <span className="font-normal text-red-600">ไม่สามารถโอนเวรได้จนกว่าจะมีการประกาศตารางเวร</span>
               </p>
             </div>
           )}
 
           {/* Mode Badge */}
-          <div className={cn(
-            "p-3 rounded-xl border text-center text-sm font-medium",
-            isOwnShift
-              ? "bg-violet-50 border-violet-200 text-violet-700"
-              : "bg-amber-50 border-amber-200 text-amber-700"
-          )}>
-            {isOwnShift
-              ? '📌 คุณกำลังขอให้ผู้อื่นมาอยู่เวรแทน'
-              : `🙋 คุณกำลังขอมาอยู่เวรแทน ${ownerLabel}`
-            }
+          <div className="p-3 rounded-xl border text-center text-sm font-medium bg-violet-50 border-violet-200 text-violet-700">
+            📌 คุณกำลังโอนเวรนี้ให้ผู้อื่น
           </div>
 
           {/* Shift Info */}
           <div className="rounded-xl bg-gray-50 border border-gray-100 p-4 space-y-3">
-            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              {isOwnShift ? 'เวรของคุณ' : 'เวรที่ต้องการอยู่แทน'}
-            </h3>
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">เวรของคุณ</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="flex items-center gap-2">
                 <Calendar className="w-3.5 h-3.5 text-gray-400" />
@@ -303,12 +212,10 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
               </div>
               <div className="flex items-center gap-2">
                 <Building2 className="w-3.5 h-3.5 text-gray-400" />
-                <span
-                  className={cn(
-                    'text-xs font-medium px-2 py-0.5 rounded-full',
-                    DEPT_STYLES[deptName]?.text || 'text-gray-600'
-                  )}
-                >
+                <span className={cn(
+                  'text-xs font-medium px-2 py-0.5 rounded-full',
+                  DEPT_STYLES[deptName]?.text || 'text-gray-600'
+                )}>
                   {displayDeptName}
                 </span>
               </div>
@@ -319,68 +226,57 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
             </div>
           </div>
 
-          {/* ===== SWAP MODE: Select target user ===== */}
-          {isOwnShift && (
-            <div className="space-y-2">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                เลือก{roleName}ที่ต้องการให้มาอยู่แทน
-              </h3>
-              {fetchingUsers ? (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+          {/* Select target user */}
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+              เลือก{roleName}ที่ต้องการให้มาอยู่แทน
+            </h3>
+            {fetchingUsers ? (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+              </div>
+            ) : (
+              <>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="ค้นหาชื่อ..."
+                    className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"
+                  />
                 </div>
-              ) : (
-                <>
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="ค้นหาชื่อ..."
-                      className="w-full pl-9 pr-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
-                    {users
-                      .filter((u) => {
-                        if (!searchQuery.trim()) return true;
-                        const q = searchQuery.trim().toLowerCase();
-                        return (
-                          (u.nickname || '').toLowerCase().includes(q) ||
-                          (u.f_name || '').toLowerCase().includes(q)
-                        );
-                      })
-                      .map((u) => (
-                      <button
-                        key={u.id}
-                        onClick={() => setSelectedUser(u.id === selectedUser?.id ? null : u)}
-                        className={cn(
-                          'p-2 rounded-lg border text-left transition-all duration-150',
-                          selectedUser?.id === u.id
-                            ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-200'
-                            : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                        )}
-                      >
-                        <p className="text-sm font-medium text-gray-800 truncate">
-                          {u.nickname || u.f_name}
-                        </p>
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* ===== BUY MODE: Confirmation info ===== */}
-          {!isOwnShift && (
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-              <p className="text-sm text-amber-700">
-                คำขอจะถูกส่งไปยัง <strong>{shiftOwner?.prefix}{ownerLabel}</strong> เพื่อขออนุมัติอยู่เวรแทน
-              </p>
-            </div>
-          )}
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto pr-1">
+                  {users
+                    .filter((u) => {
+                      if (!searchQuery.trim()) return true;
+                      const q = searchQuery.trim().toLowerCase();
+                      return (
+                        (u.nickname || '').toLowerCase().includes(q) ||
+                        (u.f_name || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => setSelectedUser(u.id === selectedUser?.id ? null : u)}
+                      className={cn(
+                        'p-2 rounded-lg border text-left transition-all duration-150',
+                        selectedUser?.id === u.id
+                          ? 'border-violet-400 bg-violet-50 ring-2 ring-violet-200'
+                          : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                      )}
+                    >
+                      <p className="text-sm font-medium text-gray-800 truncate">
+                        {u.nickname || u.f_name}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Collision Warning */}
           {collisionWarning && (
@@ -391,10 +287,7 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
                   <p className="text-sm font-medium text-amber-800">{collisionWarning}</p>
                   <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        setCollisionWarning(null);
-                        setCollisionConfirmed(false);
-                      }}
+                      onClick={() => { setCollisionWarning(null); setCollisionConfirmed(false); }}
                       className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all"
                     >
                       ยกเลิก
@@ -443,18 +336,16 @@ export function SwapModal({ shift, currentUser, publishedRoles, onClose }: SwapM
           </button>
           <button
             onClick={handleSubmit}
-            disabled={loading || !isValidSubmit || !!collisionWarning || !isMonthPublished}
+            disabled={loading || !selectedUser || !!collisionWarning || !isMonthPublished}
             className={cn(
               "flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2",
               !isMonthPublished
                 ? "bg-gray-400 cursor-not-allowed"
-                : isOwnShift
-                  ? "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20"
-                  : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 shadow-amber-500/20"
+                : "bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20"
             )}
           >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : !isMonthPublished ? <Lock className="w-4 h-4" /> : isOwnShift ? <ArrowRightLeft className="w-4 h-4" /> : <ShoppingCart className="w-4 h-4" />}
-            {!isMonthPublished ? 'ยังไม่ได้ประกาศตารางเวร' : isOwnShift ? 'ส่งคำขอให้อยู่แทน' : 'ส่งคำขออยู่เวรแทน'}
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : !isMonthPublished ? <Lock className="w-4 h-4" /> : <ArrowRightLeft className="w-4 h-4" />}
+            {!isMonthPublished ? 'ยังไม่ได้ประกาศตารางเวร' : 'ส่งคำขอโอนเวร'}
           </button>
         </div>
       </div>
