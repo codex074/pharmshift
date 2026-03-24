@@ -20,11 +20,11 @@ const SHIFT_HDR = {
 } as const;
 
 const CELL_BG = {
-  rung:  'bg-[#FEF3DC] hover:bg-[#FFE8A0]',
-  chao:  'bg-[#E8F9FA] hover:bg-[#C5F2F5]',
-  bai:   'bg-[#F3EDF8] hover:bg-[#E8D8F5]',
-  duek:  'bg-[#EEF0FF] hover:bg-[#DDE1FF]',
-  plain: 'bg-white     hover:bg-slate-50',
+  rung:  'bg-[#FEF3DC]',
+  chao:  'bg-[#E8F9FA]',
+  bai:   'bg-[#F3EDF8]',
+  duek:  'bg-[#EEF0FF]',
+  plain: 'bg-white',
 } as const;
 
 // Per-weekday header colours (Sun=0 … Sat=6)
@@ -42,7 +42,7 @@ function hdrPt(palette: keyof typeof SHIFT_HDR, extra = '') {
   return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
 }
 
-const nameCellStyle = "bg-white hover:bg-violet-50/40 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0 [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
+const nameCellStyle = "bg-white cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0 [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
 
 interface CalendarGridProps {
   year: number;
@@ -205,7 +205,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm cursor-pointer hover:ring-2 hover:ring-violet-400 hover:bg-violet-100' : 'text-slate-800 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50')}
+      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer' : 'text-slate-800 cursor-pointer')}
       onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
     >
       {displayName}

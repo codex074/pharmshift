@@ -27,11 +27,11 @@ const SHIFT_HDR = {
 } as const;
 
 const CELL_BG = {
-  rung:  'bg-[#FEF3DC] hover:bg-[#FFE8A0]',
-  chao:  'bg-[#E8F9FA] hover:bg-[#C5F2F5]',
-  bai:   'bg-[#F3EDF8] hover:bg-[#E8D8F5]',
-  duek:  'bg-[#EEF0FF] hover:bg-[#DDE1FF]',
-  plain: 'bg-white     hover:bg-slate-50',
+  rung:  'bg-[#FEF3DC]',
+  chao:  'bg-[#E8F9FA]',
+  bai:   'bg-[#F3EDF8]',
+  duek:  'bg-[#EEF0FF]',
+  plain: 'bg-white',
 } as const;
 
 // Per-weekday header colours (Sun=0 … Sat=6)
@@ -231,7 +231,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, 'text-slate-700 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50 rounded-sm')}
+      className={cn(nameTextStyle, 'text-slate-700 cursor-pointer rounded-sm')}
       onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
     >
       {displayName}

@@ -190,7 +190,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100/50 rounded-sm cursor-pointer hover:ring-2 hover:ring-violet-400 hover:bg-violet-100' : 'text-slate-800 cursor-pointer hover:ring-2 hover:ring-blue-300 hover:bg-blue-50')}
+      className={cn(nameTextStyle, isMe ? 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer' : 'text-slate-800 cursor-pointer')}
       onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
     >
       {displayName}
@@ -226,7 +226,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     rowH, bb, extra
   );
   const nameCell = (extra?: string) => cn(
-    'bg-white hover:bg-slate-50 cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5',
+    'bg-white cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5',
     rowH, bb, extra
   );
   const empty = (extra?: string) => cn('bg-white', rowH, bb, extra);
