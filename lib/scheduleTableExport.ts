@@ -13,25 +13,30 @@ const TOTAL_COLS = 30; // A..AD
 // ── Colour palette (matching web calendar) ──────────────────────
 // Day-of-week header colours
 const DOW_COLORS: Record<number, string> = {
-  0: 'FFDC2626', // Sun — red-600
-  1: 'FFFACC15', // Mon — yellow-400
-  2: 'FFDB2777', // Tue — pink-600
-  3: 'FF16A34A', // Wed — green-600
-  4: 'FFF97316', // Thu — orange-500
-  5: 'FF2563EB', // Fri — blue-600
-  6: 'FF9333EA', // Sat — purple-600
+  0: 'FFF3828A', // Sun — coral
+  1: 'FFFEE66A', // Mon — yellow
+  2: 'FFFFB1DC', // Tue — pink
+  3: 'FFB6E666', // Wed — green
+  4: 'FFFEA86F', // Thu — orange
+  5: 'FFA1CDDF', // Fri — sky blue
+  6: 'FFD0AEEF', // Sat — lavender
 };
 const DOW_TEXT: Record<number, string> = {
-  0: 'FFFFFFFF', 1: 'FF000000', 2: 'FFFFFFFF', 3: 'FFFFFFFF',
-  4: 'FFFFFFFF', 5: 'FFFFFFFF', 6: 'FFFFFFFF',
+  0: 'FF7F1D1D', // Sun — dark red
+  1: 'FF713F12', // Mon — dark amber
+  2: 'FF831843', // Tue — dark pink
+  3: 'FF3B5E0A', // Wed — dark green
+  4: 'FF7C2D12', // Thu — dark orange
+  5: 'FF0C4A6E', // Fri — dark blue
+  6: 'FF4C1D95', // Sat — dark violet
 };
 
 // Shift-type header & cell bg  (header / cell tint)
 const PAL = {
-  chao:  { hdr: 'FFA7F3D0', hdrText: 'FF064E3B', cell: 'FFECFDF5' },   // emerald
-  bai:   { hdr: 'FFFED7AA', hdrText: 'FF7C2D12', cell: 'FFFFF7ED' },   // orange
-  rung:  { hdr: 'FFFECDD3', hdrText: 'FF9F1239', cell: 'FFFFF1F2' },   // rose
-  duek:  { hdr: 'FFC7D2FE', hdrText: 'FF3730A3', cell: 'FFEEF2FF' },   // indigo
+  chao:  { hdr: 'FF9FDCE0', hdrText: 'FF164E63', cell: 'FFE8F9FA' },   // cyan (เช้า)
+  bai:   { hdr: 'FF9E76B4', hdrText: 'FF3B0764', cell: 'FFF3EDF8' },   // purple (บ่าย)
+  rung:  { hdr: 'FFFFCA72', hdrText: 'FF78350F', cell: 'FFFEF3DC' },   // amber (รุ่งอรุณ)
+  duek:  { hdr: 'FF99ABFF', hdrText: 'FF1E1B4B', cell: 'FFEEF0FF' },   // periwinkle (ดึก)
   date:  { hdr: 'FFF1F5F9', hdrText: 'FF334155', cell: 'FFF1F5F9' },   // slate
 };
 
