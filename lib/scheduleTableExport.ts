@@ -309,14 +309,14 @@ function renderWeek(
       set(0, c5, day.date, { font: dateFont, fill: dow === 0 ? 'FFFEE2E2' : PAL.date.hdr }); // red-100 for Sunday
 
       // ROW 1-2: โครงการ merged, SURG 2 rows, MED separate rows, บ่าย separate rows
-      merge(1, c1, 2, c1, day.project, { font: nameFont, fill: PAL.chao.cell });
-      set(1, c2, day.surg1, { font: nameFont, fill: PAL.chao.cell });
-      set(2, c2, day.surg2, { font: nameFont, fill: PAL.chao.cell });
-      set(1, c3, day.medDC, { font: nameFont, fill: PAL.chao.cell });
-      set(2, c3, day.medCont, { font: nameFont, fill: PAL.chao.cell });
+      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      set(1, c2, day.surg1, { font: nameFont });
+      set(2, c2, day.surg2, { font: nameFont });
+      set(1, c3, day.medDC, { font: nameFont });
+      set(2, c3, day.medCont, { font: nameFont });
       // บ่าย spans c4-c5
-      merge(1, c4, 1, c5, day.baiER, { font: nameFont, fill: PAL.bai.cell });
-      merge(2, c4, 2, c5, day.baiMED, { font: nameFont, fill: PAL.bai.cell });
+      merge(1, c4, 1, c5, day.baiER, { font: nameFont });
+      merge(2, c4, 2, c5, day.baiMED, { font: nameFont });
 
       // ROW 3: ER / Chemo / ดึก labels
       set(3, c1, 'ER', { font: hdrFont(PAL.chao), fill: PAL.chao.hdr });
@@ -324,11 +324,11 @@ function renderWeek(
       merge(3, c3, 3, c5, 'ดึก', { font: hdrFont(PAL.duek), fill: PAL.duek.hdr });
 
       // ROW 4-6: ER merged, Chemo 2 rows, ดึก merged
-      merge(4, c1, 6, c1, day.er, { font: nameFont, fill: PAL.chao.cell });
+      merge(4, c1, 6, c1, day.er, { font: nameFont });
       // Chemo: 2 sub-rows
-      merge(4, c2, 5, c2, day.chemo1, { font: nameFont, fill: PAL.chao.cell });
-      set(6, c2, day.chemo2, { font: nameFont, fill: PAL.chao.cell });
-      merge(4, c3, 6, c5, day.duek, { font: nameFont, fill: PAL.duek.cell });
+      merge(4, c2, 5, c2, day.chemo1, { font: nameFont });
+      set(6, c2, day.chemo2, { font: nameFont });
+      merge(4, c3, 6, c5, day.duek, { font: nameFont });
 
     } else if (holiday && !isWE) {
       // ══ Weekday holiday: 4 cols ══
@@ -343,12 +343,12 @@ function renderWeek(
       set(0, c4, day.date, { font: dateFont, fill: 'FFFEE2E2' });
 
       // ROW 1-2: SURG / MED / บ่าย content
-      set(1, c1, day.surg1,  { font: nameFont, fill: PAL.chao.cell });
-      set(2, c1, day.surg2,  { font: nameFont, fill: PAL.chao.cell });
-      set(1, c2, day.medDC,  { font: nameFont, fill: PAL.chao.cell });
-      set(2, c2, day.medCont,{ font: nameFont, fill: PAL.chao.cell });
-      merge(1, c3, 1, c4, day.baiER,  { font: nameFont, fill: PAL.bai.cell });
-      merge(2, c3, 2, c4, day.baiMED, { font: nameFont, fill: PAL.bai.cell });
+      set(1, c1, day.surg1,  { font: nameFont });
+      set(2, c1, day.surg2,  { font: nameFont });
+      set(1, c2, day.medDC,  { font: nameFont });
+      set(2, c2, day.medCont,{ font: nameFont });
+      merge(1, c3, 1, c4, day.baiER,  { font: nameFont });
+      merge(2, c3, 2, c4, day.baiMED, { font: nameFont });
 
       // ROW 3: headers bottom
       set(3, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: PAL.chao.hdr });
@@ -358,12 +358,12 @@ function renderWeek(
       // ROW 4: project | chemo1 (rows 4-5 merged) | ดึก (rows 4-6 merged)
       // ROW 5: ER sub-label | (chemo1 cont.) |
       // ROW 6: er content  | chemo2          |
-      set(4, c1, day.project, { font: nameFont,        fill: PAL.chao.cell });
+      set(4, c1, day.project, { font: nameFont });
       set(5, c1, 'ER',        { font: hdrFont(PAL.chao), fill: PAL.chao.hdr });
-      set(6, c1, day.er,      { font: nameFont,        fill: PAL.chao.cell });
-      merge(4, c2, 5, c2, day.chemo1, { font: nameFont, fill: PAL.chao.cell });
-      set(6, c2, day.chemo2,           { font: nameFont, fill: PAL.chao.cell });
-      merge(4, c3, 6, c4, day.duek,   { font: nameFont, fill: PAL.duek.cell });
+      set(6, c1, day.er,      { font: nameFont });
+      merge(4, c2, 5, c2, day.chemo1, { font: nameFont });
+      set(6, c2, day.chemo2,           { font: nameFont });
+      merge(4, c3, 6, c4, day.duek,   { font: nameFont });
 
     } else if (dow >= 1 && dow <= 4) {
       // ══ Mon-Thu: 4 cols — โครงการ | SMC | บ่าย | date ══
@@ -375,24 +375,24 @@ function renderWeek(
       set(0, c4, day.date, { font: dateFont, fill: PAL.date.hdr });
 
       // โครงการ merged rows 1-2
-      merge(1, c1, 2, c1, day.baiProject, { font: nameFont, fill: PAL.bai.cell });
+      merge(1, c1, 2, c1, day.baiProject, { font: nameFont });
       // SMC: 2 rows
-      set(1, c2, day.smc1, { font: nameFont, fill: PAL.bai.cell });
-      set(2, c2, day.smc2, { font: nameFont, fill: PAL.bai.cell });
+      set(1, c2, day.smc1, { font: nameFont });
+      set(2, c2, day.smc2, { font: nameFont });
       // บ่าย ER/MED span c3-c4
-      merge(1, c3, 1, c4, day.baiER, { font: nameFont, fill: PAL.bai.cell });
-      merge(2, c3, 2, c4, day.baiMED, { font: nameFont, fill: PAL.bai.cell });
+      merge(1, c3, 1, c4, day.baiER, { font: nameFont });
+      merge(2, c3, 2, c4, day.baiMED, { font: nameFont });
 
       // รุ่งอรุณ / ดึก
       set(3, c1, 'รุ่งอรุณ', { font: hdrFont(PAL.rung), fill: PAL.rung.hdr });
       merge(3, c2, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: PAL.duek.hdr });
 
       // รุ่งอรุณ rows 4-6
-      set(4, c1, day.rungOPD, { font: nameFont, fill: PAL.rung.cell });
-      set(5, c1, day.rungER, { font: nameFont, fill: PAL.rung.cell });
-      set(6, c1, day.rungHIV, { font: nameFont, fill: PAL.rung.cell });
+      set(4, c1, day.rungOPD, { font: nameFont });
+      set(5, c1, day.rungER, { font: nameFont });
+      set(6, c1, day.rungHIV, { font: nameFont });
       // ดึก merged
-      merge(4, c2, 6, c4, day.duek, { font: nameFont, fill: PAL.duek.cell });
+      merge(4, c2, 6, c4, day.duek, { font: nameFont });
 
     } else {
       // ══ Friday: 4 cols — โครงการ | บ่าย(merged) | date ══
@@ -402,17 +402,17 @@ function renderWeek(
       merge(0, c2, 0, c3, 'บ่าย', { font: hdrFont(PAL.bai), fill: PAL.bai.hdr });
       set(0, c4, day.date, { font: dateFont, fill: PAL.date.hdr });
 
-      merge(1, c1, 2, c1, day.baiProject, { font: nameFont, fill: PAL.bai.cell });
-      merge(1, c2, 1, c4, day.baiER, { font: nameFont, fill: PAL.bai.cell });
-      merge(2, c2, 2, c4, day.baiMED, { font: nameFont, fill: PAL.bai.cell });
+      merge(1, c1, 2, c1, day.baiProject, { font: nameFont });
+      merge(1, c2, 1, c4, day.baiER, { font: nameFont });
+      merge(2, c2, 2, c4, day.baiMED, { font: nameFont });
 
       set(3, c1, 'รุ่งอรุณ', { font: hdrFont(PAL.rung), fill: PAL.rung.hdr });
       merge(3, c2, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: PAL.duek.hdr });
 
-      set(4, c1, day.rungOPD, { font: nameFont, fill: PAL.rung.cell });
-      set(5, c1, day.rungER, { font: nameFont, fill: PAL.rung.cell });
-      set(6, c1, '', { font: nameFont, fill: PAL.rung.cell });
-      merge(4, c2, 6, c4, day.duek, { font: nameFont, fill: PAL.duek.cell });
+      set(4, c1, day.rungOPD, { font: nameFont });
+      set(5, c1, day.rungER, { font: nameFont });
+      set(6, c1, '', { font: nameFont });
+      merge(4, c2, 6, c4, day.duek, { font: nameFont });
     }
 
     // Reapply medium right border on day boundary (may have been overwritten by merges)
