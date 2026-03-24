@@ -18,7 +18,7 @@ const DOW_COLORS: Record<number, string> = {
   2: 'FFFFB1DC', // Tue — pink
   3: 'FFB6E666', // Wed — green
   4: 'FFFEA86F', // Thu — orange
-  5: 'FFA1CDDF', // Fri — sky blue
+  5: 'FFA1DDFF', // Fri — sky blue
   6: 'FFD0AEEF', // Sat — lavender
 };
 const DOW_TEXT: Record<number, string> = {
