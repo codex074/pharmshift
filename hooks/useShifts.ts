@@ -240,8 +240,9 @@ export function useSwapRequests(userId?: string) {
 
     }
 
-    // Send push notification to requester (swap accepted)
+    // Notify requester (push + in-app) — swap accepted
     const acceptorName = (req.target_user as any)?.f_name || (req.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
+    const acceptTitle = '✅ คำขอของคุณได้รับการอนุมัติ';
     const acceptBody = req.request_type === 'swap'
       ? `${acceptorName} ยอมรับมาอยู่เวรแทนคุณแล้ว กรุณาตรวจสอบตารางเวร`
       : `${acceptorName} อนุมัติให้คุณอยู่เวรแทนแล้ว กรุณาตรวจสอบตารางเวร`;
@@ -250,12 +251,19 @@ export function useSwapRequests(userId?: string) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         userId: req.requester_id,
-        title: '✅ คำขอของคุณได้รับการอนุมัติ',
+        title: acceptTitle,
         body: acceptBody,
         url: '/calendar',
         tag: `swap-${req.id}`,
       }),
-    }).catch(() => {}); // fire-and-forget
+    }).catch(() => {});
+    supabase.from('notifications').insert({
+      user_id: req.requester_id,
+      type: 'swap_result',
+      title: acceptTitle,
+      body: acceptBody,
+      url: '/calendar',
+    }).then(({ error: nErr }) => { if (nErr) console.error('[Accept] in-app notif error:', nErr); });
 
     // Auto-cancel other pending requests for the same shift(s)
     const shiftIdsToCancel = [req.shift_id];
@@ -286,17 +294,29 @@ export function useSwapRequests(userId?: string) {
       );
 
       if (notifyIds.length) {
+        const autoCancelTitle = '⚠️ คำขอถูกยกเลิกอัตโนมัติ';
+        const autoCancelBody = 'เวรนี้ได้ถูกดำเนินการแล้ว คำขอของคุณจึงถูกยกเลิกโดยอัตโนมัติ';
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userIds: notifyIds,
-            title: '⚠️ คำขอถูกยกเลิกอัตโนมัติ',
-            body: 'เวรนี้ได้ถูกดำเนินการแล้ว คำขอของคุณจึงถูกยกเลิกโดยอัตโนมัติ',
+            title: autoCancelTitle,
+            body: autoCancelBody,
             url: '/calendar',
             tag: `swap-auto-cancel-${req.shift_id}`,
           }),
         }).catch(() => {});
+        // In-app notifications for all affected users
+        supabase.from('notifications').insert(
+          notifyIds.map(uid => ({
+            user_id: uid,
+            type: 'swap_result',
+            title: autoCancelTitle,
+            body: autoCancelBody,
+            url: '/calendar',
+          }))
+        ).then(({ error: nErr }) => { if (nErr) console.error('[AutoCancel] in-app notif error:', nErr); });
       }
     }
 
@@ -313,9 +333,10 @@ export function useSwapRequests(userId?: string) {
       .update({ status: 'rejected', requester_read: false })
       .eq('id', swapId);
 
-    // Send push notification to requester (swap rejected)
+    // Notify requester (push + in-app) — swap rejected
     if (reqData) {
       const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
+      const rejectTitle = '❌ คำขอของคุณถูกปฏิเสธ';
       const rejectBody = reqData.request_type === 'swap'
         ? `${rejectorName} ไม่สามารถมาอยู่เวรแทนคุณได้`
         : `${rejectorName} ปฏิเสธคำขออยู่เวรแทนของคุณ`;
@@ -324,12 +345,19 @@ export function useSwapRequests(userId?: string) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: reqData.requester_id,
-          title: '❌ คำขอของคุณถูกปฏิเสธ',
+          title: rejectTitle,
           body: rejectBody,
           url: '/calendar',
           tag: `swap-${swapId}`,
         }),
       }).catch(() => {});
+      supabase.from('notifications').insert({
+        user_id: reqData.requester_id,
+        type: 'swap_result',
+        title: rejectTitle,
+        body: rejectBody,
+        url: '/calendar',
+      }).then(({ error: nErr }) => { if (nErr) console.error('[Reject] in-app notif error:', nErr); });
     }
 
     await fetchSwaps();
