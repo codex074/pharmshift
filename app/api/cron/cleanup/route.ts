@@ -17,80 +17,109 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // 1) Delete swap_requests older than 2 months
+  // ── 1) Delete swap_requests older than 2 months ────────────────────────
   const cutoff2m = new Date();
   cutoff2m.setMonth(cutoff2m.getMonth() - 2);
-  const cutoff2mISO = cutoff2m.toISOString();
 
   const { error: err2m, count: count2m } = await supabase
     .from('swap_requests')
     .delete({ count: 'exact' })
-    .lt('created_at', cutoff2mISO);
+    .lt('created_at', cutoff2m.toISOString());
 
-  if (err2m) {
-    console.error('[cron/cleanup] swap_requests 2-month delete error:', err2m);
-  }
+  if (err2m) console.error('[cron/cleanup] swap_requests 2-month delete error:', err2m);
 
-  // 2) Delete rejected/cancelled swap_requests older than 1 day
-  const cutoff1d = new Date();
-  cutoff1d.setDate(cutoff1d.getDate() - 1);
-  const cutoff1dISO = cutoff1d.toISOString();
+  // ── 2) Delete rejected swap_requests older than 48 hours ───────────────
+  const cutoff48h = new Date();
+  cutoff48h.setHours(cutoff48h.getHours() - 48);
 
-  const { error: err1d, count: count1d } = await supabase
+  const { error: err48h, count: count48h } = await supabase
     .from('swap_requests')
     .delete({ count: 'exact' })
     .eq('status', 'rejected')
-    .lt('created_at', cutoff1dISO);
+    .lt('updated_at', cutoff48h.toISOString());
 
-  if (err1d) {
-    console.error('[cron/cleanup] swap_requests rejected 1-day delete error:', err1d);
+  if (err48h) console.error('[cron/cleanup] swap_requests rejected 48h delete error:', err48h);
+
+  // ── 3) Clean up multi-hop accepted swaps ───────────────────────────────
+  // For each shift that has been swapped more than once, keep only the
+  // most recent accepted swap_request (current owner ← previous owner).
+  // Older intermediate hops are redundant — original_user_id on the
+  // shifts table already tracks the original assignee permanently.
+  let countChain = 0;
+
+  const { data: accepted, error: errFetch } = await supabase
+    .from('swap_requests')
+    .select('id, shift_id, created_at')
+    .eq('status', 'accepted')
+    .order('created_at', { ascending: false });
+
+  if (errFetch) {
+    console.error('[cron/cleanup] fetch accepted error:', errFetch);
+  } else if (accepted && accepted.length > 0) {
+    // Walk newest → oldest; first occurrence per shift_id is the one to keep
+    const keepIds = new Set<string>();
+    const seenShifts = new Set<string>();
+
+    for (const req of accepted) {
+      if (!seenShifts.has(req.shift_id)) {
+        seenShifts.add(req.shift_id);
+        keepIds.add(req.id);
+      }
+    }
+
+    const idsToDelete = accepted
+      .filter(r => !keepIds.has(r.id))
+      .map(r => r.id);
+
+    if (idsToDelete.length > 0) {
+      const { error: errChain, count } = await supabase
+        .from('swap_requests')
+        .delete({ count: 'exact' })
+        .in('id', idsToDelete);
+
+      if (errChain) console.error('[cron/cleanup] chain delete error:', errChain);
+      else countChain = count ?? 0;
+    }
   }
 
-  console.log(`[cron/cleanup] Deleted ${count2m ?? 0} old (>2mo) + ${count1d ?? 0} rejected (>1d) swap_requests`);
+  console.log(
+    `[cron/cleanup] Deleted: ${count2m ?? 0} old(>2mo) | ${count48h ?? 0} rejected(>48h) | ${countChain} chain-hops`,
+  );
 
-  // 3) Delete shift_reminder notifications older than 12 hours
+  // ── 4) Delete shift_reminder notifications older than 12 hours ─────────
   const cutoff12h = new Date();
   cutoff12h.setHours(cutoff12h.getHours() - 12);
-  const cutoff12hISO = cutoff12h.toISOString();
 
   const { error: errReminder, count: countReminder } = await supabase
     .from('notifications')
     .delete({ count: 'exact' })
     .eq('type', 'shift_reminder')
-    .lt('created_at', cutoff12hISO);
+    .lt('created_at', cutoff12h.toISOString());
 
-  if (errReminder) {
-    console.error('[cron/cleanup] notifications shift_reminder 12h delete error:', errReminder);
-  }
+  if (errReminder) console.error('[cron/cleanup] notifications shift_reminder 12h delete error:', errReminder);
 
-  // 4) Delete all other notifications older than 1 week
+  // ── 5) Delete all other notifications older than 1 week ────────────────
   const cutoff1w = new Date();
   cutoff1w.setDate(cutoff1w.getDate() - 7);
-  const cutoff1wISO = cutoff1w.toISOString();
 
   const { error: errNotif, count: countNotif } = await supabase
     .from('notifications')
     .delete({ count: 'exact' })
     .neq('type', 'shift_reminder')
-    .lt('created_at', cutoff1wISO);
+    .lt('created_at', cutoff1w.toISOString());
 
-  if (errNotif) {
-    console.error('[cron/cleanup] notifications 1-week delete error:', errNotif);
-  }
+  if (errNotif) console.error('[cron/cleanup] notifications 1-week delete error:', errNotif);
 
   console.log(
-    `[cron/cleanup] Deleted ${countReminder ?? 0} shift_reminder (>12h) + ${countNotif ?? 0} other notifications (>1w)`
+    `[cron/cleanup] Deleted: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} notifications(>1w)`,
   );
 
   return NextResponse.json({
     ok: true,
-    deleted_old: count2m ?? 0,
-    deleted_rejected: count1d ?? 0,
-    cutoff_2months: cutoff2mISO,
-    cutoff_1day: cutoff1dISO,
+    deleted_old_2months: count2m ?? 0,
+    deleted_rejected_48h: count48h ?? 0,
+    deleted_chain_hops: countChain,
     deleted_reminder_notifs: countReminder ?? 0,
     deleted_other_notifs: countNotif ?? 0,
-    cutoff_12h: cutoff12hISO,
-    cutoff_1week: cutoff1wISO,
   });
 }
