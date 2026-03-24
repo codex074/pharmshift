@@ -13,7 +13,7 @@ import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionSta
 function shiftLabel(s: any): string {
   if (!s) return '?';
   const d    = s.date ? format(new Date(s.date + 'T00:00:00'), 'd/M') : '';
-  const dept = s.department?.name || '';
+  const dept = s.shift_type === 'ดึก' ? '' : (s.department?.name || '');
   const pos  = s.position || '';
   return `${s.shift_type}${dept ? ` ${dept}` : ''}${pos ? ` (${pos})` : ''}${d ? ` ${d}` : ''}`;
 }
