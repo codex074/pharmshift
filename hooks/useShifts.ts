@@ -4,6 +4,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
 import { toMonthYear, shiftsOverlap } from '@/lib/utils';
+import { format } from 'date-fns';
+import { th } from 'date-fns/locale';
+
+/** "เวรดึก 15 ม.ค. (ER)" — for notification body text */
+function fmtShiftNotif(s: Shift | null | undefined): string {
+  if (!s) return 'เวรดังกล่าว';
+  const date = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
+  const dept = (s as any).department?.name || '';
+  return `เวร${s.shift_type}${date ? ` ${date}` : ''}${dept ? ` (${dept})` : ''}`;
+}
 
 export function useShifts(year: number, month: number) {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -232,13 +242,13 @@ export function useSwapRequests(userId?: string) {
     }
 
     // Notify requester (push + in-app) — accepted
-    const acceptorName = (req.target_user as any)?.f_name || (req.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
+    const acceptorName = (req.target_user as any)?.nickname || (req.target_user as any)?.f_name || 'เพื่อนร่วมงาน';
     const acceptTitle = req.request_type === 'swap'
-      ? '✅ คำขอแลกเวรได้รับการอนุมัติ'
-      : '✅ คำขอโอนเวรได้รับการอนุมัติ';
+      ? '✅ แลกเวรสำเร็จ'
+      : '✅ โอนเวรสำเร็จ';
     const acceptBody = req.request_type === 'swap'
-      ? `${acceptorName} ยอมรับการแลกเวรแล้ว กรุณาตรวจสอบตารางเวร`
-      : `${acceptorName} อนุมัติการโอนเวรแล้ว กรุณาตรวจสอบตารางเวร`;
+      ? `${acceptorName} ยอมรับการแลกเวรแล้ว — คุณได้รับ ${fmtShiftNotif(req.shift)}`
+      : `${acceptorName} รับ ${fmtShiftNotif(req.shift)} แล้ว`;
     fetch('/api/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -288,7 +298,7 @@ export function useSwapRequests(userId?: string) {
 
       if (notifyIds.length) {
         const autoCancelTitle = '⚠️ คำขอถูกยกเลิกอัตโนมัติ';
-        const autoCancelBody = 'เวรนี้ได้ถูกดำเนินการแล้ว คำขอของคุณจึงถูกยกเลิกโดยอัตโนมัติ';
+        const autoCancelBody = `${fmtShiftNotif(req.shift)} ถูกดำเนินการโดยผู้อื่นแล้ว คำขอของคุณจึงถูกยกเลิก`;
         fetch('/api/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -330,11 +340,11 @@ export function useSwapRequests(userId?: string) {
     if (reqData) {
       const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
       const rejectTitle = reqData.request_type === 'swap'
-        ? '❌ คำขอแลกเวรถูกปฏิเสธ'
-        : '❌ คำขอโอนเวรถูกปฏิเสธ';
+        ? '❌ ปฏิเสธคำขอแลกเวร'
+        : '❌ ปฏิเสธคำขอโอนเวร';
       const rejectBody = reqData.request_type === 'swap'
-        ? `${rejectorName} ปฏิเสธคำขอแลกเวรของคุณ`
-        : `${rejectorName} ปฏิเสธคำขอโอนเวรของคุณ`;
+        ? `${rejectorName} ไม่ยอมรับการแลก ${fmtShiftNotif(reqData.target_shift as Shift)} กับ ${fmtShiftNotif(reqData.shift as Shift)}`
+        : `${rejectorName} ไม่รับ ${fmtShiftNotif(reqData.shift as Shift)}`;
       fetch('/api/push/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
