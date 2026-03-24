@@ -37,6 +37,7 @@ export async function createSession(user: Partial<User>) {
 
   cookies().set(SESSION_COOKIE_NAME, session, {
     expires,
+    maxAge: 30 * 24 * 60 * 60, // seconds — fallback for browsers that prefer maxAge
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
