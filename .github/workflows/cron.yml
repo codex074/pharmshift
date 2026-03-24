@@ -39,16 +39,28 @@ jobs:
         (github.event.schedule == '0 1 * * *' || github.event.schedule == '0 11 * * *')
       )
     steps:
+      - name: Determine run type
+        id: run_type
+        run: |
+          SCHEDULE="${{ github.event.schedule }}"
+          if [ "$SCHEDULE" = "0 1 * * *" ]; then
+            echo "run=morning" >> $GITHUB_OUTPUT
+          else
+            echo "run=evening" >> $GITHUB_OUTPUT
+          fi
+
       - name: Call shift-reminders API
         run: |
+          RUN_TYPE="${{ steps.run_type.outputs.run }}"
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
-            -X GET "${{ secrets.APP_URL }}/api/cron/shift-reminders" \
+            -X GET "${{ secrets.APP_URL }}/api/cron/shift-reminders?run=${RUN_TYPE}" \
             -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
 
+          echo "Run type : $RUN_TYPE"
           echo "HTTP Status: $RESPONSE"
 
           if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
-            echo "✅ Shift reminders sent successfully"
+            echo "✅ Shift reminders ($RUN_TYPE) sent successfully"
           else
             echo "❌ Failed with status $RESPONSE"
             exit 1

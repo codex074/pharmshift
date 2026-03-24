@@ -67,15 +67,21 @@ export async function GET(req: NextRequest) {
     const bkk = getBangkokNow();
     const bkkHour = bkk.hour;
 
-    // Allow admin test endpoint to override which run to simulate
-    const testRun = req.nextUrl.searchParams.get('testRun') ?? req.headers.get('x-test-run');
+    // "run" param is set explicitly by GitHub Actions workflow (morning / evening).
+    // "testRun" is the legacy admin-test override (same values).
+    // If neither is provided, fall back to Bangkok-hour heuristic as last resort.
+    const runParam = req.nextUrl.searchParams.get('run')
+      ?? req.nextUrl.searchParams.get('testRun')
+      ?? req.headers.get('x-test-run');
 
     // Determine which date and which shift types to remind
     let targetDate: string;
     let excludeDawn = false; // exclude รุ่งอรุณ?
     let timeLabel: string;
 
-    const isMorningRun = testRun === 'morning' || (!testRun && bkkHour >= 6 && bkkHour < 12);
+    const isMorningRun =
+      runParam === 'morning' ||
+      (!runParam && bkkHour >= 6 && bkkHour < 14); // widened fallback window
 
     if (isMorningRun) {
       // Morning run (08:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
