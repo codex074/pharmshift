@@ -374,31 +374,27 @@ export function SwapModal({
                     const inMonth = isSameMonth(day, shiftDate);
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const hasMyShift = inMonth && !!myShiftsByDate[dateStr];
-                    const isTargetDate = dateStr === shift.date;
                     const isSelected = dateStr === selectedDate;
 
                     return (
                       <button
                         key={i}
-                        disabled={!hasMyShift || isTargetDate}
+                        disabled={!hasMyShift}
                         onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                         className={cn(
                           'relative flex flex-col items-center justify-center py-1.5 min-h-[2.2rem] transition-all',
-                          hasMyShift && !isTargetDate
-                            ? 'cursor-pointer hover:bg-blue-50'
-                            : 'cursor-default',
+                          hasMyShift ? 'cursor-pointer hover:bg-blue-50' : 'cursor-default',
                           isSelected && 'bg-blue-100 rounded-lg',
                           !inMonth && 'opacity-0 pointer-events-none',
                         )}>
                         <span className={cn('text-xs font-medium leading-none',
                           !inMonth ? 'text-gray-300' :
-                          isTargetDate ? 'text-gray-300' :
                           isSelected ? 'text-blue-700 font-bold' :
                           hasMyShift ? 'text-blue-600 font-semibold' :
                           'text-gray-500')}>
                           {format(day, 'd')}
                         </span>
-                        {hasMyShift && !isTargetDate && inMonth && (
+                        {hasMyShift && inMonth && (
                           <span className={cn(
                             'w-1.5 h-1.5 rounded-full mt-0.5',
                             isSelected ? 'bg-blue-600' : 'bg-blue-400',
@@ -423,7 +419,7 @@ export function SwapModal({
                   <p className="text-xs text-gray-500 font-medium">
                     เวรของคุณวันที่ {format(new Date(selectedDate + 'T00:00:00'), 'd MMMM', { locale: th })}:
                   </p>
-                  {myShiftsOnSelectedDate.map(s => {
+                  {myShiftsOnSelectedDate.filter(s => s.id !== shift.id).map(s => {
                     const sDept = (s.department as any)?.name || '';
                     const isSelected = selectedMyShift?.id === s.id;
                     return (
