@@ -78,8 +78,8 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
   const [loading, setLoading] = useState(false);
   const [errorDesc, setErrorDesc] = useState<string[]>([]);
   const [successMsg, setSuccessMsg] = useState('');
-  const [month, setMonth] = useState<number>(new Date().getMonth() + 1);
-  const [year, setYear] = useState<number>(new Date().getFullYear());
+  const [month, setMonth] = useState<number | null>(null);
+  const [year, setYear] = useState<number | null>(null);
 
   // Overwrite confirmation state
   const [showOverwriteConfirm, setShowOverwriteConfirm] = useState(false);
@@ -107,6 +107,10 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
   };
 
   const doUpload = async (overwrite = false, adminPassword?: string) => {
+    if (!month || !year) {
+      toast.error('กรุณาเลือกเดือนและปีก่อน');
+      return;
+    }
     if (!file) {
       toast.error('กรุณาเลือกไฟล์ Excel ก่อน');
       return;
@@ -274,11 +278,12 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">เดือน</label>
-              <select 
-                value={month} 
-                onChange={(e) => { setMonth(parseInt(e.target.value)); setShowOverwriteConfirm(false); }}
+              <select
+                value={month ?? ''}
+                onChange={(e) => { setMonth(e.target.value ? parseInt(e.target.value) : null); setShowOverwriteConfirm(false); }}
                 className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
               >
+                <option value="" disabled>-- เลือกเดือน --</option>
                 {thaiMonths.map((name, i) => (
                   <option key={i} value={i + 1}>{name}</option>
                 ))}
@@ -286,11 +291,12 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
             </div>
             <div className="space-y-1">
               <label className="block text-sm font-medium text-gray-700">ปี</label>
-              <select 
-                value={year} 
-                onChange={(e) => { setYear(parseInt(e.target.value)); setShowOverwriteConfirm(false); }}
+              <select
+                value={year ?? ''}
+                onChange={(e) => { setYear(e.target.value ? parseInt(e.target.value) : null); setShowOverwriteConfirm(false); }}
                 className="w-full bg-white border border-gray-300 rounded-xl px-4 py-2.5 text-gray-800 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 transition-all shadow-sm"
               >
+                <option value="" disabled>-- เลือกปี --</option>
                 {[currentYear - 1, currentYear, currentYear + 1, currentYear + 2].map(y => (
                   <option key={y} value={y}>{y + 543}</option>
                 ))}
@@ -330,7 +336,7 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
                   ⚠️ พบข้อมูลเวรเดิมในเดือนนี้
                 </div>
                 <p className="text-sm mb-1">
-                  เดือน <strong>{thaiMonths[month - 1]} {year + 543}</strong> มีเวรอยู่แล้ว <strong className="text-red-600">{existingCount} รายการ</strong>
+                  เดือน <strong>{month ? thaiMonths[month - 1] : ''} {year ? year + 543 : ''}</strong> มีเวรอยู่แล้ว <strong className="text-red-600">{existingCount} รายการ</strong>
                 </p>
                 <p className="text-sm text-amber-700">
                   หากยืนยัน ข้อมูลเวรเดิมทั้งหมดจะถูก <strong className="text-red-600">ลบทิ้ง</strong> และแทนที่ด้วยข้อมูลจากไฟล์ใหม่ <strong>การกระทำนี้ไม่สามารถย้อนกลับได้</strong>
