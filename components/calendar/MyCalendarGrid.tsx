@@ -125,21 +125,21 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                     className={cn(
                       'min-h-[72px] sm:min-h-[120px] p-1 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
                       !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
-                      day.isCurrentMonth && 'hover:bg-violet-50/30 cursor-pointer text-gray-700',
-                      day.isToday && 'bg-violet-50/50 ring-[4px] ring-red-500 [.exporting-pdf_&]:ring-0 ring-inset z-20'
+                      day.isCurrentMonth && 'hover:bg-purple-50/40 cursor-pointer text-gray-700',
+                      day.isToday && 'bg-pink-50/60 ring-[3px] ring-pink-300 [.exporting-pdf_&]:ring-0 ring-inset z-20'
                     )}
                   >
                     {/* Day Number */}
                     <div className="flex items-center justify-between mb-1 sm:mb-2">
                       <span className={cn(
                         'text-xs sm:text-base font-medium w-6 h-6 sm:w-9 sm:h-9 flex items-center justify-center rounded-full shrink-0',
-                        day.isToday && 'bg-violet-600 text-white shadow-sm',
+                        day.isToday && 'bg-pink-400 text-white shadow-sm',
                         !day.isToday && isWeekend && day.isCurrentMonth && 'text-red-500'
                       )}>
                         {dayNum}
                       </span>
                       {hasShifts && (
-                        <span className="text-[8px] sm:text-[10px] font-medium text-violet-600 bg-violet-100 px-0.5 sm:px-1.5 py-0.5 rounded-full leading-none">
+                        <span className="text-[8px] sm:text-[10px] font-medium text-purple-500 bg-purple-100 px-0.5 sm:px-1.5 py-0.5 rounded-full leading-none">
                           {day.shifts.length}
                         </span>
                       )}
@@ -188,19 +188,28 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                           mobileLabel = shift.shift_type;
                         }
 
+                                        // Pastel color per shift type
+                        const pillStyle =
+                          shift.shift_type === 'เช้า'     ? 'bg-amber-100  border-amber-300  text-amber-800  hover:bg-amber-200'  :
+                          shift.shift_type === 'บ่าย'     ? 'bg-sky-100    border-sky-300    text-sky-800    hover:bg-sky-200'    :
+                          shift.shift_type === 'ดึก'      ? 'bg-indigo-100 border-indigo-300 text-indigo-800 hover:bg-indigo-200' :
+                          shift.shift_type === 'รุ่งอรุณ' ? 'bg-rose-100   border-rose-300   text-rose-800   hover:bg-rose-200'   :
+                                                            'bg-violet-100 border-violet-300 text-violet-800 hover:bg-violet-200';
+
                         return (
                           <div
                             key={i}
                             onClick={onShiftClick ? (e) => { e.stopPropagation(); onShiftClick(shift); } : undefined}
                             className={cn(
-                              'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-sm sm:shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',
+                              'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',
+                              pillStyle,
                               onShiftClick && 'cursor-pointer active:scale-95',
                               isPending && 'ring-2 ring-amber-400 ring-offset-1',
                             )}
                           >
-                            <span className="font-bold text-white leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
-                            <span className="font-bold text-white leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
-                            {/* ── Improvement 2: Pending dot ── */}
+                            <span className="font-semibold leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
+                            <span className="font-semibold leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
+                            {/* Pending dot */}
                             {isPending && (
                               <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 rounded-full animate-pulse shadow-sm [.exporting-pdf_&]:hidden" />
                             )}
