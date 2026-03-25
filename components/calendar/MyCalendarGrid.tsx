@@ -76,10 +76,10 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
   const rungCount = shifts.filter(s => s.shift_type === 'รุ่งอรุณ').length;
 
   const statPills = [
-    { label: 'เช้า',     count: chaoCount, color: 'bg-amber-100  text-amber-700'  },
-    { label: 'บ่าย',     count: baiCount,  color: 'bg-orange-100 text-orange-700' },
-    { label: 'ดึก',      count: duekCount, color: 'bg-indigo-100 text-indigo-700' },
-    { label: 'รุ่งอรุณ', count: rungCount, color: 'bg-rose-100   text-rose-700'   },
+    { label: 'รุ่งอรุณ', count: rungCount, color: 'bg-[#FEF3DC] text-amber-900  border border-[#FFCA72]' },
+    { label: 'เช้า',     count: chaoCount, color: 'bg-[#E8F9FA] text-teal-900   border border-[#9FDCE0]' },
+    { label: 'บ่าย',     count: baiCount,  color: 'bg-[#F3EDF8] text-purple-900 border border-[#9E76B4]' },
+    { label: 'ดึก',      count: duekCount, color: 'bg-[#EEF0FF] text-indigo-900 border border-[#99ABFF]' },
   ].filter(p => p.count > 0);
 
   return (
@@ -188,12 +188,12 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                           mobileLabel = shift.shift_type;
                         }
 
-                                        // Pastel color per shift type
+                                        // Colors matching the main CalendarGrid (SHIFT_HDR / CELL_BG)
                         const pillStyle =
-                          shift.shift_type === 'เช้า'     ? 'bg-amber-100  border-amber-300  text-amber-800  hover:bg-amber-200'  :
-                          shift.shift_type === 'บ่าย'     ? 'bg-sky-100    border-sky-300    text-sky-800    hover:bg-sky-200'    :
-                          shift.shift_type === 'ดึก'      ? 'bg-indigo-100 border-indigo-300 text-indigo-800 hover:bg-indigo-200' :
-                          shift.shift_type === 'รุ่งอรุณ' ? 'bg-rose-100   border-rose-300   text-rose-800   hover:bg-rose-200'   :
+                          shift.shift_type === 'เช้า'     ? 'bg-[#E8F9FA] border-[#9FDCE0] text-teal-900   hover:bg-[#c8eef1]' :
+                          shift.shift_type === 'บ่าย'     ? 'bg-[#F3EDF8] border-[#9E76B4] text-purple-900 hover:bg-[#e3d5f0]' :
+                          shift.shift_type === 'ดึก'      ? 'bg-[#EEF0FF] border-[#99ABFF] text-indigo-900 hover:bg-[#d8dcff]' :
+                          shift.shift_type === 'รุ่งอรุณ' ? 'bg-[#FEF3DC] border-[#FFCA72] text-amber-900  hover:bg-[#fde8b4]' :
                                                             'bg-violet-100 border-violet-300 text-violet-800 hover:bg-violet-200';
 
                         return (
