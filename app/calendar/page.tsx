@@ -13,6 +13,7 @@ import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCale
 import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { MobileCalendarGrid } from '@/components/calendar/MobileCalendarGrid';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
+import { ShiftDetailModal } from '@/components/calendar/ShiftDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
 import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
@@ -43,6 +44,7 @@ export default function CalendarPage() {
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null); // kept for MyCalendarGrid only
+  const [detailShift, setDetailShift] = useState<import('@/lib/types').Shift | null>(null);
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -484,6 +486,7 @@ export default function CalendarPage() {
                 shifts={myShifts}
                 holidays={holidays}
                 onDayClick={handleDayClick}
+                onShiftClick={(s) => setDetailShift(s)}
               />
             ) : isMobile ? (
               <MobileCalendarGrid
@@ -564,6 +567,15 @@ export default function CalendarPage() {
           คลิกชื่อตัวเองเพื่อโอนเวร · คลิกชื่อคนอื่นเพื่อขอแลกเวร
         </p>
       </main>
+
+      {/* Shift Detail Modal (เวรของฉัน) */}
+      {detailShift && currentUser && (
+        <ShiftDetailModal
+          shift={detailShift}
+          currentUserId={currentUser.id}
+          onClose={() => setDetailShift(null)}
+        />
+      )}
 
       {/* Swap Modal */}
       {selectedShift && (
