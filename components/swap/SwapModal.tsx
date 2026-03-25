@@ -317,9 +317,7 @@ export function SwapModal({
               <ArrowRightLeft className={cn('w-4 h-4',
                 mode === 'transfer' ? 'text-violet-600' : 'text-blue-600')} />
             </div>
-            <h2 className="font-semibold text-gray-900">
-              {mode === 'transfer' ? 'โอนเวร' : 'แลกเวร'}
-            </h2>
+            <h2 className="font-semibold text-gray-900">ส่งคำขอ</h2>
           </div>
           <button onClick={onClose}
             className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all">
