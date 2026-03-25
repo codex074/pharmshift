@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, HelpCircle } from 'lucide-react';
+import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, HelpCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
 import { userFullName, isAdminLike } from '@/lib/types';
@@ -16,6 +16,7 @@ interface HeaderProps {
   currentUser: UserType | null;
   pendingCount: number;
   onBellClick: () => void;
+  onRefresh?: () => Promise<void>;
   year: number;
   month: number;
   onMonthChange: (year: number, month: number) => void;
@@ -24,12 +25,13 @@ interface HeaderProps {
 }
 
 export function Header({
-  currentUser, pendingCount, onBellClick, year, month, onMonthChange, viewMode, onViewModeChange,
+  currentUser, pendingCount, onBellClick, onRefresh, year, month, onMonthChange, viewMode, onViewModeChange,
 }: HeaderProps) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -114,6 +116,18 @@ export function Header({
 
           {/* Right section – always visible */}
           <div className="flex items-center gap-1.5 ml-auto md:ml-0">
+            {/* Refresh button */}
+            {onRefresh && (
+              <button
+                onClick={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }}
+                disabled={refreshing}
+                title="โหลดข้อมูลใหม่"
+                className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-sky-50 text-gray-400 hover:text-sky-600 transition-all flex items-center justify-center disabled:opacity-50"
+              >
+                <RefreshCw className={cn("w-5 h-5", refreshing && "animate-spin")} />
+              </button>
+            )}
+
             {/* Help button */}
             <button
               onClick={() => setIsHelpOpen(true)}
