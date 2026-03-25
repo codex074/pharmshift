@@ -185,9 +185,13 @@ export function useSwapRequests(userId?: string) {
       const rejectorName = (reqData.target_user as any)?.f_name || (reqData.target_user as any)?.nickname || 'เพื่อนร่วมงาน';
       const rejectTitle = reqData.request_type === 'swap'
         ? '❌ ปฏิเสธคำขอแลกเวร'
+        : reqData.request_type === 'cover'
+        ? '❌ ปฏิเสธคำขออยู่เวรแทน'
         : '❌ ปฏิเสธคำขอโอนเวร';
       const rejectBody = reqData.request_type === 'swap'
         ? `${rejectorName} ไม่ยอมรับการแลก ${fmtShiftNotif(reqData.target_shift as Shift)} กับ ${fmtShiftNotif(reqData.shift as Shift)}`
+        : reqData.request_type === 'cover'
+        ? `${rejectorName} ไม่อนุมัติคำขออยู่เวรแทน ${fmtShiftNotif(reqData.shift as Shift)}`
         : `${rejectorName} ไม่รับ ${fmtShiftNotif(reqData.shift as Shift)}`;
       fetch('/api/push/send', {
         method: 'POST',

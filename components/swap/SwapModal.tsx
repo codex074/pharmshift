@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun,
-  Loader2, Search, AlertTriangle, Lock,
+  Loader2, Search, AlertTriangle, Lock, UserCheck,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ export function SwapModal({
   // ── Swap mode ────────────────────────────────────────────────────────
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedMyShift, setSelectedMyShift] = useState<Shift | null>(null);
+  const [pendingCoverSubmit, setPendingCoverSubmit] = useState(false);
 
   // ── Derived ──────────────────────────────────────────────────────────
   const isOwnShift = !!(currentUser && shift && currentUser.id === shift.user_id);
@@ -210,10 +211,58 @@ export function SwapModal({
     } finally { setLoading(false); }
   }
 
+  async function handleCoverSubmit() {
+    if (!currentUser || !shift) return;
+    if (!isMonthPublished) { setSubmitError('ตารางเวรเดือนนี้ยังไม่ได้ประกาศ'); return; }
+    setLoading(true);
+    setSubmitError(null);
+    try {
+      const { data: myShiftsOnDate } = await supabase
+        .from('shifts').select('id, shift_type')
+        .eq('user_id', currentUser.id).eq('date', shift.date);
+      const colliding = (myShiftsOnDate || []).filter(s =>
+        shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType));
+      if (colliding.length > 0 && !collisionConfirmed) {
+        setCollisionWarning('คุณมีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?');
+        setLoading(false); return;
+      }
+      const { error } = await supabase.from('swap_requests').insert({
+        shift_id: shift.id,
+        requester_id: currentUser.id,
+        target_user_id: shift.user_id,
+        request_type: 'cover',
+        message: message.trim() || null,
+        status: 'pending',
+      });
+      if (error) throw error;
+      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+      const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });
+      const notifTitle = '🙋 คำขออยู่เวรแทน';
+      const notifBody = `${requesterName} ต้องการขออยู่เวร${shift.shift_type}${deptName ? ` ${deptName}` : ''} ${shiftDateFmt} แทนคุณ`;
+      fetch('/api/push/send', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
+      }).catch(() => {});
+      supabase.from('notifications').insert({
+        user_id: shift.user_id, type: 'swap_request',
+        title: notifTitle, body: notifBody, url: '/calendar',
+      }).then(() => {});
+      toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
+      onClose();
+    } catch (err: any) {
+      setSubmitError(err.message || 'เกิดข้อผิดพลาด');
+      toast.error('เกิดข้อผิดพลาด', { description: err.message });
+    } finally { setLoading(false); }
+  }
+
   function handleConfirmCollision() {
     setCollisionConfirmed(true);
     setCollisionWarning(null);
-    setTimeout(() => (mode === 'transfer' ? handleTransferSubmit() : handleSwapSubmit()), 50);
+    setTimeout(() => {
+      if (pendingCoverSubmit) { setPendingCoverSubmit(false); handleCoverSubmit(); }
+      else if (mode === 'transfer') handleTransferSubmit();
+      else handleSwapSubmit();
+    }, 50);
   }
 
   // ── Shift info card (shared) ─────────────────────────────────────────
@@ -273,7 +322,7 @@ export function SwapModal({
             </h2>
           </div>
           <button onClick={onClose}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-all">
+            className="p-2 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -507,10 +556,31 @@ export function SwapModal({
 
         {/* Footer */}
         <div className="flex items-center gap-3 p-5 border-t border-gray-100 shrink-0">
-          <button onClick={onClose}
-            className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 hover:text-red-600 text-sm font-medium hover:bg-red-50 transition-all">
-            ยกเลิก
-          </button>
+          {/* Left button: cancel (transfer) or cover request (swap) */}
+          {mode === 'transfer' ? (
+            <button onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 hover:text-red-600 text-sm font-medium hover:bg-red-50 transition-all">
+              ยกเลิก
+            </button>
+          ) : (
+            <button
+              onClick={() => { setPendingCoverSubmit(true); handleCoverSubmit(); }}
+              disabled={loading || !isMonthPublished}
+              className={cn(
+                'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all',
+                'flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed',
+                !isMonthPublished
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20',
+              )}>
+              {loading && pendingCoverSubmit
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <UserCheck className="w-4 h-4" />}
+              อยู่เวรแทน
+            </button>
+          )}
+
+          {/* Right button: main action */}
           <button
             onClick={mode === 'transfer' ? handleTransferSubmit : handleSwapSubmit}
             disabled={loading || !canSubmit}
@@ -523,7 +593,7 @@ export function SwapModal({
                   ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20'
                   : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/20',
             )}>
-            {loading
+            {loading && !pendingCoverSubmit
               ? <Loader2 className="w-4 h-4 animate-spin" />
               : !isMonthPublished
                 ? <Lock className="w-4 h-4" />
