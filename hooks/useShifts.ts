@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
-import { toMonthYear, shiftsOverlap } from '@/lib/utils';
+import { toMonthYear } from '@/lib/utils';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -149,192 +149,26 @@ export function useSwapRequests(userId?: string) {
   }, [userId, fetchSwaps]);
 
   const acceptSwap = async (req: SwapRequest, force = false): Promise<{ collision?: string }> => {
-    // Verify the request is still pending (prevent race condition)
-    const { data: freshReq } = await supabase
-      .from('swap_requests')
-      .select('status')
-      .eq('id', req.id)
-      .single();
-    if (freshReq?.status !== 'pending') {
-      throw new Error('คำขอนี้ถูกดำเนินการไปแล้ว กรุณารีเฟรชหน้า');
-    }
-
-    // Verify the shift still belongs to the original owner
-    const { data: freshShift } = await supabase
-      .from('shifts')
-      .select('user_id')
-      .eq('id', req.shift_id)
-      .single();
-    if (freshShift && req.shift && freshShift.user_id !== req.shift.user_id) {
-      throw new Error('เวรนี้ถูกเปลี่ยนเจ้าของไปแล้ว กรุณารีเฟรชหน้า');
-    }
-
-    // PRE-ACCEPTANCE COLLISION CHECK
-    let collisionMsg = '';
-    const checks = [];
-
-    // Check collisions based on request type
-    if (req.request_type === 'swap' && req.target_shift && req.shift) {
-      // Swap: check if each party can receive the shift they're getting
-      // Requester gives away target_shift, receives req.shift
-      checks.push(
-        supabase.from('shifts').select('id, shift_type')
-          .eq('user_id', req.requester_id)
-          .eq('date', req.shift.date)              // date of shift they're RECEIVING
-          .neq('id', req.target_shift_id || 'x')  // exclude their offered shift (relevant for same-day)
-      );
-      // Target gives away req.shift, receives target_shift
-      checks.push(
-        supabase.from('shifts').select('id, shift_type')
-          .eq('user_id', req.target_user_id)
-          .eq('date', req.target_shift.date)       // date of shift they're RECEIVING
-          .neq('id', req.shift.id)                 // exclude their offered shift (relevant for same-day)
-      );
-    } else if (req.shift) {
-      // Transfer: check if new owner collides on that date
-      const currentOwnerId = req.shift.user_id;
-      const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
-      checks.push(
-        supabase.from('shifts').select('id, shift_type')
-          .eq('user_id', newUserId)
-          .eq('date', req.shift.date)
-      );
-    }
-
-    const checkResults = await Promise.all(checks);
-
-    if (req.request_type === 'swap' && req.target_shift && req.shift) {
-      const [requesterOtherShifts, targetOtherShifts] = checkResults;
-      // Check if requester's remaining shifts conflict with the shift they're RECEIVING
-      if ((requesterOtherShifts.data || []).some(s =>
-        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
-      )) {
-        collisionMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
-      }
-      // Check if target's remaining shifts conflict with the shift they're RECEIVING
-      if ((targetOtherShifts.data || []).some(s =>
-        shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
-      )) {
-        collisionMsg = collisionMsg
-          ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน'
-          : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
-      }
-    } else if (req.shift) {
-      const [newUserShifts] = checkResults;
-      if ((newUserShifts.data || []).some(s =>
-        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
-      )) {
-        collisionMsg = 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
-      }
-    }
-
-    // If collision detected and not forced, return collision info for UI to confirm
-    if (collisionMsg && !force) {
-      return { collision: collisionMsg };
-    }
-    
-    // 1. Update swap status → accepted + mark requester_read = false
-    await supabase
-      .from('swap_requests')
-      .update({ status: 'accepted', requester_read: false })
-      .eq('id', req.id);
-
-    // Execute the shift owner change(s)
-    if (req.request_type === 'swap' && req.target_shift_id) {
-      // Swap: exchange owners — requester gets target's shift, target gets requester's shift
-      await supabase.from('shifts').update({ user_id: req.requester_id }).eq('id', req.shift_id);         // target's shift → requester
-      await supabase.from('shifts').update({ user_id: req.target_user_id }).eq('id', req.target_shift_id); // requester's shift → target
-    } else {
-      // Transfer: move single shift to new owner
-      const currentOwnerId = req.shift?.user_id;
-      const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
-      await supabase.from('shifts').update({ user_id: newUserId }).eq('id', req.shift_id);
-    }
-
-    // Notify requester (push + in-app) — accepted
-    const acceptorName = (req.target_user as any)?.nickname || (req.target_user as any)?.f_name || 'เพื่อนร่วมงาน';
-    const acceptTitle = req.request_type === 'swap'
-      ? '✅ แลกเวรสำเร็จ'
-      : '✅ โอนเวรสำเร็จ';
-    const acceptBody = req.request_type === 'swap'
-      ? `${acceptorName} ยอมรับการแลกเวรแล้ว — คุณได้รับ ${fmtShiftNotif(req.shift)}`
-      : `${acceptorName} รับ ${fmtShiftNotif(req.shift)} แล้ว`;
-    fetch('/api/push/send', {
+    // Call server-side API route (uses SERVICE_ROLE_KEY — guaranteed DB access)
+    const res = await fetch('/api/swap/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: req.requester_id,
-        title: acceptTitle,
-        body: acceptBody,
-        url: '/calendar',
-        tag: `swap-${req.id}`,
-      }),
-    }).catch(() => {});
-    supabase.from('notifications').insert({
-      user_id: req.requester_id,
-      type: 'swap_result',
-      title: acceptTitle,
-      body: acceptBody,
-      url: '/calendar',
-    }).then(({ error: nErr }) => { if (nErr) console.error('[Accept] in-app notif error:', nErr); });
+      body: JSON.stringify({ swapId: req.id, force }),
+    });
 
-    // Auto-cancel other pending requests for the same shift(s)
-    const shiftIdsToCancel = [req.shift_id];
-    if (req.target_shift_id) shiftIdsToCancel.push(req.target_shift_id);
+    const data = await res.json();
 
-    const { data: otherPending } = await supabase
-      .from('swap_requests')
-      .select('id, requester_id, target_user_id')
-      .in('shift_id', shiftIdsToCancel)
-      .eq('status', 'pending')
-      .neq('id', req.id);
-
-    if (otherPending?.length) {
-      // Cancel all other pending requests
-      await supabase
-        .from('swap_requests')
-        .update({ status: 'rejected', requester_read: false })
-        .in('id', otherPending.map(r => r.id));
-
-      // Notify affected users (exclude parties already involved)
-      const involvedIds = new Set([req.requester_id, req.target_user_id]);
-      const notifyIds = Array.from(
-        new Set(
-          otherPending
-            .flatMap(r => [r.requester_id, r.target_user_id])
-            .filter(id => !involvedIds.has(id))
-        )
-      );
-
-      if (notifyIds.length) {
-        const autoCancelTitle = '⚠️ คำขอถูกยกเลิกอัตโนมัติ';
-        const autoCancelBody = `${fmtShiftNotif(req.shift)} ถูกดำเนินการโดยผู้อื่นแล้ว คำขอของคุณจึงถูกยกเลิก`;
-        fetch('/api/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userIds: notifyIds,
-            title: autoCancelTitle,
-            body: autoCancelBody,
-            url: '/calendar',
-            tag: `swap-auto-cancel-${req.shift_id}`,
-          }),
-        }).catch(() => {});
-        // In-app notifications for all affected users
-        supabase.from('notifications').insert(
-          notifyIds.map(uid => ({
-            user_id: uid,
-            type: 'swap_result',
-            title: autoCancelTitle,
-            body: autoCancelBody,
-            url: '/calendar',
-          }))
-        ).then(({ error: nErr }) => { if (nErr) console.error('[AutoCancel] in-app notif error:', nErr); });
-      }
+    if (!res.ok && !data.collision) {
+      throw new Error(data.error || 'เกิดข้อผิดพลาด');
     }
 
     await fetchSwaps();
-    return collisionMsg ? { collision: collisionMsg } : {};
+
+    if (data.collision) {
+      return { collision: data.collision };
+    }
+
+    return {};
   };
 
   const rejectSwap = async (swapId: string) => {
