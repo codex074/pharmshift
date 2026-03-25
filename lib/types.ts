@@ -98,7 +98,7 @@ export interface SwapRequest {
   requester?: User;
   target_user_id: string;
   target_user?: User;
-  request_type: 'swap' | 'transfer';
+  request_type: 'swap' | 'transfer' | 'cover';
   target_shift_id?: string;
   target_shift?: Shift;
   status: 'pending' | 'accepted' | 'rejected';

@@ -31,7 +31,21 @@ function describeRequest(req: SwapRequest, currentUserId: string | undefined): s
   const sl  = shiftLabel(req.shift);
   const tsl = shiftLabel(req.target_shift);
 
-  if (req.request_type === 'transfer') {
+  if (req.request_type === 'cover') {
+    // requester wants to cover target's shift
+    if (req.status === 'pending') {
+      if (iAmTarget)    return `${rName} ต้องการขออยู่เวร ${sl} แทนคุณ`;
+      if (iAmRequester) return `คุณขออยู่เวร ${sl} แทน ${tName}`;
+    }
+    if (req.status === 'accepted') {
+      if (iAmTarget)    return `คุณอนุมัติให้ ${rName} อยู่เวร ${sl} แทน ✅`;
+      if (iAmRequester) return `${tName} อนุมัติ — คุณได้รับเวร ${sl} ✅`;
+    }
+    if (req.status === 'rejected') {
+      if (iAmTarget)    return `คุณปฏิเสธคำขออยู่เวรแทนจาก ${rName} ❌`;
+      if (iAmRequester) return `${tName} ไม่อนุมัติคำขออยู่เวร ${sl} แทน ❌`;
+    }
+  } else if (req.request_type === 'transfer') {
     if (req.status === 'pending') {
       if (iAmTarget)    return `${rName} ต้องการยกเวร ${sl} ให้คุณ`;
       if (iAmRequester) return `คุณต้องการยกเวร ${sl} ให้ ${tName}`;
@@ -306,11 +320,11 @@ export function NotificationsPanel({
                     <div className="flex items-center gap-1.5">
                       <span className={cn(
                         'text-[9px] font-semibold px-1.5 py-0.5 rounded-full',
-                        req.request_type === 'swap'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-violet-100 text-violet-700'
+                        req.request_type === 'swap'   ? 'bg-blue-100 text-blue-700' :
+                        req.request_type === 'cover'  ? 'bg-emerald-100 text-emerald-700' :
+                        'bg-violet-100 text-violet-700'
                       )}>
-                        {req.request_type === 'swap' ? '🔄 แลกเวร' : '📌 โอนเวร'}
+                        {req.request_type === 'swap' ? '🔄 แลกเวร' : req.request_type === 'cover' ? '🙋 อยู่เวรแทน' : '📌 โอนเวร'}
                       </span>
                       {statusBadge(req.status)}
                     </div>
