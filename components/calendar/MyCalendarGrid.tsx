@@ -122,8 +122,10 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                         shiftLabel = 'Chemo';
                       } else if (shift.shift_type === 'บ่าย' && deptName === 'SMC') {
                         shiftLabel = 'SMC';
-                      } else if (shift.shift_type === 'ดึก' && deptName === 'ER') {
+                      } else if (shift.shift_type === 'ดึก') {
                         shiftLabel = 'ดึก';
+                      } else if (shift.shift_type === 'รุ่งอรุณ') {
+                        shiftLabel = position ? `รุ่งอรุณ ${position}` : 'รุ่งอรุณ';
                       } else if (deptName === 'โครงการ') {
                         shiftLabel = 'โครงการ';
                       } else {
@@ -133,7 +135,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                       // Short label (mobile) — compact abbreviations for small cells
                       let mobileLabel: string;
                       if (shift.shift_type === 'รุ่งอรุณ') {
-                        mobileLabel = 'รุ่ง';
+                        mobileLabel = position ? `รุ่ง${position}` : 'รุ่ง';
                       } else if (deptName === 'โครงการ') {
                         mobileLabel = 'Ext';
                       } else if (deptName === 'Chemo') {
