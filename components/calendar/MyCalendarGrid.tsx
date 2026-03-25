@@ -12,6 +12,7 @@ interface MyCalendarGridProps {
   shifts: Shift[]; // already filtered to only mine
   holidays: Holiday[];
   onDayClick: (day: CalendarDay) => void;
+  onShiftClick?: (shift: Shift) => void;
 }
 
 function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
@@ -52,7 +53,7 @@ function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: MyCalendarGridProps) {
+export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onShiftClick }: MyCalendarGridProps) {
   const weeks = buildWeeks(year, month, shifts, holidays);
 
   return (
@@ -151,7 +152,11 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick }: My
                       return (
                         <div
                           key={i}
-                          className="flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-sm sm:shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none"
+                          onClick={onShiftClick ? (e) => { e.stopPropagation(); onShiftClick(shift); } : undefined}
+                          className={cn(
+                            "flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 border-violet-400 bg-gradient-to-r from-violet-600 to-purple-600 shadow-sm sm:shadow-md shadow-violet-300/50 transition-all hover:shadow-lg hover:from-violet-700 hover:to-purple-700 overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:border [.exporting-pdf_&]:border-violet-300 [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none",
+                            onShiftClick && "cursor-pointer active:scale-95"
+                          )}
                         >
                           <span className="font-bold text-white leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
                           <span className="font-bold text-white leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
