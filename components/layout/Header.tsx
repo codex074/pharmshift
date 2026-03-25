@@ -29,6 +29,7 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -170,15 +171,34 @@ export function Header({
             )}
 
             {/* Logout */}
-            <button
-              onClick={handleLogout}
-              disabled={loggingOut}
-              id="logout-button"
-              className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
-              title="ออกจากระบบ"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {confirmingLogout ? (
+              <div className="flex items-center gap-1 bg-red-50 border border-red-200 rounded-xl px-2 py-1 animate-fade-in">
+                <span className="text-xs text-red-600 font-medium mr-0.5 hidden sm:inline">ออกจากระบบ?</span>
+                <button
+                  onClick={() => setConfirmingLogout(false)}
+                  className="text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded-lg hover:bg-gray-100 transition-all"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleLogout}
+                  disabled={loggingOut}
+                  id="logout-button"
+                  className="text-xs text-white bg-red-500 hover:bg-red-600 px-2 py-1 rounded-lg font-semibold transition-all disabled:opacity-50 flex items-center gap-1"
+                >
+                  {loggingOut ? '...' : 'ออก'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmingLogout(true)}
+                id="logout-button"
+                className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all flex items-center justify-center"
+                title="ออกจากระบบ"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
 
