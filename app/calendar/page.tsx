@@ -172,6 +172,13 @@ export default function CalendarPage() {
   // Stats — if current user exists, only count their shifts, else count all shifts visible
   const myShifts  = allShifts.filter((s) => s.user_id === currentUser?.id);
   const sourceShiftsForStats = currentUser ? myShifts : shifts;
+  // Improvement 2: shift IDs with outgoing pending requests
+  const pendingShiftIds = new Set(
+    swapRequests
+      .filter(r => r.status === 'pending' && r.requester_id === currentUser?.id)
+      .map(r => r.shift_id)
+      .filter(Boolean) as string[]
+  );
   const totalCount = sourceShiftsForStats.length;
   const chaoCount = sourceShiftsForStats.filter((s) => s.shift_type === 'เช้า').length;
   const baiCount  = sourceShiftsForStats.filter((s) => s.shift_type === 'บ่าย').length;
@@ -487,6 +494,7 @@ export default function CalendarPage() {
                 holidays={holidays}
                 onDayClick={handleDayClick}
                 onShiftClick={(s) => setDetailShift(s)}
+                pendingShiftIds={pendingShiftIds}
               />
             ) : isMobile ? (
               <MobileCalendarGrid
@@ -574,6 +582,8 @@ export default function CalendarPage() {
           shift={detailShift}
           currentUserId={currentUser.id}
           onClose={() => setDetailShift(null)}
+          swapRequests={swapRequests}
+          onSwapRequest={(s) => { setDetailShift(null); setSelectedShift(s); }}
         />
       )}
 
