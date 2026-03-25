@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, RefreshCw } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
@@ -63,6 +63,7 @@ export default function CalendarPage() {
   const [showAdminConfirm, setShowAdminConfirm] = useState(false);
   const [pendingAdds, setPendingAdds] = useState<PendingAdd[]>([]);
   const [addingShiftContext, setAddingShiftContext] = useState<AddShiftContext | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   const isMobile = useIsMobile();
   const [mobileDaySelected, setMobileDaySelected] = useState<CalendarDay | null>(null);
@@ -238,11 +239,21 @@ export default function CalendarPage() {
       />
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
-              {viewMode === 'mine' ? 'เวรของฉัน' : `ตารางเวร${ROLE_LABELS[effectiveRoleGroup]}`}
-            </h1>
-            <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
+          <div className="flex items-center gap-2">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+                {viewMode === 'mine' ? 'เวรของฉัน' : `ตารางเวร${ROLE_LABELS[effectiveRoleGroup]}`}
+              </h1>
+              <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
+            </div>
+            <button
+              onClick={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }}
+              disabled={refreshing}
+              title="โหลดข้อมูลใหม่"
+              className="p-2 rounded-xl text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-all disabled:opacity-50"
+            >
+              <RefreshCw className={cn("w-4 h-4 sm:w-5 sm:h-5", refreshing && "animate-spin")} />
+            </button>
           </div>
         {/* Desktop action buttons (hidden on mobile — mobile uses FAB menu) */}
         <div className={cn("flex items-center gap-2 flex-wrap", isMobile && "hidden")}>
