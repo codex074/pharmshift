@@ -571,20 +571,6 @@ export function SwapModal({
             </div>
           )}
 
-          {/* Note textarea — only after action chosen */}
-          {(mode === 'transfer' || swapAction !== null) && (
-            <div className="space-y-1.5 shrink-0 pt-2 border-t border-gray-100">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                หมายเหตุ{' '}
-                <span className="text-gray-400 font-normal normal-case">(ไม่บังคับ)</span>
-              </label>
-              <textarea
-                value={message} onChange={e => setMessage(e.target.value)}
-                placeholder="รายละเอียดเพิ่มเติม..." rows={2}
-                className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 resize-none"
-              />
-            </div>
-          )}
         </div>
 
         {/* Footer */}
