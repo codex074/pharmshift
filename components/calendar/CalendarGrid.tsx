@@ -221,7 +221,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
       >
         <span className="inline-flex items-center gap-0.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-bold text-xs rounded-md px-1.5 py-0.5 shadow-md shadow-violet-300/60 transition-colors [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none">
-          {displayName}
+          {displayName}{s.shift_type === 'รุ่งอรุณ' && (s as any).position ? ` (${(s as any).position})` : ''}
         </span>
       </span>
     );

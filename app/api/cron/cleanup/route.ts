@@ -41,31 +41,34 @@ export async function GET(request: Request) {
   if (err48h) console.error('[cron/cleanup] swap_requests rejected 48h delete error:', err48h);
 
   // ── 3) Clean up multi-hop accepted swaps ───────────────────────────────
-  // For each shift that has been swapped more than once, keep only the
-  // most recent accepted swap_request (current owner ← previous owner).
-  // Older intermediate hops are redundant — original_user_id on the
-  // shifts table already tracks the original assignee permanently.
+  // For each shift with 3+ accepted swaps, keep only:
+  //   • the OLDEST (original swap — who first gave it away)
+  //   • the NEWEST (latest swap — who gave it to the current owner)
+  // All intermediate hops are deleted to save space.
   let countChain = 0;
 
   const { data: accepted, error: errFetch } = await supabase
     .from('swap_requests')
     .select('id, shift_id, created_at')
     .eq('status', 'accepted')
-    .order('created_at', { ascending: false });
+    .order('created_at', { ascending: true }); // oldest first
 
   if (errFetch) {
     console.error('[cron/cleanup] fetch accepted error:', errFetch);
   } else if (accepted && accepted.length > 0) {
-    // Walk newest → oldest; first occurrence per shift_id is the one to keep
-    const keepIds = new Set<string>();
-    const seenShifts = new Set<string>();
-
+    // Group by shift_id
+    const byShift = new Map<string, { id: string; created_at: string }[]>();
     for (const req of accepted) {
-      if (!seenShifts.has(req.shift_id)) {
-        seenShifts.add(req.shift_id);
-        keepIds.add(req.id);
-      }
+      if (!byShift.has(req.shift_id)) byShift.set(req.shift_id, []);
+      byShift.get(req.shift_id)!.push({ id: req.id, created_at: req.created_at });
     }
+
+    const keepIds = new Set<string>();
+    byShift.forEach((reqs) => {
+      // Keep first (oldest) and last (newest) — delete everything in between
+      keepIds.add(reqs[0].id);
+      keepIds.add(reqs[reqs.length - 1].id);
+    });
 
     const idsToDelete = accepted
       .filter(r => !keepIds.has(r.id))

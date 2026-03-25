@@ -86,6 +86,12 @@ export function useShifts(year: number, month: number) {
         { event: '*', schema: 'public', table: 'published_months', filter: `month_year=eq.${monthYear}` },
         () => { fetchShifts(); }
       )
+      // When any swap is accepted, refetch shifts so calendar names update immediately
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'swap_requests' },
+        (payload) => { if ((payload.new as any)?.status === 'accepted') fetchShifts(); }
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -169,18 +175,20 @@ export function useSwapRequests(userId?: string) {
 
     // Check collisions based on request type
     if (req.request_type === 'swap' && req.target_shift && req.shift) {
-      // Swap: check if requester collides on target's date, and vice versa
+      // Swap: check if each party can receive the shift they're getting
+      // Requester gives away target_shift, receives req.shift
       checks.push(
         supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.requester_id)
-          .eq('date', req.target_shift.date)
-          .neq('id', req.target_shift.id)
+          .eq('date', req.shift.date)              // date of shift they're RECEIVING
+          .neq('id', req.target_shift_id || 'x')  // exclude their offered shift (relevant for same-day)
       );
+      // Target gives away req.shift, receives target_shift
       checks.push(
         supabase.from('shifts').select('id, shift_type')
           .eq('user_id', req.target_user_id)
-          .eq('date', req.shift.date)
-          .neq('id', req.shift.id)
+          .eq('date', req.target_shift.date)       // date of shift they're RECEIVING
+          .neq('id', req.shift.id)                 // exclude their offered shift (relevant for same-day)
       );
     } else if (req.shift) {
       // Transfer: check if new owner collides on that date
@@ -197,13 +205,15 @@ export function useSwapRequests(userId?: string) {
 
     if (req.request_type === 'swap' && req.target_shift && req.shift) {
       const [requesterOtherShifts, targetOtherShifts] = checkResults;
+      // Check if requester's remaining shifts conflict with the shift they're RECEIVING
       if ((requesterOtherShifts.data || []).some(s =>
-        shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
+        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
       )) {
         collisionMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
       }
+      // Check if target's remaining shifts conflict with the shift they're RECEIVING
       if ((targetOtherShifts.data || []).some(s =>
-        shiftsOverlap(s.shift_type as ShiftType, req.shift!.shift_type as ShiftType)
+        shiftsOverlap(s.shift_type as ShiftType, req.target_shift!.shift_type as ShiftType)
       )) {
         collisionMsg = collisionMsg
           ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน'
