@@ -241,9 +241,9 @@ export function useSwapRequests(userId?: string) {
 
     // Execute the shift owner change(s)
     if (req.request_type === 'swap' && req.target_shift_id) {
-      // Swap: exchange owners of both shifts
-      await supabase.from('shifts').update({ user_id: req.target_user_id }).eq('id', req.shift_id);
-      await supabase.from('shifts').update({ user_id: req.requester_id }).eq('id', req.target_shift_id);
+      // Swap: exchange owners — requester gets target's shift, target gets requester's shift
+      await supabase.from('shifts').update({ user_id: req.requester_id }).eq('id', req.shift_id);         // target's shift → requester
+      await supabase.from('shifts').update({ user_id: req.target_user_id }).eq('id', req.target_shift_id); // requester's shift → target
     } else {
       // Transfer: move single shift to new owner
       const currentOwnerId = req.shift?.user_id;
