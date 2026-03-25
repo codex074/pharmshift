@@ -43,9 +43,9 @@ export function SwapModal({
   const [fetchingUsers, setFetchingUsers] = useState(false);
 
   // ── Swap mode ────────────────────────────────────────────────────────
+  const [swapAction, setSwapAction] = useState<null | 'cover' | 'swap'>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedMyShift, setSelectedMyShift] = useState<Shift | null>(null);
-  const [pendingCoverSubmit, setPendingCoverSubmit] = useState(false);
 
   // ── Derived ──────────────────────────────────────────────────────────
   const isOwnShift = !!(currentUser && shift && currentUser.id === shift.user_id);
@@ -259,7 +259,7 @@ export function SwapModal({
     setCollisionConfirmed(true);
     setCollisionWarning(null);
     setTimeout(() => {
-      if (pendingCoverSubmit) { setPendingCoverSubmit(false); handleCoverSubmit(); }
+      if (swapAction === 'cover') handleCoverSubmit();
       else if (mode === 'transfer') handleTransferSubmit();
       else handleSwapSubmit();
     }, 50);
@@ -298,7 +298,7 @@ export function SwapModal({
   );
 
   const isTransferReady = mode === 'transfer' && !!selectedUser;
-  const isSwapReady = mode === 'swap' && !!selectedMyShift;
+  const isSwapReady = swapAction === 'swap' && !!selectedMyShift;
   const canSubmit = (isTransferReady || isSwapReady) && !collisionWarning && isMonthPublished;
 
   // ── Render ────────────────────────────────────────────────────────────
@@ -341,15 +341,12 @@ export function SwapModal({
             </div>
           )}
 
-          {/* Mode badge */}
-          <div className={cn('p-3 rounded-xl border text-center text-sm font-medium',
-            mode === 'transfer'
-              ? 'bg-violet-50 border-violet-200 text-violet-700'
-              : 'bg-blue-50 border-blue-200 text-blue-700')}>
-            {mode === 'transfer'
-              ? '📌 คุณกำลังโอนเวรนี้ให้ผู้อื่น'
-              : `🔄 คุณกำลังขอแลกเวรกับ ${ownerLabel}`}
-          </div>
+          {/* Mode badge — transfer only */}
+          {mode === 'transfer' && (
+            <div className="p-3 rounded-xl border text-center text-sm font-medium bg-violet-50 border-violet-200 text-violet-700">
+              📌 คุณกำลังโอนเวรนี้ให้ผู้อื่น
+            </div>
+          )}
 
           {shiftInfoCard}
 
@@ -398,8 +395,54 @@ export function SwapModal({
             </div>
           )}
 
-          {/* ── SWAP MODE: mini calendar + shift picker ─────────────── */}
-          {mode === 'swap' && (
+          {/* ── SWAP MODE: Step 1 — choose action ──────────────────── */}
+          {mode === 'swap' && swapAction === null && (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setSwapAction('cover')}
+                disabled={!isMonthPublished}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'border-emerald-200 bg-emerald-50 hover:bg-emerald-100 hover:border-emerald-400',
+                )}>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                  <UserCheck className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-emerald-700">อยู่เวรแทน</p>
+                  <p className="text-[10px] text-emerald-500 mt-0.5">ขอรับเวรนี้</p>
+                </div>
+              </button>
+              <button
+                onClick={() => setSwapAction('swap')}
+                disabled={!isMonthPublished}
+                className={cn(
+                  'flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border-2 transition-all',
+                  'disabled:opacity-50 disabled:cursor-not-allowed',
+                  'border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400',
+                )}>
+                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                  <ArrowRightLeft className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-semibold text-blue-700">แลกเวร</p>
+                  <p className="text-[10px] text-blue-500 mt-0.5">เสนอเวรของคุณ</p>
+                </div>
+              </button>
+            </div>
+          )}
+
+          {/* ── SWAP MODE: Step 2a — cover confirmation ─────────────── */}
+          {mode === 'swap' && swapAction === 'cover' && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
+              🙋 คุณต้องการขออยู่เวร{shift.shift_type}{deptName ? ` ${deptName}` : ''} วันที่{' '}
+              <strong>{format(shiftDate, 'd/M', { locale: th })}</strong> แทน {ownerLabel}
+            </div>
+          )}
+
+          {/* ── SWAP MODE: Step 2b — mini calendar + shift picker ───── */}
+          {mode === 'swap' && swapAction === 'swap' && (
             <div className="space-y-3">
               <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
                 เลือกเวรของคุณที่ต้องการนำมาแลก
@@ -407,24 +450,20 @@ export function SwapModal({
 
               {/* Mini calendar */}
               <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                {/* Month label */}
                 <div className="bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-700">
                   {format(shiftDate, 'MMMM yyyy', { locale: th })}
                 </div>
-                {/* Day-of-week headers */}
                 <div className="grid grid-cols-7 border-b border-gray-100">
                   {THAI_DAY_SHORT.map(d => (
                     <div key={d} className="text-center text-[10px] font-semibold text-gray-400 py-1">{d}</div>
                   ))}
                 </div>
-                {/* Day cells */}
                 <div className="grid grid-cols-7">
                   {calDays.map((day, i) => {
                     const inMonth = isSameMonth(day, shiftDate);
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const hasMyShift = inMonth && !!myShiftsByDate[dateStr];
                     const isSelected = dateStr === selectedDate;
-
                     return (
                       <button
                         key={i}
@@ -439,15 +478,12 @@ export function SwapModal({
                         <span className={cn('text-xs font-medium leading-none',
                           !inMonth ? 'text-gray-300' :
                           isSelected ? 'text-blue-700 font-bold' :
-                          hasMyShift ? 'text-blue-600 font-semibold' :
-                          'text-gray-500')}>
+                          hasMyShift ? 'text-blue-600 font-semibold' : 'text-gray-500')}>
                           {format(day, 'd')}
                         </span>
                         {hasMyShift && inMonth && (
-                          <span className={cn(
-                            'w-1.5 h-1.5 rounded-full mt-0.5',
-                            isSelected ? 'bg-blue-600' : 'bg-blue-400',
-                          )} />
+                          <span className={cn('w-1.5 h-1.5 rounded-full mt-0.5',
+                            isSelected ? 'bg-blue-600' : 'bg-blue-400')} />
                         )}
                       </button>
                     );
@@ -455,29 +491,26 @@ export function SwapModal({
                 </div>
               </div>
 
-              {/* Hint when no date selected */}
               {!selectedDate && (
                 <p className="text-xs text-center text-gray-400">
                   กดที่วันที่มีจุดสีน้ำเงิน • เพื่อเลือกเวรของคุณ
                 </p>
               )}
 
-              {/* Shifts on selected date */}
               {selectedDate && myShiftsOnSelectedDate.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs text-gray-500 font-medium">
                     เวรของคุณวันที่ {format(new Date(selectedDate + 'T00:00:00'), 'd MMMM', { locale: th })}:
                   </p>
-                  {myShiftsOnSelectedDate.filter(s => s.id !== shift.id).map(s => {
+                  {myShiftsOnSelectedDate.map(s => {
                     const sDept = (s.department as any)?.name || '';
-                    const isSelected = selectedMyShift?.id === s.id;
+                    const isSel = selectedMyShift?.id === s.id;
                     return (
-                      <button
-                        key={s.id}
-                        onClick={() => setSelectedMyShift(isSelected ? null : s)}
+                      <button key={s.id}
+                        onClick={() => setSelectedMyShift(isSel ? null : s)}
                         className={cn(
                           'w-full flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all',
-                          isSelected
+                          isSel
                             ? 'border-blue-400 bg-blue-50 ring-2 ring-blue-200'
                             : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50/50',
                         )}>
@@ -486,23 +519,23 @@ export function SwapModal({
                           : <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />}
                         <span className="text-sm font-medium text-gray-800">{s.shift_type}</span>
                         {sDept && <span className="text-xs text-gray-400">{sDept}</span>}
+                        {s.position && <span className="text-xs text-gray-400">({s.position})</span>}
                       </button>
                     );
                   })}
                 </div>
               )}
 
-              {/* Swap summary pill */}
               {selectedMyShift && (
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 space-y-1">
                   <p className="font-semibold text-blue-700">สรุปการแลกเวร:</p>
                   <p>คุณจะได้รับ:{' '}
-                    <strong>{shift.shift_type} {format(shiftDate, 'd MMM', { locale: th })}</strong>
+                    <strong>{shift.shift_type}{deptName ? ` ${deptName}` : ''} {format(shiftDate, 'd/M')}</strong>
                   </p>
                   <p>{ownerLabel} จะได้รับ:{' '}
                     <strong>
-                      {selectedMyShift.shift_type}{' '}
-                      {format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th })}
+                      {selectedMyShift.shift_type}{(selectedMyShift.department as any)?.name ? ` ${(selectedMyShift.department as any).name}` : ''}{' '}
+                      {format(new Date(selectedMyShift.date + 'T00:00:00'), 'd/M')}
                     </strong>
                   </p>
                 </div>
@@ -540,70 +573,74 @@ export function SwapModal({
             </div>
           )}
 
-          {/* Message */}
-          <div className="space-y-1.5 shrink-0 pt-2 border-t border-gray-100">
-            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-              หมายเหตุ{' '}
-              <span className="text-gray-400 font-normal normal-case">(ไม่บังคับ)</span>
-            </label>
-            <textarea
-              value={message} onChange={e => setMessage(e.target.value)}
-              placeholder="รายละเอียดเพิ่มเติม..." rows={2}
-              className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 resize-none"
-            />
-          </div>
+          {/* Note textarea — only after action chosen */}
+          {(mode === 'transfer' || swapAction !== null) && (
+            <div className="space-y-1.5 shrink-0 pt-2 border-t border-gray-100">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                หมายเหตุ{' '}
+                <span className="text-gray-400 font-normal normal-case">(ไม่บังคับ)</span>
+              </label>
+              <textarea
+                value={message} onChange={e => setMessage(e.target.value)}
+                placeholder="รายละเอียดเพิ่มเติม..." rows={2}
+                className="w-full px-3 py-2 text-sm rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-violet-400 resize-none"
+              />
+            </div>
+          )}
         </div>
 
         {/* Footer */}
         <div className="flex items-center gap-3 p-5 border-t border-gray-100 shrink-0">
-          {/* Left button: cancel (transfer) or cover request (swap) */}
-          {mode === 'transfer' ? (
+          {/* Left: back / cancel */}
+          {mode === 'swap' && swapAction !== null ? (
+            <button
+              onClick={() => { setSwapAction(null); setSelectedDate(null); setSelectedMyShift(null); setSubmitError(null); setCollisionWarning(null); }}
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-700 text-sm font-medium hover:bg-gray-50 transition-all disabled:opacity-50">
+              ← ย้อนกลับ
+            </button>
+          ) : (
             <button onClick={onClose}
               className="flex-1 py-2.5 rounded-xl border border-red-200 text-red-500 hover:text-red-600 text-sm font-medium hover:bg-red-50 transition-all">
               ยกเลิก
             </button>
-          ) : (
-            <button
-              onClick={() => { setPendingCoverSubmit(true); handleCoverSubmit(); }}
-              disabled={loading || !isMonthPublished}
-              className={cn(
-                'flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all',
-                'flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed',
-                !isMonthPublished
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-md shadow-emerald-500/20',
-              )}>
-              {loading && pendingCoverSubmit
-                ? <Loader2 className="w-4 h-4 animate-spin" />
-                : <UserCheck className="w-4 h-4" />}
-              อยู่เวรแทน
-            </button>
           )}
 
-          {/* Right button: main action */}
-          <button
-            onClick={mode === 'transfer' ? handleTransferSubmit : handleSwapSubmit}
-            disabled={loading || !canSubmit}
-            className={cn(
-              'flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all',
-              'disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2',
-              !isMonthPublished
-                ? 'bg-gray-400 cursor-not-allowed'
-                : mode === 'transfer'
-                  ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20'
-                  : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/20',
-            )}>
-            {loading && !pendingCoverSubmit
-              ? <Loader2 className="w-4 h-4 animate-spin" />
-              : !isMonthPublished
-                ? <Lock className="w-4 h-4" />
-                : <ArrowRightLeft className="w-4 h-4" />}
-            {!isMonthPublished
-              ? 'ยังไม่ได้ประกาศตารางเวร'
-              : mode === 'transfer'
-                ? 'ส่งคำขอโอนเวร'
-                : 'ส่งคำขอแลกเวร'}
-          </button>
+          {/* Right: main action */}
+          {(mode === 'transfer' || swapAction === 'cover' || swapAction === 'swap') && (
+            <button
+              onClick={
+                swapAction === 'cover' ? handleCoverSubmit :
+                mode === 'transfer' ? handleTransferSubmit : handleSwapSubmit
+              }
+              disabled={loading || (swapAction === 'cover' ? (!isMonthPublished) : !canSubmit)}
+              className={cn(
+                'flex-1 py-2.5 rounded-xl text-white text-sm font-semibold shadow-lg transition-all',
+                'disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2',
+                !isMonthPublished
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : swapAction === 'cover'
+                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 shadow-emerald-500/20'
+                    : mode === 'transfer'
+                      ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-violet-500/20'
+                      : 'bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 shadow-blue-500/20',
+              )}>
+              {loading
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : !isMonthPublished
+                  ? <Lock className="w-4 h-4" />
+                  : swapAction === 'cover'
+                    ? <UserCheck className="w-4 h-4" />
+                    : <ArrowRightLeft className="w-4 h-4" />}
+              {!isMonthPublished
+                ? 'ยังไม่ได้ประกาศตารางเวร'
+                : swapAction === 'cover'
+                  ? 'ส่งคำขออยู่เวรแทน'
+                  : mode === 'transfer'
+                    ? 'ส่งคำขอโอนเวร'
+                    : 'ส่งคำขอแลกเวร'}
+            </button>
+          )}
         </div>
       </div>
     </div>
