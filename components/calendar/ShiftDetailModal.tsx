@@ -115,69 +115,64 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
     cover: 'bg-emerald-50 text-emerald-700 border-emerald-200',
   };
 
+  // Shift-type colour palette (matching CalendarGrid)
+  const shiftTheme =
+    shift.shift_type === 'เช้า'     ? { bg: '#E8F9FA', border: '#9FDCE0', text: 'text-teal-900',   icon: 'text-teal-600',   spinnerCls: 'text-teal-400',   hdrIcon: <Sun  className="w-4 h-4 text-teal-600"   /> } :
+    shift.shift_type === 'บ่าย'     ? { bg: '#F3EDF8', border: '#9E76B4', text: 'text-purple-900', icon: 'text-purple-600', spinnerCls: 'text-purple-400', hdrIcon: <Sun  className="w-4 h-4 text-purple-500" /> } :
+    shift.shift_type === 'ดึก'      ? { bg: '#EEF0FF', border: '#99ABFF', text: 'text-indigo-900', icon: 'text-indigo-600', spinnerCls: 'text-indigo-400', hdrIcon: <Moon className="w-4 h-4 text-indigo-500" /> } :
+    shift.shift_type === 'รุ่งอรุณ' ? { bg: '#FEF3DC', border: '#FFCA72', text: 'text-amber-900',  icon: 'text-amber-600',  spinnerCls: 'text-amber-400',  hdrIcon: <Moon className="w-4 h-4 text-amber-500"  /> } :
+                                      { bg: '#F3EDF8', border: '#9E76B4', text: 'text-purple-900', icon: 'text-purple-600', spinnerCls: 'text-purple-400', hdrIcon: <Calendar className="w-4 h-4 text-purple-500" /> };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm animate-slide-up sm:animate-fade-in">
+      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-sm animate-slide-up sm:animate-fade-in overflow-hidden">
         <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+        {/* Header — tinted with shift colour */}
+        <div
+          className="flex items-center justify-between p-4 border-b"
+          style={{ backgroundColor: shiftTheme.bg, borderColor: shiftTheme.border }}
+        >
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
-              <Calendar className="w-4 h-4 text-violet-600" />
+            <div className="w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center">
+              {shiftTheme.hdrIcon}
             </div>
-            <h2 className="font-semibold text-gray-900 text-sm">รายละเอียดเวร</h2>
+            <div>
+              <h2 className={cn('font-bold text-sm', shiftTheme.text)}>{shift.shift_type}{deptName && deptName !== shift.shift_type ? ` · ${displayDeptName}` : ''}</h2>
+              <p className="text-[11px] text-gray-500">{format(shiftDate, 'EEEE d MMMM yyyy', { locale: th })}</p>
+            </div>
           </div>
           <button onClick={onClose}
-            className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-all">
+            className="p-1.5 rounded-lg hover:bg-white/70 text-gray-400 hover:text-red-500 transition-all">
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
         <div className="p-4 space-y-4">
-          {/* Shift info */}
-          <div className="rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white">
-            <div className="flex items-center gap-2 mb-2">
-              {shift.shift_type === 'ดึก' || shift.shift_type === 'รุ่งอรุณ'
-                ? <Moon className="w-4 h-4 text-violet-200" />
-                : <Sun className="w-4 h-4 text-yellow-200" />}
-              <span className="font-bold text-base">{shift.shift_type}</span>
-              {deptName && deptName !== shift.shift_type && (
-                <span className="text-violet-200 text-sm">{displayDeptName}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-1.5 text-violet-100 text-sm">
-              <Calendar className="w-3.5 h-3.5" />
-              <span>{format(shiftDate, 'EEEE d MMMM yyyy', { locale: th })}</span>
-            </div>
-          </div>
-
           {/* Provenance */}
           {loading ? (
-            <div className="flex items-center justify-center py-4">
-              <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className={cn('w-5 h-5 animate-spin', shiftTheme.spinnerCls)} />
             </div>
           ) : (
             <div className="space-y-2">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">ที่มาของเวร</p>
 
               {isOriginallyMine && !history ? (
-                /* Originally assigned — no swaps */
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
-                  <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center shrink-0">
-                    <User className="w-4 h-4 text-violet-500" />
+                <div className="flex items-center gap-3 p-3 rounded-xl border" style={{ backgroundColor: shiftTheme.bg, borderColor: shiftTheme.border }}>
+                  <div className="w-8 h-8 rounded-lg bg-white/70 flex items-center justify-center shrink-0">
+                    <User className={cn('w-4 h-4', shiftTheme.icon)} />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-800">มอบหมายตั้งแต่ประกาศตารางเวร</p>
+                    <p className={cn('text-sm font-medium', shiftTheme.text)}>มอบหมายตั้งแต่ประกาศตารางเวร</p>
                     <p className="text-xs text-gray-400">เวรนี้ถูกกำหนดให้คุณตั้งแต่ต้น</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {/* Original owner (if different) */}
                   {!isOriginallyMine && originalName && (
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 border border-gray-200">
                       <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center shrink-0">
@@ -190,18 +185,15 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
                     </div>
                   )}
 
-                  {/* Last transfer event */}
                   {history && (
                     <div className={cn('flex items-center gap-3 p-3 rounded-xl border', typeColor[history.request_type])}>
-                      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0', typeColor[history.request_type])}>
+                      <div className={cn('w-8 h-8 rounded-lg flex items-center justify-center shrink-0 bg-white/60')}>
                         {typeIcon[history.request_type]}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold">{typeLabel[history.request_type]}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {format(new Date(history.updated_at), 'd/M/yy')}
-                          </span>
+                          <span className="text-[10px] text-gray-400">{format(new Date(history.updated_at), 'd/M/yy')}</span>
                         </div>
                         <p className="text-sm font-medium text-gray-800 truncate">
                           {history.request_type === 'swap' ? 'แลกกับ' : 'รับจาก'} {history.from_name}
@@ -210,7 +202,6 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
                     </div>
                   )}
 
-                  {/* Fallback if original differs but no accepted request found */}
                   {!isOriginallyMine && !history && (
                     <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
                       <Building2 className="w-4 h-4 text-amber-500 shrink-0" />
@@ -223,7 +214,7 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
           )}
         </div>
 
-        {/* ── Improvement 5: Action Footer ── */}
+        {/* Action Footer */}
         {onSwapRequest && (() => {
           const myPending = swapRequests?.find(
             r => r.shift_id === shift.id && r.status === 'pending' && r.requester_id === currentUserId
@@ -238,10 +229,11 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
               ) : (
                 <button
                   onClick={() => { onClose(); onSwapRequest(shift); }}
-                  className="w-full py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm"
+                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm border-2"
+                  style={{ backgroundColor: shiftTheme.bg, borderColor: shiftTheme.border }}
                 >
-                  <ArrowRightLeft className="w-4 h-4" />
-                  ส่งคำขอแลก/โอนเวร
+                  <ArrowRightLeft className={cn('w-4 h-4', shiftTheme.icon)} />
+                  <span className={shiftTheme.text}>ส่งคำขอแลก/โอนเวร</span>
                 </button>
               )}
             </div>
