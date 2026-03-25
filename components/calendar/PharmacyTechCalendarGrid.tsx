@@ -209,7 +209,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         className={cn(nameTextStyle, 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer')}
         onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
       >
-        {displayName}{s.shift_type === 'รุ่งอรุณ' && (s as any).position ? ` (${(s as any).position})` : ''}
+        {displayName}
       </span>
     );
   }
