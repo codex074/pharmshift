@@ -582,8 +582,6 @@ export default function CalendarPage() {
           shift={detailShift}
           currentUserId={currentUser.id}
           onClose={() => setDetailShift(null)}
-          swapRequests={swapRequests}
-          onSwapRequest={(s) => { setDetailShift(null); setSelectedShift(s); }}
         />
       )}
 
