@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   X, ArrowRightLeft, User, Calendar, Building2, Moon, Sun,
-  Loader2, Search, AlertTriangle, Lock, UserCheck,
+  Loader2, Search, AlertTriangle, Lock, UserCheck, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -46,6 +46,9 @@ export function SwapModal({
   const [swapAction, setSwapAction] = useState<null | 'cover' | 'swap'>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedMyShift, setSelectedMyShift] = useState<Shift | null>(null);
+  const [calViewDate, setCalViewDate] = useState<Date>(() => startOfMonth(shiftDate));
+  const [calViewShifts, setCalViewShifts] = useState<Shift[]>(userShifts);
+  const [fetchingCalShifts, setFetchingCalShifts] = useState(false);
 
   // ── Derived ──────────────────────────────────────────────────────────
   const isOwnShift = !!(currentUser && shift && currentUser.id === shift.user_id);
@@ -90,23 +93,41 @@ export function SwapModal({
     setCollisionConfirmed(false);
   }, [selectedUser, selectedMyShift]);
 
+  // Fetch user shifts when calendar month changes
+  useEffect(() => {
+    if (!currentUser || swapAction !== 'swap') return;
+    const from = format(startOfMonth(calViewDate), 'yyyy-MM-dd');
+    const to   = format(endOfMonth(calViewDate),   'yyyy-MM-dd');
+    setFetchingCalShifts(true);
+    supabase
+      .from('shifts')
+      .select('*, department:departments(name)')
+      .eq('user_id', currentUser.id)
+      .gte('date', from)
+      .lte('date', to)
+      .then(({ data }) => {
+        setCalViewShifts((data as Shift[]) || []);
+        setFetchingCalShifts(false);
+      });
+  }, [calViewDate, swapAction, currentUser]);
+
   if (!shift || !currentUser) return null;
 
   // ── Mini calendar data for swap mode ─────────────────────────────────
-  const monthStart = startOfMonth(shiftDate);
-  const monthEnd = endOfMonth(shiftDate);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
+  const calMonthStart = startOfMonth(calViewDate);
+  const calMonthEnd   = endOfMonth(calViewDate);
+  const calStart      = startOfWeek(calMonthStart, { weekStartsOn: 0 });
 
   const calDays: Date[] = [];
   let cur = calStart;
-  while (cur <= monthEnd || calDays.length % 7 !== 0) {
+  while (cur <= calMonthEnd || calDays.length % 7 !== 0) {
     calDays.push(new Date(cur));
     cur = addDays(cur, 1);
     if (calDays.length >= 42) break;
   }
 
   const myShiftsByDate: Record<string, Shift[]> = {};
-  userShifts.forEach(s => {
+  calViewShifts.forEach(s => {
     if (!myShiftsByDate[s.date]) myShiftsByDate[s.date] = [];
     myShiftsByDate[s.date].push(s);
   });
@@ -448,8 +469,34 @@ export function SwapModal({
 
               {/* Mini calendar */}
               <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-                <div className="bg-blue-50 px-3 py-2 text-center text-sm font-semibold text-blue-700">
-                  {format(shiftDate, 'MMMM yyyy', { locale: th })}
+                <div className="bg-blue-50 px-3 py-2 flex items-center justify-between">
+                  <button
+                    onClick={() => {
+                      const prev = new Date(calViewDate.getFullYear(), calViewDate.getMonth() - 1, 1);
+                      setCalViewDate(prev);
+                      setSelectedDate(null);
+                      setSelectedMyShift(null);
+                    }}
+                    className="p-1 rounded-lg hover:bg-blue-100 text-blue-500 transition-all"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm font-semibold text-blue-700">
+                    {fetchingCalShifts
+                      ? <Loader2 className="w-4 h-4 animate-spin inline" />
+                      : format(calViewDate, 'MMMM yyyy', { locale: th })}
+                  </span>
+                  <button
+                    onClick={() => {
+                      const next = new Date(calViewDate.getFullYear(), calViewDate.getMonth() + 1, 1);
+                      setCalViewDate(next);
+                      setSelectedDate(null);
+                      setSelectedMyShift(null);
+                    }}
+                    className="p-1 rounded-lg hover:bg-blue-100 text-blue-500 transition-all"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
                 <div className="grid grid-cols-7 border-b border-gray-100">
                   {THAI_DAY_SHORT.map(d => (
@@ -458,7 +505,7 @@ export function SwapModal({
                 </div>
                 <div className="grid grid-cols-7">
                   {calDays.map((day, i) => {
-                    const inMonth = isSameMonth(day, shiftDate);
+                    const inMonth = isSameMonth(day, calViewDate);
                     const dateStr = format(day, 'yyyy-MM-dd');
                     const hasMyShift = inMonth && !!myShiftsByDate[dateStr];
                     const isSelected = dateStr === selectedDate;
