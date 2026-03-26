@@ -7,7 +7,7 @@ import { th } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import { DEPT_STYLES } from '@/lib/types';
-import type { Shift, SwapRequest } from '@/lib/types';
+import type { Shift } from '@/lib/types';
 
 interface SwapHistory {
   request_type: 'swap' | 'transfer' | 'cover';
@@ -19,11 +19,9 @@ interface ShiftDetailModalProps {
   shift: Shift;
   currentUserId: string;
   onClose: () => void;
-  swapRequests?: SwapRequest[];
-  onSwapRequest?: (shift: Shift) => void;
 }
 
-export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, onSwapRequest }: ShiftDetailModalProps) {
+export function ShiftDetailModal({ shift, currentUserId, onClose }: ShiftDetailModalProps) {
   const [loading, setLoading] = useState(true);
   const [originalName, setOriginalName] = useState<string | null>(null);
   const [history, setHistory] = useState<SwapHistory | null>(null);
@@ -214,31 +212,6 @@ export function ShiftDetailModal({ shift, currentUserId, onClose, swapRequests, 
           )}
         </div>
 
-        {/* Action Footer */}
-        {onSwapRequest && (() => {
-          const myPending = swapRequests?.find(
-            r => r.shift_id === shift.id && r.status === 'pending' && r.requester_id === currentUserId
-          );
-          return (
-            <div className="px-4 pb-4 border-t border-gray-100 pt-3">
-              {myPending ? (
-                <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                  <span className="text-base">⏳</span>
-                  <p className="text-sm text-amber-700 font-medium flex-1">มีคำขอรออยู่ระหว่างดำเนินการ</p>
-                </div>
-              ) : (
-                <button
-                  onClick={() => { onClose(); onSwapRequest(shift); }}
-                  className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2 shadow-sm border-2"
-                  style={{ backgroundColor: shiftTheme.bg, borderColor: shiftTheme.border }}
-                >
-                  <ArrowRightLeft className={cn('w-4 h-4', shiftTheme.icon)} />
-                  <span className={shiftTheme.text}>ส่งคำขอแลก/โอนเวร</span>
-                </button>
-              )}
-            </div>
-          );
-        })()}
       </div>
     </div>
   );
