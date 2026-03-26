@@ -191,13 +191,8 @@ export function ShiftDetailModal({ shift, currentUserId, onClose }: ShiftDetailM
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold">{typeLabel[history.request_type]}</span>
-                          <span className="text-[10px] text-gray-400">
-                            {history.request_type === 'swap' ? 'แลกเมื่อวันที่ ' : 'เมื่อวันที่ '}{format(new Date(history.updated_at), 'd/M/yy')}
-                          </span>
+                          <span className="text-[10px] text-gray-400">เมื่อวันที่ {format(new Date(history.updated_at), 'd/M/yy')}</span>
                         </div>
-                        {history.request_type === 'swap' && (
-                          <p className="text-sm font-medium text-gray-800 truncate">แลกกับ {history.from_name}</p>
-                        )}
                       </div>
                     </div>
                   )}
