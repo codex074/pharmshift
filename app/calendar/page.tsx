@@ -639,6 +639,7 @@ export default function CalendarPage() {
         <AdminSettingsModal
           onClose={() => setShowAdminSettings(false)}
           onHolidaysChange={() => refetch()}
+          currentUser={currentUser}
         />
       )}
 
