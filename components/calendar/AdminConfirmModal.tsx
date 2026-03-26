@@ -95,6 +95,14 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     /** Format one shift line: "20 มี.ค. เช้า (แผนก OPD)" */
     const fmtShift = (date: string, shiftType: string, dept?: string) =>
       `${fmtDate(date)} ${shiftType}${dept ? ` (${dept})` : ''}`;
+    /** Format for push: "เวรบ่าย MED วันที่ 26 มี.ค. 69" */
+    const fmtShiftPush = (date: string, shiftType: string, dept?: string) => {
+      try {
+        const d = new Date(date + 'T00:00');
+        const year = (d.getFullYear() + 543).toString().slice(-2);
+        return `เวร${shiftType}${dept ? ` ${dept}` : ''} วันที่ ${format(d, 'd MMM', { locale: th })} ${year}`;
+      } catch { return `เวร${shiftType}`; }
+    };
     try {
       // ── Prefetch published status for all affected month_years ──────────
       const allMonthYears = new Set<string>();
@@ -129,19 +137,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
         if (delError) throw delError;
 
-        // Notify only if month is published (push)
-        const deletedOwnerIds = Array.from(new Set(
-          deletes
-            .filter(s => s.month_year && isPublished(s.month_year, (s.user as any)?.role))
-            .map(s => s.user_id)
-            .filter((id): id is string => !!id)
-        ));
-        pushAdminChange(
-          deletedOwnerIds,
-          '🗑️ เวรของคุณถูกลบ',
-          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้ลบเวรของคุณออกจากตาราง กรุณาตรวจสอบตารางเวร`,
-        );
-        // In-app notification per user — only if month is published
+        // In-app + push notification per user — only if month is published
         const deletesByUser = new Map<string, typeof deletes>();
         deletes
           .filter(s => s.month_year && isPublished(s.month_year, (s.user as any)?.role))
@@ -159,6 +155,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             '🗑️ เวรของคุณถูกลบ',
             `${adminName} ได้ลบเวรของคุณ: ${details} — ${timestamp}`,
           );
+          const pushDetail = shifts.length === 1
+            ? fmtShiftPush(shifts[0].date, shifts[0].shift_type as string, (shifts[0] as any).department_name)
+            : `เวร ${shifts.length} รายการ`;
+          pushAdminChange([userId], '🗑️ เวรของคุณถูกลบ', `${adminName} ได้ลบ${pushDetail} ออกจากตารางของคุณ`);
         });
       }
 
@@ -172,30 +172,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         });
         await Promise.all(promises);
 
-        // Notify only if month is published (old owner uses old user's role, new owner uses new user's role)
-        const oldOwnerIds = Array.from(new Set(
-          edits
-            .filter(e => e.shift.month_year && isPublished(e.shift.month_year, (e.shift.user as any)?.role))
-            .map(e => e.shift.user_id)
-            .filter((id): id is string => !!id)
-        ));
-        const newOwnerIds = Array.from(new Set(
-          edits
-            .filter(e => e.shift.month_year && isPublished(e.shift.month_year, e.newUser.role))
-            .map(e => e.newUser.id)
-            .filter((id): id is string => !!id)
-        ));
-        pushAdminChange(
-          oldOwnerIds,
-          '🔄 เวรของคุณถูกเปลี่ยนแปลง',
-          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เปลี่ยนชื่อผู้อยู่เวรของคุณ กรุณาตรวจสอบตารางเวร`,
-        );
-        pushAdminChange(
-          newOwnerIds,
-          '📋 คุณได้รับมอบหมายเวรใหม่',
-          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้มอบหมายเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
-        );
-        // In-app notifications per user — only if month is published
+        // In-app + push notifications per user — only if month is published
         const editsByOldOwner = new Map<string, typeof edits>();
         const editsByNewOwner = new Map<string, typeof edits>();
         edits
@@ -220,6 +197,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             '🔄 เวรของคุณถูกเปลี่ยนแปลง',
             `${adminName} ได้เปลี่ยนผู้อยู่เวรของคุณไปให้คนอื่น: ${details} — ${timestamp}`,
           );
+          const pushDetail = items.length === 1
+            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department_name)
+            : `เวร ${items.length} รายการ`;
+          pushAdminChange([userId], '🔄 เวรของคุณถูกเปลี่ยนแปลง', `${adminName} ได้โอน${pushDetail} ให้คนอื่น`);
         });
         editsByNewOwner.forEach((items, userId) => {
           const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
@@ -229,6 +210,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             '📋 คุณได้รับมอบหมายเวรใหม่',
             `${adminName} ได้มอบหมายเวรให้คุณ: ${details} — ${timestamp}`,
           );
+          const pushDetail = items.length === 1
+            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department_name)
+            : `เวร ${items.length} รายการ`;
+          pushAdminChange([userId], '📋 คุณได้รับมอบหมายเวรใหม่', `${adminName} ได้มอบหมาย${pushDetail} ให้คุณ`);
         });
       }
 
@@ -247,19 +232,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
         if (insertError) throw insertError;
 
-        // Notify only if month is published
-        const addOwnerIds = Array.from(new Set(
-          pendingAdds
-            .filter(a => isPublished(a.month_year, a.user.role))
-            .map(a => a.user.id)
-            .filter((id): id is string => !!id)
-        ));
-        pushAdminChange(
-          addOwnerIds,
-          '📋 คุณได้รับมอบหมายเวรใหม่',
-          `${currentUser?.f_name || 'ผู้ดูแลระบบ'} ได้เพิ่มเวรให้คุณ กรุณาตรวจสอบตารางเวร`,
-        );
-        // In-app notifications per user — only if month is published
+        // In-app + push notifications per user — only if month is published
         const addsByUser = new Map<string, PendingAdd[]>();
         pendingAdds
           .filter(a => isPublished(a.month_year, a.user.role as any))
@@ -275,8 +248,12 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             [userId],
             'shift_assigned',
             '📋 คุณได้รับมอบหมายเวรใหม่',
-            `${adminName} ได้เพิ่มเวรให้คุณ: ${details} — ${timestamp}`,
+            `${adminName} ได้มอบหมายเวรให้คุณ: ${details} — ${timestamp}`,
           );
+          const pushDetail = adds.length === 1
+            ? fmtShiftPush(adds[0].date, adds[0].shift_type, adds[0].department)
+            : `เวร ${adds.length} รายการ`;
+          pushAdminChange([userId], '📋 คุณได้รับมอบหมายเวรใหม่', `${adminName} ได้มอบหมาย${pushDetail} ให้คุณ`);
         });
       }
 
