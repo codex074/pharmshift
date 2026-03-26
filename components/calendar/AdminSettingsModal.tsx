@@ -1,24 +1,28 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar, Users } from 'lucide-react';
+import { X, Calendar, Users, Database } from 'lucide-react';
 import { ManageHolidaysModal } from './ManageHolidaysModal';
 import { AdminUserManagementModal } from './AdminUserManagementModal';
+import { AdminBackupModal } from './AdminBackupModal';
 import { cn } from '@/lib/utils';
+import type { User } from '@/lib/types';
 
-type Tab = 'holidays' | 'users';
+type Tab = 'holidays' | 'users' | 'backup';
 
 interface AdminSettingsModalProps {
   onClose: () => void;
   onHolidaysChange: () => void;
+  currentUser: User | null;
 }
 
-export function AdminSettingsModal({ onClose, onHolidaysChange }: AdminSettingsModalProps) {
+export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: AdminSettingsModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>('holidays');
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    { id: 'holidays', label: 'วันหยุด', icon: <Calendar className="w-4 h-4" /> },
-    { id: 'users',    label: 'ผู้ใช้',   icon: <Users className="w-4 h-4" /> },
+    { id: 'holidays', label: 'วันหยุด',   icon: <Calendar  className="w-4 h-4" /> },
+    { id: 'users',    label: 'ผู้ใช้',     icon: <Users     className="w-4 h-4" /> },
+    { id: 'backup',   label: 'ข้อมูล',    icon: <Database  className="w-4 h-4" /> },
   ];
 
   return (
@@ -75,6 +79,10 @@ export function AdminSettingsModal({ onClose, onHolidaysChange }: AdminSettingsM
               embedded
               onClose={onClose}
             />
+          )}
+
+          {activeTab === 'backup' && (
+            <AdminBackupModal currentUser={currentUser} />
           )}
         </div>
       </div>
