@@ -192,7 +192,7 @@ export function ShiftDetailModal({ shift, currentUserId, onClose }: ShiftDetailM
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-semibold">{typeLabel[history.request_type]}</span>
                           <span className="text-[10px] text-gray-400">
-                            {history.request_type === 'swap' ? 'แลกเมื่อวันที่ ' : ''}{format(new Date(history.updated_at), 'd/M/yy')}
+                            {history.request_type === 'swap' ? 'แลกเมื่อวันที่ ' : 'รับเวรเมื่อวันที่ '}{format(new Date(history.updated_at), 'd/M/yy')}
                           </span>
                         </div>
                         <p className="text-sm font-medium text-gray-800 truncate">
