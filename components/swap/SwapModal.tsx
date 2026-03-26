@@ -46,7 +46,7 @@ export function SwapModal({
   const [swapAction, setSwapAction] = useState<null | 'cover' | 'swap'>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedMyShift, setSelectedMyShift] = useState<Shift | null>(null);
-  const [calViewDate, setCalViewDate] = useState<Date>(() => startOfMonth(shiftDate));
+  const [calViewDate, setCalViewDate] = useState<Date>(() => startOfMonth(shift ? new Date(shift.date + 'T00:00:00') : new Date()));
   const [calViewShifts, setCalViewShifts] = useState<Shift[]>(userShifts);
   const [fetchingCalShifts, setFetchingCalShifts] = useState(false);
 
