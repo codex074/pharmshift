@@ -176,6 +176,8 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                         let mobileLabel: string;
                         if (shift.shift_type === 'รุ่งอรุณ') {
                           mobileLabel = position ? `รุ่ง${position}` : 'รุ่ง';
+                        } else if (shift.shift_type === 'ดึก') {
+                          mobileLabel = 'ดึก';
                         } else if (deptName === 'โครงการ') {
                           mobileLabel = 'Ext';
                         } else if (deptName === 'Chemo') {
