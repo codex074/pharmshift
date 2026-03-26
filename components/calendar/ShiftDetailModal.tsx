@@ -165,7 +165,7 @@ export function ShiftDetailModal({ shift, currentUserId, onClose }: ShiftDetailM
                     <User className={cn('w-4 h-4', shiftTheme.icon)} />
                   </div>
                   <div>
-                    <p className={cn('text-sm font-medium', shiftTheme.text)}>มอบหมายตั้งแต่ประกาศตารางเวร</p>
+                    <p className={cn('text-sm font-medium', shiftTheme.text)}>ได้รับมอบหมายตั้งแต่ประกาศตารางเวร</p>
                     <p className="text-xs text-gray-400">เวรนี้ถูกกำหนดให้คุณตั้งแต่ต้น</p>
                   </div>
                 </div>
