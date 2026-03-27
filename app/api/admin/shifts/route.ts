@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     let query = supabase
       .from('shifts')
       .select(
-        'id, date, shift_type, position, month_year, user_id, department_id, users(id, nickname, pha_id), departments(id, name)',
+        'id, date, shift_type, position, month_year, user_id, department_id, users!shifts_user_id_fkey(id, nickname, pha_id), departments(id, name)',
         { count: 'exact' }
       )
       .eq('month_year', month)
