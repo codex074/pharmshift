@@ -186,6 +186,9 @@ body {
 .notification-ping {
   animation: ping-custom 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
 }
+.notification-ping-badge {
+  animation: ping-custom 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
 
 /* Glass morphism card */
 .glass-card {
