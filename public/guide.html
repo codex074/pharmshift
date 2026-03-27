@@ -1,619 +1,743 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PharmShift - คู่มือการใช้งาน</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;600;700;800&display=swap');
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: 'Noto Sans Thai', sans-serif;
-    background: #f0f2f5;
-    color: #1a1a2e;
-    line-height: 1.6;
-  }
-
-  .page {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 24px 16px;
-  }
-
-  /* ─── Header ─── */
-  .header {
-    text-align: center;
-    background: linear-gradient(135deg, #7c3aed, #a855f7, #c084fc);
-    color: #fff;
-    border-radius: 24px;
-    padding: 40px 24px 32px;
-    margin-bottom: 28px;
-    position: relative;
-    overflow: hidden;
-  }
-  .header::before {
-    content: '';
-    position: absolute;
-    top: -40%; left: -20%;
-    width: 140%; height: 140%;
-    background: radial-gradient(circle at 30% 50%, rgba(255,255,255,0.12) 0%, transparent 60%);
-  }
-  .header h1 { font-size: 2.2rem; font-weight: 800; position: relative; }
-  .header p { font-size: 1.05rem; opacity: 0.9; margin-top: 6px; position: relative; }
-  .header .pill {
-    display: inline-block;
-    background: rgba(255,255,255,0.2);
-    backdrop-filter: blur(6px);
-    border-radius: 999px;
-    padding: 6px 18px;
-    font-size: 0.85rem;
-    margin-top: 14px;
-    position: relative;
-  }
-
-  /* ─── Section Card ─── */
-  .section {
-    background: #fff;
-    border-radius: 20px;
-    padding: 28px 24px;
-    margin-bottom: 24px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  }
-  .section-title {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 1.3rem;
-    font-weight: 700;
-    margin-bottom: 18px;
-    color: #7c3aed;
-  }
-  .section-title .icon {
-    width: 40px; height: 40px;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-  }
-
-  /* ─── Flow Diagram ─── */
-  .flow {
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    position: relative;
-  }
-  .flow-step {
-    display: flex;
-    align-items: flex-start;
-    gap: 14px;
-    position: relative;
-    padding-bottom: 20px;
-  }
-  .flow-step:last-child { padding-bottom: 0; }
-  .flow-step:last-child .flow-line { display: none; }
-
-  .flow-dot {
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 0.85rem; font-weight: 700;
-    color: #fff;
-    flex-shrink: 0;
-    position: relative;
-    z-index: 1;
-  }
-  .flow-line {
-    position: absolute;
-    left: 17px;
-    top: 36px;
-    bottom: 0;
-    width: 2px;
-    background: #e5e7eb;
-  }
-  .flow-content {
-    flex: 1;
-    padding-top: 4px;
-  }
-  .flow-content strong { font-weight: 700; }
-  .flow-content p { font-size: 0.92rem; color: #4b5563; margin-top: 2px; }
-
-  /* ─── Comparison Cards ─── */
-  .compare-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-  @media (max-width: 640px) {
-    .compare-grid { grid-template-columns: 1fr; }
-  }
-  .compare-card {
-    border-radius: 16px;
-    padding: 20px;
-    position: relative;
-    overflow: hidden;
-  }
-  .compare-card::before {
-    content: '';
-    position: absolute;
-    top: 0; right: 0;
-    width: 100px; height: 100px;
-    border-radius: 0 0 0 80px;
-    opacity: 0.12;
-  }
-  .compare-card h3 {
-    font-size: 1.15rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .compare-card .emoji-lg { font-size: 1.5rem; }
-  .compare-card p { font-size: 0.88rem; line-height: 1.7; }
-  .compare-card .tag {
-    display: inline-block;
-    border-radius: 8px;
-    padding: 2px 10px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    margin-top: 8px;
-  }
-
-  .card-swap {
-    background: linear-gradient(135deg, #ede9fe, #f5f3ff);
-    border: 1.5px solid #c4b5fd;
-  }
-  .card-swap::before { background: #7c3aed; }
-  .card-swap h3 { color: #6d28d9; }
-  .card-swap .tag { background: #ddd6fe; color: #5b21b6; }
-
-  .card-transfer {
-    background: linear-gradient(135deg, #fef3c7, #fffbeb);
-    border: 1.5px solid #fcd34d;
-  }
-  .card-transfer::before { background: #f59e0b; }
-  .card-transfer h3 { color: #b45309; }
-  .card-transfer .tag { background: #fde68a; color: #92400e; }
-
-  /* ─── Diagram ─── */
-  .diagram {
-    background: #fafafa;
-    border-radius: 16px;
-    border: 1.5px solid #e5e7eb;
-    padding: 20px;
-    text-align: center;
-    margin-top: 12px;
-  }
-  .diagram-row {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 12px;
-    margin: 10px 0;
-    flex-wrap: wrap;
-  }
-  .diagram-box {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.9rem;
-  }
-  .diagram-arrow {
-    font-size: 1.4rem;
-    color: #9ca3af;
-  }
-  .box-a { background: #ede9fe; color: #6d28d9; border: 1.5px solid #c4b5fd; }
-  .box-b { background: #dbeafe; color: #1d4ed8; border: 1.5px solid #93c5fd; }
-  .box-shift { background: #f3f4f6; color: #374151; border: 1.5px solid #d1d5db; }
-  .box-result { background: #d1fae5; color: #065f46; border: 1.5px solid #6ee7b7; }
-
-  .diagram-label {
-    font-size: 0.82rem;
-    color: #6b7280;
-    margin-top: 4px;
-  }
-
-  /* ─── Shift Time Table ─── */
-  .shift-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 0.88rem;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1.5px solid #e5e7eb;
-  }
-  .shift-table th {
-    background: #f9fafb;
-    padding: 10px 12px;
-    text-align: left;
-    font-weight: 600;
-    color: #4b5563;
-    border-bottom: 1.5px solid #e5e7eb;
-  }
-  .shift-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid #f3f4f6;
-    vertical-align: middle;
-  }
-  .shift-table tr:last-child td { border-bottom: none; }
-  .shift-table .shift-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 3px 10px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.82rem;
-  }
-  .badge-rung  { background: #FEF3DC; color: #92400e; }
-  .badge-chao  { background: #E8F9FA; color: #0e7490; }
-  .badge-bai   { background: #F3EDF8; color: #6d28d9; }
-  .badge-duek  { background: #EEF0FF; color: #3730a3; }
-
-  /* ─── Tips Grid ─── */
-  .tips-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-  @media (max-width: 640px) {
-    .tips-grid { grid-template-columns: 1fr; }
-  }
-  .tip-card {
-    border-radius: 14px;
-    padding: 16px;
-    border: 1.5px solid #e5e7eb;
-    background: #fafafa;
-  }
-  .tip-card h4 {
-    font-size: 0.95rem;
-    font-weight: 700;
-    margin-bottom: 6px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .tip-card p { font-size: 0.85rem; color: #4b5563; }
-
-  /* ─── Footer ─── */
-  .footer {
-    text-align: center;
-    padding: 24px;
-    font-size: 0.82rem;
-    color: #9ca3af;
-  }
-
-  /* ─── Notification Badge ─── */
-  .notif-example {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    background: #f0fdf4;
-    border: 1.5px solid #86efac;
-    border-radius: 14px;
-    padding: 14px 18px;
-    margin-top: 12px;
-  }
-  .notif-example .notif-icon {
-    width: 42px; height: 42px;
-    background: #dcfce7;
-    border-radius: 12px;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 1.3rem;
-    flex-shrink: 0;
-  }
-  .notif-example .notif-text strong { display: block; font-size: 0.9rem; }
-  .notif-example .notif-text span { font-size: 0.82rem; color: #4b5563; }
-
-  /* ─── Warning Box ─── */
-  .warning-box {
-    background: #fef2f2;
-    border: 1.5px solid #fca5a5;
-    border-radius: 14px;
-    padding: 14px 18px;
-    margin-top: 12px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 0.88rem;
-    color: #991b1b;
-  }
-  .warning-box .warn-icon { font-size: 1.2rem; flex-shrink: 0; margin-top: 2px; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>เวรดี๊ดี - คู่มือการใช้งาน</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Kanit', sans-serif;
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 50%, #fce7f3 100%);
+            display: flex;
+            justify-content: center;
+            padding: 2rem 1rem;
+            min-height: 100vh;
+        }
+        .infographic-card {
+            width: 820px;
+            max-width: 100%;
+            background: white;
+            border-radius: 28px;
+            overflow: hidden;
+            box-shadow: 0 32px 64px -12px rgba(88, 28, 235, 0.18);
+        }
+        .hero-pattern {
+            background: linear-gradient(135deg, #7c3aed 0%, #5b21b6 40%, #4c1d95 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-pattern::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: radial-gradient(circle, rgba(167,139,250,0.35) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        .hero-wave {
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+        }
+        .step-badge {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+        .pill-เช้า   { background:#E8F9FA; border:1.5px solid #9FDCE0; color:#134e4a; }
+        .pill-บ่าย   { background:#F3EDF8; border:1.5px solid #9E76B4; color:#581c87; }
+        .pill-ดึก    { background:#EEF0FF; border:1.5px solid #99ABFF; color:#312e81; }
+        .pill-รุ่งอรุณ { background:#FEF3DC; border:1.5px solid #FFCA72; color:#78350f; }
+        .shift-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+        }
+        .section-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            flex-shrink: 0;
+        }
+        .card {
+            background: white;
+            border-radius: 20px;
+            padding: 22px 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+            border: 1px solid #f1f5f9;
+            transition: box-shadow 0.2s;
+        }
+        .card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+        .tip-box {
+            border-radius: 14px;
+            padding: 12px 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .flow-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 8px 0;
+        }
+        .flow-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .divider {
+            border: none;
+            height: 2px;
+            background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+            margin: 4px 0;
+        }
+    </style>
 </head>
 <body>
 
-<div class="page">
+<div class="infographic-card">
 
-  <!-- Header -->
-  <div class="header">
-    <h1>PharmShift</h1>
-    <p>คู่มือการใช้งานสำหรับผู้ใช้ใหม่</p>
-    <div class="pill">กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์</div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 1: Transfer vs Swap -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title">
-      <div class="icon" style="background:#ede9fe;">🔄</div>
-      โอนเวร vs แลกเวร — ต่างกันยังไง?
-    </div>
-
-    <div class="compare-grid">
-      <!-- TRANSFER -->
-      <div class="compare-card card-swap">
-        <h3><span class="emoji-lg">📌</span> โอนเวร (Transfer)</h3>
-        <p>
-          <strong>กดที่ชื่อของตัวเอง</strong> (สีม่วง) → เลือกคนรับ<br>
-          เวร <strong>ย้ายเจ้าของฝั่งเดียว</strong><br>
-          หลังอนุมัติ เวรเปลี่ยนจากคุณเป็นของอีกคน
-        </p>
-        <div class="tag">กดชื่อ ม่วง → โอน</div>
-      </div>
-
-      <!-- SWAP -->
-      <div class="compare-card card-transfer">
-        <h3><span class="emoji-lg">🔄</span> แลกเวร (Swap)</h3>
-        <p>
-          <strong>กดที่ชื่อของคนอื่น</strong> → เลือกเวรของตัวเองที่ต้องการแลก<br>
-          เวร <strong>สลับเจ้าของ 2 ฝั่ง</strong><br>
-          ต้องได้รับการยินยอมจากอีกฝ่ายก่อน
-        </p>
-        <div class="tag" style="background:#bfdbfe; color:#1e40af;">กดชื่อคนอื่น → แลก</div>
-      </div>
-    </div>
-
-    <!-- TRANSFER Diagram -->
-    <div class="diagram">
-      <p style="font-weight:700; margin-bottom:8px; color:#6d28d9;">📌 โอนเวร — ก่อน / หลัง</p>
-      <div class="diagram-row">
-        <div class="diagram-box box-a">👩 A (เจ้าของเวร)</div>
-        <div class="diagram-box box-shift">เวรดึก จ.</div>
-        <span class="diagram-arrow">→</span>
-        <div class="diagram-box box-b">👨 B (ผู้รับเวร)</div>
-      </div>
-      <div class="diagram-label">⬇ หลัง B อนุมัติ</div>
-      <div class="diagram-row">
-        <div class="diagram-box box-result">👨 B → เวรดึก จ.</div>
-        <span class="diagram-arrow" style="color:#ef4444;">✕</span>
-        <div style="color:#9ca3af; font-size:0.88rem;">👩 A หลุดจากเวร</div>
-      </div>
-    </div>
-
-    <!-- SWAP Diagram -->
-    <div class="diagram" style="margin-top:16px;">
-      <p style="font-weight:700; margin-bottom:8px; color:#1d4ed8;">🔄 แลกเวร — ก่อน / หลัง</p>
-      <div class="diagram-row">
-        <div class="diagram-box box-a">👩 A</div>
-        <div class="diagram-box box-shift">เวรดึก จ.</div>
-        <span class="diagram-arrow">⟷</span>
-        <div class="diagram-box box-b">👨 B</div>
-        <div class="diagram-box box-shift">เวรเช้า อ.</div>
-      </div>
-      <div class="diagram-label">⬇ หลัง B อนุมัติ</div>
-      <div class="diagram-row">
-        <div class="diagram-box box-result">👩 A → เวรเช้า อ.</div>
-        <span class="diagram-arrow">&</span>
-        <div class="diagram-box box-result">👨 B → เวรดึก จ.</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 2: Steps -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title">
-      <div class="icon" style="background:#dbeafe;">📋</div>
-      ขั้นตอนการโอน / แลกเวร
-    </div>
-
-    <div class="flow">
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#7c3aed;">1</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>กดที่ชื่อในปฏิทิน</strong>
-          <p>ชื่อสีม่วง (ของคุณ) = โอนเวร · ชื่อสีปกติ (ของคนอื่น) = ขอแลกเวร</p>
+    <!-- ═══════════════ HERO ═══════════════ -->
+    <div class="hero-pattern pt-12 pb-20 px-10 text-center text-white relative">
+        <div class="relative z-10">
+            <div class="inline-flex items-center justify-center w-24 h-24 bg-white rounded-3xl shadow-2xl mb-5">
+                <span class="text-5xl">🏥</span>
+            </div>
+            <h1 class="text-5xl font-extrabold mb-3 drop-shadow-lg tracking-tight">คู่มือใช้งาน WebApp "เวรดี๊ดี"</h1>
+            <p class="text-xl text-purple-200 font-light">สำหรับบุคลากร ฝ่ายเภสัชกรรม โรงพยาบาลอุตรดิตถ์</p>
+            <div class="mt-6 flex flex-wrap justify-center gap-2 text-sm">
+                <span class="bg-white/15 backdrop-blur-sm border border-white/25 text-white px-4 py-1.5 rounded-full">📅 ดูตารางเวร</span>
+                <span class="bg-white/15 backdrop-blur-sm border border-white/25 text-white px-4 py-1.5 rounded-full">🔄 แลกเวร</span>
+                <span class="bg-white/15 backdrop-blur-sm border border-white/25 text-white px-4 py-1.5 rounded-full">🙋 อยู่เวรแทน</span>
+                <span class="bg-white/15 backdrop-blur-sm border border-white/25 text-white px-4 py-1.5 rounded-full">🔔 แจ้งเตือน</span>
+                <span class="bg-white/15 backdrop-blur-sm border border-white/25 text-white px-4 py-1.5 rounded-full">👤 โปรไฟล์</span>
+            </div>
         </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#8b5cf6;">2</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>เลือกเป้าหมาย</strong>
-          <p>โอนเวร: เลือกชื่อคนที่รับเวร | แลกเวร: เลือกเวรของตัวเองจากปฏิทินขนาดเล็ก</p>
+        <svg class="hero-wave" viewBox="0 0 820 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 48 C200 0 620 48 820 0 L820 48 Z" fill="#f8fafc"/>
+        </svg>
+    </div>
+
+    <!-- ═══════════════ CONTENT ═══════════════ -->
+    <div class="px-8 py-8 bg-slate-50 space-y-6">
+
+        <!-- ── 0. เข้าสู่ระบบ ──────────────────────────── -->
+        <div class="rounded-2xl overflow-hidden shadow-md border border-indigo-200">
+            <!-- URL bar -->
+            <div class="p-5 bg-indigo-50 border-b border-indigo-200 flex items-center gap-4">
+                <div class="text-4xl shrink-0">🌐</div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-semibold text-indigo-400 uppercase tracking-widest mb-1">เข้าใช้งานได้ที่</p>
+                    <a href="https://utth-shift.vercel.app/" target="_blank" rel="noopener noreferrer"
+                       class="font-extrabold text-indigo-700 text-xl leading-tight break-all underline underline-offset-2 hover:text-indigo-900 transition-colors">
+                        https://utth-shift.vercel.app/
+                    </a>
+                    <p class="text-xs text-slate-500 mt-1.5">ใช้งานได้ทั้ง 💻 PC และ 📱 มือถือ — ไม่ต้องติดตั้งโปรแกรม</p>
+                </div>
+                <!-- QR Code -->
+                <a href="https://utth-shift.vercel.app/" target="_blank" rel="noopener noreferrer"
+                   class="shrink-0 flex flex-col items-center gap-1.5 group">
+                    <div class="p-1.5 bg-white rounded-xl border-2 border-indigo-200 shadow-sm group-hover:border-indigo-400 transition-colors">
+                        <img
+                            src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=https://utth-shift.vercel.app/&bgcolor=ffffff&color=3730a3&margin=2"
+                            alt="QR Code — utth-shift.vercel.app"
+                            width="100" height="100"
+                            class="rounded-lg block"
+                        />
+                    </div>
+                    <p class="text-[10px] text-indigo-400 font-medium">แสกนเพื่อเปิด</p>
+                </a>
+            </div>
+            <!-- Login info -->
+            <div class="grid grid-cols-2 divide-x divide-indigo-100 bg-white">
+                <div class="px-5 py-4 flex items-start gap-3">
+                    <span class="text-2xl shrink-0 mt-0.5">🪪</span>
+                    <div>
+                        <p class="text-xs font-bold text-indigo-700 mb-1">Username</p>
+                        <p class="text-sm text-slate-700 leading-relaxed"><b>Pha ID</b> ประจำตัวของแต่ละท่าน<br><span class="text-xs text-slate-400">เช่น PHA001, PHA123</span></p>
+                    </div>
+                </div>
+                <div class="px-5 py-4 flex items-start gap-3">
+                    <span class="text-2xl shrink-0 mt-0.5">🔑</span>
+                    <div>
+                        <p class="text-xs font-bold text-amber-600 mb-1">Password ครั้งแรก</p>
+                        <p class="text-sm text-slate-700 leading-relaxed">ใช้รหัส <b class="text-amber-700 text-base">1234</b><br><span class="text-xs text-slate-400">ระบบจะให้ตั้งรหัสใหม่ทันที</span></p>
+                    </div>
+                </div>
+            </div>
+            <!-- Warning strip -->
+            <div class="px-5 py-3 bg-amber-50 border-t border-amber-200 flex items-center gap-2">
+                <span class="text-base shrink-0">⚠️</span>
+                <p class="text-xs text-amber-800">หลังตั้งรหัสผ่านใหม่แล้ว <b>อย่าลืมจำรหัสที่ตั้งไว้</b> หากลืมให้ติดต่อผู้ดูแลระบบเพื่อ reset</p>
+            </div>
         </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#a78bfa;">3</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>พิมพ์ข้อความ (ถ้าต้องการ) แล้วกดส่งคำขอ</strong>
-          <p>ระบบจะแจ้งเตือนอีกฝ่ายทันทีผ่าน Push + ในแอป</p>
+
+        <!-- ── 1. เริ่มต้น ──────────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-indigo-100">📱</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-indigo-600 text-white">1</div>
+                        <h2 class="text-xl font-bold text-slate-800">เริ่มต้น — เซฟแอปลงมือถือ</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ไม่ต้องโหลดจาก App Store เข้าผ่านเบราว์เซอร์แล้วเซฟลงหน้าจอหลัก</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="tip-box bg-slate-50 border border-slate-200">
+                    <p class="font-semibold text-slate-700 mb-1">🍎 iPhone / iPad (Safari)</p>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-indigo-100 text-indigo-700">1</div>
+                        <p class="text-slate-600 text-sm">เปิดเว็บผ่าน <b>Safari</b> เท่านั้น</p>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-indigo-100 text-indigo-700">2</div>
+                        <p class="text-slate-600 text-sm">กดปุ่ม <b>"แชร์" (□↑)</b> ด้านล่างหน้าจอ</p>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-indigo-100 text-indigo-700">3</div>
+                        <p class="text-slate-600 text-sm">เลือก <b>"เพิ่มไปยังหน้าจอโฮม"</b></p>
+                    </div>
+                </div>
+                <div class="tip-box bg-slate-50 border border-slate-200">
+                    <p class="font-semibold text-slate-700 mb-1">🤖 Android (Chrome)</p>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-green-100 text-green-700">1</div>
+                        <p class="text-slate-600 text-sm">เปิดเว็บผ่าน <b>Chrome</b></p>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-green-100 text-green-700">2</div>
+                        <p class="text-slate-600 text-sm">กด <b>⋮</b> มุมขวาบน</p>
+                    </div>
+                    <div class="flow-step">
+                        <div class="flow-dot bg-green-100 text-green-700">3</div>
+                        <p class="text-slate-600 text-sm">เลือก <b>"เพิ่มลงในหน้าจอหลัก"</b></p>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#c084fc;">4</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>อีกฝ่ายกด ยอมรับ หรือ ปฏิเสธ</strong>
-          <p>ดูได้ที่ 🔔 > แท็บ "แลก/โอนเวร"</p>
+
+        <!-- ── 2. Header & Navigation ──────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-sky-100">🗂️</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-sky-500 text-white">2</div>
+                        <h2 class="text-xl font-bold text-slate-800">แถบด้านบน</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ปุ่มหลักที่ใช้บ่อยอยู่ตรงนี้ทั้งหมด</p>
+                </div>
+            </div>
+
+            <!-- Header mockup -->
+            <div class="bg-white border border-slate-200 rounded-2xl overflow-hidden mb-4 shadow-sm">
+                <div class="bg-gradient-to-r from-white to-slate-50 border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 bg-purple-600 rounded-lg flex items-center justify-center text-white text-xs font-bold">W</div>
+                        <span class="font-bold text-slate-700 text-sm">เวรดี๊ดี</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <!-- Month nav -->
+                        <div class="flex items-center gap-1 bg-slate-100 rounded-xl px-2 py-1">
+                            <span class="text-slate-400 text-xs">◀</span>
+                            <span class="text-xs font-semibold text-slate-700 px-1">เมษายน 2569</span>
+                            <span class="text-slate-400 text-xs">▶</span>
+                        </div>
+                        <!-- toggle view -->
+                        <div class="flex bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
+                            <div class="px-2 py-1 text-xs font-semibold bg-white text-purple-700 border-r border-slate-200">ทุกคน</div>
+                            <div class="px-2 py-1 text-xs text-slate-500">ของฉัน</div>
+                        </div>
+                        <!-- refresh -->
+                        <div class="w-7 h-7 bg-sky-50 border border-sky-200 rounded-full flex items-center justify-center text-sky-600 text-xs" title="Refresh">↻</div>
+                        <!-- help -->
+                        <div class="w-7 h-7 bg-purple-50 border border-purple-200 rounded-full flex items-center justify-center text-purple-600 text-xs">?</div>
+                        <!-- notif -->
+                        <div class="relative w-7 h-7 bg-orange-50 border border-orange-200 rounded-full flex items-center justify-center text-xs">🔔
+                            <div class="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-red-500 rounded-full flex items-center justify-center text-white" style="font-size:8px">2</div>
+                        </div>
+                        <!-- profile -->
+                        <div class="w-7 h-7 bg-violet-500 rounded-full flex items-center justify-center text-white text-xs font-bold">ส</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-lg mt-0.5">◀▶</span>
+                    <div><p class="font-semibold text-slate-700">เลื่อนดูเดือน</p><p class="text-slate-500 text-xs">กดซ้าย/ขวาสลับเดือนที่ต้องการดู</p></div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+                    <span class="text-lg mt-0.5">⇄</span>
+                    <div><p class="font-semibold text-slate-700">สลับมุมมอง</p><p class="text-slate-500 text-xs">ทุกเวร = ปฏิทินรวม | ของฉัน = เฉพาะเวรตัวเอง</p></div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-sky-50 border border-sky-200">
+                    <span class="text-lg mt-0.5">↻</span>
+                    <div><p class="font-semibold text-sky-700">Refresh ข้อมูล</p><p class="text-slate-500 text-xs">กดเพื่อโหลดข้อมูลล่าสุดทันที</p></div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-orange-50 border border-orange-200">
+                    <span class="text-lg mt-0.5">🔔</span>
+                    <div><p class="font-semibold text-orange-700">การแจ้งเตือน</p><p class="text-slate-500 text-xs">ตัวเลขแดง = มีการแจ้งเตือนที่ยังไม่ได้อ่าน</p></div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#22c55e;">✓</div>
-        <div class="flow-content">
-          <strong>ถ้ายอมรับ → เวรเปลี่ยนเจ้าของทันที</strong>
-          <p>ปฏิทินอัปเดตอัตโนมัติ ทั้งสองฝ่ายได้รับแจ้งเตือน</p>
+
+        <!-- ── 3. ดูตาราง (ปฏิทินรวม) ─────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-emerald-100">📅</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-emerald-600 text-white">3</div>
+                        <h2 class="text-xl font-bold text-slate-800">ดูตารางเวร (มุมมองทุกคน)</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ปฏิทินรวมของทุกคน แยกสีตามช่วงเวลา</p>
+                </div>
+            </div>
+
+            <!-- Color legend -->
+            <div class="grid grid-cols-4 gap-2 mb-4">
+                <div class="text-center p-3 rounded-xl border" style="background:#E8F9FA;border-color:#9FDCE0">
+                    <p class="text-2xl mb-1">☀️</p>
+                    <p class="font-bold text-xs" style="color:#134e4a">เวรเช้า</p>
+                    <p class="text-xs text-slate-500">08:30–16:30</p>
+                </div>
+                <div class="text-center p-3 rounded-xl border" style="background:#F3EDF8;border-color:#9E76B4">
+                    <p class="text-2xl mb-1">🌤️</p>
+                    <p class="font-bold text-xs" style="color:#581c87">เวรบ่าย</p>
+                    <p class="text-xs text-slate-500">16:30–00:00</p>
+                </div>
+                <div class="text-center p-3 rounded-xl border" style="background:#EEF0FF;border-color:#99ABFF">
+                    <p class="text-2xl mb-1">🌙</p>
+                    <p class="font-bold text-xs" style="color:#312e81">เวรดึก</p>
+                    <p class="text-xs text-slate-500">00:00–08:30</p>
+                </div>
+                <div class="text-center p-3 rounded-xl border" style="background:#FEF3DC;border-color:#FFCA72">
+                    <p class="text-2xl mb-1">🌅</p>
+                    <p class="font-bold text-xs" style="color:#78350f">รุ่งอรุณ</p>
+                    <p class="text-xs text-slate-500">07:00–08:30</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="tip-box bg-emerald-50 border border-emerald-200 text-emerald-800">
+                    🖱️ <b>กดที่วันในปฏิทิน</b> เพื่อดูว่าใครขึ้นเวรในวันนั้นบ้าง
+                </div>
+                <div class="tip-box bg-slate-50 border border-slate-200 text-slate-700">
+                    👆 <b>กดที่ชื่อเพื่อนร่วมงาน</b> เพื่อส่งคำขออยู่เวรแทน หรือแลกเวรกัน
+                </div>
+            </div>
         </div>
-      </div>
-    </div>
 
-    <div class="notif-example">
-      <div class="notif-icon">🔔</div>
-      <div class="notif-text">
-        <strong>ตัวอย่างแจ้งเตือนที่จะได้รับ</strong>
-        <span>📩 มีคำขอโอนเวรให้คุณ</span>
-      </div>
-    </div>
+        <!-- ── 4. เวรของฉัน ──────────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-violet-100">🗓️</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-violet-600 text-white">4</div>
+                        <h2 class="text-xl font-bold text-slate-800">มุมมอง "เวรของฉัน"</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ดูเฉพาะเวรของตัวเอง พร้อมสรุปรายเดือน</p>
+                </div>
+            </div>
 
-    <div class="warning-box">
-      <span class="warn-icon">⚠️</span>
-      <div>
-        <strong>หมายเหตุ:</strong> โอน/แลกเวรได้เฉพาะเดือนที่ Admin <strong>ประกาศตารางเวร</strong>แล้วเท่านั้น
-        ถ้าเดือนยังไม่ประกาศจะเห็นแถบสีแดง 🔒
-      </div>
-    </div>
-  </div>
+            <!-- Stats bar mockup -->
+            <div class="bg-slate-50 rounded-2xl p-4 mb-4 border border-slate-200">
+                <p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">สรุปเวรเดือนนี้</p>
+                <div class="flex flex-wrap gap-2">
+                    <span class="shift-pill pill-เช้า">☀️ เช้า ×3</span>
+                    <span class="shift-pill pill-บ่าย">🌤️ บ่าย ×5</span>
+                    <span class="shift-pill pill-ดึก">🌙 ดึก ×4</span>
+                    <span class="shift-pill pill-รุ่งอรุณ">🌅 รุ่งอรุณ ×1</span>
+                    <span class="shift-pill" style="background:#f0fdf4;border:1.5px solid #86efac;color:#14532d">รวม 13 เวร</span>
+                </div>
+            </div>
 
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 3: Shift Types -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title">
-      <div class="icon" style="background:#fef3c7;">⏰</div>
-      ประเภทเวรและช่วงเวลา
-    </div>
+            <div class="grid grid-cols-2 gap-3 mb-4 text-sm">
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-violet-50 border border-violet-200">
+                    <span class="text-xl mt-0.5">👆</span>
+                    <div>
+                        <p class="font-semibold text-violet-800">กดที่แถบเวร</p>
+                        <p class="text-slate-500 text-xs">เพื่อดูรายละเอียดว่าเวรนี้ได้มาจากไหน (มอบหมายตั้งแต่ต้น หรือแลก/รับมา)</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
+                    <span class="text-xl mt-0.5">🟡</span>
+                    <div>
+                        <p class="font-semibold text-amber-800">จุดสีเหลืองกะพริบ</p>
+                        <p class="text-slate-500 text-xs">บอกว่ามีคำขอแลกเวรที่รอการตอบรับอยู่สำหรับเวรนี้</p>
+                    </div>
+                </div>
+            </div>
 
-    <table class="shift-table">
-      <thead>
-        <tr>
-          <th>ประเภทเวร</th>
-          <th>ช่วงเวลา</th>
-          <th>สีในปฏิทิน</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="shift-badge badge-rung">🌄 รุ่งอรุณ</span></td>
-          <td>07:00 – 08:30 น.</td>
-          <td><span style="display:inline-block;width:40px;height:18px;background:#FEF3DC;border-radius:4px;border:1px solid #e5c07a;"></span> ส้มอ่อน</td>
-        </tr>
-        <tr>
-          <td><span class="shift-badge badge-chao">🌅 เช้า</span></td>
-          <td>08:30 – 16:30 น.</td>
-          <td><span style="display:inline-block;width:40px;height:18px;background:#E8F9FA;border-radius:4px;border:1px solid #7dd3e0;"></span> เขียวมิ้นท์</td>
-        </tr>
-        <tr>
-          <td><span class="shift-badge badge-bai">☀️ บ่าย</span></td>
-          <td>16:30 – 00:30 น.</td>
-          <td><span style="display:inline-block;width:40px;height:18px;background:#F3EDF8;border-radius:4px;border:1px solid #c4a5e0;"></span> ม่วงอ่อน</td>
-        </tr>
-        <tr>
-          <td><span class="shift-badge badge-duek">🌙 ดึก</span></td>
-          <td>00:30 – 08:30 น.</td>
-          <td><span style="display:inline-block;width:40px;height:18px;background:#EEF0FF;border-radius:4px;border:1px solid #99abff;"></span> น้ำเงินอ่อน</td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div style="margin-top:16px;">
-      <p style="font-size:0.88rem; color:#6b7280; font-weight:600;">แผนกเวรเช้า:</p>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#dcfce7; color:#166534; border-color:#86efac;">ER</span>
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#dbeafe; color:#1e40af; border-color:#93c5fd;">MED (D/C, Cont)</span>
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#fef3c7; color:#92400e; border-color:#fcd34d;">SURG</span>
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#fce7f3; color:#9d174d; border-color:#f9a8d4;">Chemo</span>
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#f3e8ff; color:#6b21a8; border-color:#c4b5fd;">SMC</span>
-        <span class="diagram-box" style="font-size:0.82rem; padding:4px 12px; background:#e0f2fe; color:#075985; border-color:#7dd3fc;">โครงการ</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 4: Quick Tips -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title">
-      <div class="icon" style="background:#d1fae5;">💡</div>
-      เคล็ดลับสำคัญ
-    </div>
-
-    <div class="tips-grid">
-      <div class="tip-card">
-        <h4>🔔 เปิดการแจ้งเตือน</h4>
-        <p>กด 🔔 > แท็บ "จากระบบ" > เปิด toggle Push<br>จะได้รับแจ้งเตือนเวรล่วงหน้า 18:00 วันก่อน และ 08:00 วันนั้น</p>
-      </div>
-      <div class="tip-card">
-        <h4>👀 ดูเฉพาะเวรของฉัน</h4>
-        <p>กดปุ่ม "เวรของฉัน" ที่มุมบนขวาเพื่อกรองให้เห็นเฉพาะเวรที่ได้รับมอบหมาย</p>
-      </div>
-      <div class="tip-card">
-        <h4>📱 ติดตั้งเป็นแอป</h4>
-        <p>กดเมนู browser > "เพิ่มลงหน้าจอหลัก" เพื่อใช้งานเหมือนแอปจริง + รับ push notification</p>
-      </div>
-      <div class="tip-card">
-        <h4>⚠️ เวรซ้อน</h4>
-        <p>ถ้าคุณมีเวรในช่วงเวลาเดียวกันอยู่แล้ว ระบบจะเตือน แต่ยังส่งคำขอได้ถ้ายืนยัน</p>
-      </div>
-      <div class="tip-card">
-        <h4>🔒 เปลี่ยนรหัสผ่าน</h4>
-        <p>เข้าสู่ระบบครั้งแรกต้องเปลี่ยนรหัสผ่าน หลังจากนั้นเปลี่ยนได้ที่โปรไฟล์</p>
-      </div>
-      <div class="tip-card">
-        <h4>🏷️ ชื่อเวรย่อใน Excel</h4>
-        <p>E=เช้า ER, D=เช้า MED D/C, C=เช้า MED Cont, S=เช้า SURG, ด=ดึก สามารถใช้ / คั่นหลายเวรได้ เช่น E/ด</p>
-      </div>
-    </div>
-  </div>
-
-  <!-- ═══════════════════════════════════════════════ -->
-  <!-- Section 5: For Admin -->
-  <!-- ═══════════════════════════════════════════════ -->
-  <div class="section">
-    <div class="section-title">
-      <div class="icon" style="background:#fce7f3;">🛠️</div>
-      สำหรับ Admin / Sub-Admin
-    </div>
-
-    <div class="flow">
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#ec4899;">📂</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>อัปโหลดตารางเวรจาก Excel</strong>
-          <p>เลือกเดือน/ปี → เลือกไฟล์ .xlsx → ระบบจะอ่าน shift code และบันทึกลง DB</p>
+            <!-- ShiftDetailModal mockup -->
+            <p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">หน้าต่างรายละเอียดเวร</p>
+            <div class="bg-white border border-violet-200 rounded-2xl overflow-hidden shadow-sm">
+                <div class="px-4 py-3 flex items-center gap-3" style="background:#F3EDF8;border-bottom:2px solid #9E76B4">
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center text-xl" style="background:#E9D8F4">🌤️</div>
+                    <div>
+                        <p class="font-bold text-sm" style="color:#581c87">บ่าย · MED</p>
+                        <p class="text-xs text-slate-500">พุธ 1 เมษายน 2569</p>
+                    </div>
+                </div>
+                <div class="p-4 space-y-2.5">
+                    <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide">ที่มาของเวร</p>
+                    <!-- case 1 -->
+                    <div class="p-3 rounded-xl border" style="background:#F8F5FC;border-color:#D8C8EC">
+                        <p class="text-sm font-semibold text-slate-700">ได้รับมอบหมายตั้งแต่ประกาศตารางเวร</p>
+                    </div>
+                    <p class="text-xs text-slate-400 text-center">— หรือ —</p>
+                    <!-- case 2 -->
+                    <div class="p-3 rounded-xl border flex items-center gap-3" style="background:#EEF0FF;border-color:#99ABFF">
+                        <span class="text-lg">🔀</span>
+                        <div>
+                            <p class="text-xs font-bold" style="color:#4338ca">แลกเวร</p>
+                            <p class="text-xs text-slate-500">เมื่อวันที่ 26 มี.ค. 69</p>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-400 text-center">— หรือ —</p>
+                    <!-- case 3 -->
+                    <div class="p-3 rounded-xl border flex items-center gap-3" style="background:#ecfdf5;border-color:#6ee7b7">
+                        <span class="text-lg">✅</span>
+                        <div>
+                            <p class="text-xs font-bold text-emerald-700">รับเวร</p>
+                            <p class="text-xs text-slate-500">เมื่อวันที่ 20 มี.ค. 69</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#f472b6;">📢</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>ประกาศตารางเวร (Publish)</strong>
-          <p>เลือก role ที่ต้องการประกาศ → กด Deploy → ผู้ใช้จะเห็นตารางเวรและแลกเวรได้</p>
-        </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#fb923c;">📊</div>
-        <div class="flow-line"></div>
-        <div class="flow-content">
-          <strong>Export ตารางเวร / หลักฐานค่าตอบแทน</strong>
-          <p>เลือก Original User หรือ Current User → เลือก role → ดาวน์โหลด Excel เพื่อพิมพ์ A4</p>
-        </div>
-      </div>
-      <div class="flow-step">
-        <div class="flow-dot" style="background:#38bdf8;">⚙️</div>
-        <div class="flow-content">
-          <strong>จัดการผู้ใช้และวันหยุด</strong>
-          <p>เพิ่ม/ลบ/แก้ไขผู้ใช้ในระบบ, เพิ่มวันหยุดนักขัตฤกษ์ ใน Settings</p>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <!-- Footer -->
-  <div class="footer">
-    PharmShift — ระบบจัดเวรกลุ่มงานเภสัชกรรม<br>
-    &copy; 2025 โรงพยาบาลอุตรดิตถ์
-  </div>
+        <!-- ── 5. การขอแลก/อยู่เวรแทน ──────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-fuchsia-100">🔄</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-fuchsia-600 text-white">5</div>
+                        <h2 class="text-xl font-bold text-slate-800">ส่งคำขอแลกเวร / อยู่เวรแทน</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">2 รูปแบบ เลือกได้ตามความต้องการ</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-5">
+                <!-- Cover -->
+                <div class="p-4 rounded-2xl border-2 border-emerald-200 bg-emerald-50">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-2xl">🙋</span>
+                        <p class="font-bold text-emerald-800">อยู่เวรแทน</p>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">เรารับ/ซื้อเวรของคนอื่น</p>
+                    <div class="space-y-1.5">
+                        <div class="flow-step">
+                            <div class="flow-dot bg-emerald-200 text-emerald-800">1</div>
+                            <p class="text-xs text-slate-600">กดที่วันเวรของคนที่ต้องการช่วย</p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-emerald-200 text-emerald-800">2</div>
+                            <p class="text-xs text-slate-600">กดที่ <b>ชื่อเขา</b> ในปฏิทิน</p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-emerald-200 text-emerald-800">3</div>
+                            <p class="text-xs text-slate-600">เลือก <b>"อยู่เวรแทน"</b> แล้วกดส่ง</p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-emerald-200 text-emerald-800">4</div>
+                            <p class="text-xs text-slate-600">รอเจ้าของเวรกด <b>ยืนยัน</b></p>
+                        </div>
+                    </div>
+                </div>
+                <!-- Swap -->
+                <div class="p-4 rounded-2xl border-2 border-blue-200 bg-blue-50">
+                    <div class="flex items-center gap-2 mb-3">
+                        <span class="text-2xl">⇄</span>
+                        <p class="font-bold text-blue-800">แลกเวร</p>
+                    </div>
+                    <p class="text-sm text-slate-600 mb-3">สลับเวรกัน 2 ฝ่าย</p>
+                    <div class="space-y-1.5">
+                        <div class="flow-step">
+                            <div class="flow-dot bg-blue-200 text-blue-800">1</div>
+                            <p class="text-xs text-slate-600">กดที่วันที่และเวรของคนที่ต้องการแลก</p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-blue-200 text-blue-800">2</div>
+                            <p class="text-xs text-slate-600">เลือก <b>"แลกเวร"</b></p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-blue-200 text-blue-800">3</div>
+                            <p class="text-xs text-slate-600">เลือกวันที่และเวรของเราที่จะให้เขาอยู่แทน</p>
+                        </div>
+                        <div class="flow-step">
+                            <div class="flow-dot bg-blue-200 text-blue-800">4</div>
+                            <p class="text-xs text-slate-600">กดส่ง รออีกฝ่ายกด <b>ยืนยัน</b></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal mockup -->
+            <div class="bg-slate-100 rounded-2xl p-4 border border-slate-200">
+                <p class="text-xs font-semibold text-slate-500 mb-3 text-center uppercase tracking-wide">ตัวอย่าง popup ที่จะเด้งขึ้นมา</p>
+                <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden max-w-xs mx-auto">
+                    <div class="bg-slate-50 border-b border-slate-100 px-4 py-2.5 flex justify-between items-center">
+                        <p class="font-bold text-slate-700 text-sm">ส่งคำขอ</p>
+                        <span class="text-slate-400 text-xs">✕</span>
+                    </div>
+                    <div class="p-4 text-xs text-slate-500 text-center mb-1">เลือกประเภทคำขอสำหรับเวร <b class="text-slate-700">บ่าย MED 1 เม.ย.</b></div>
+                    <div class="px-4 pb-4 flex gap-2">
+                        <div class="flex-1 border-2 border-emerald-200 bg-emerald-50 rounded-xl p-2.5 text-center">
+                            <p class="text-lg">🙋</p>
+                            <p class="text-xs font-semibold text-emerald-700">อยู่เวรแทน</p>
+                        </div>
+                        <div class="flex-1 border-2 border-blue-200 bg-blue-50 rounded-xl p-2.5 text-center">
+                            <p class="text-lg">⇄</p>
+                            <p class="text-xs font-semibold text-blue-700">แลกเวร</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 6. การแจ้งเตือน ──────────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-rose-100">🔔</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-rose-500 text-white">6</div>
+                        <h2 class="text-xl font-bold text-slate-800">การแจ้งเตือน & ตอบรับคำขอ</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ระบบจะแจ้งเตือนทุกครั้งที่มีคำขอใหม่</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">ประเภทการแจ้งเตือน</p>
+                    <div class="space-y-2">
+                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200 text-sm">
+                            <span class="text-base">⇄</span>
+                            <div><span class="font-semibold text-blue-700">แลกเวร</span><br/><span class="text-xs text-slate-500">A เสนอแลกเวร...ของเขา กับเวร...ของคุณ</span></div>
+                        </div>
+                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm">
+                            <span class="text-base">🙋</span>
+                            <div><span class="font-semibold text-emerald-700">อยู่เวรแทน</span><br/><span class="text-xs text-slate-500">A ต้องการขออยู่เวร...แทนคุณ</span></div>
+                        </div>
+                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-purple-50 border border-purple-200 text-sm">
+                            <span class="text-base">📤</span>
+                            <div><span class="font-semibold text-purple-700">โอนเวร</span><br/><span class="text-xs text-slate-500">A ต้องการยกเวร...ให้คุณ</span></div>
+                        </div>
+                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-sm">
+                            <span class="text-base">📋</span>
+                            <div><span class="font-semibold text-amber-700">Admin มอบหมาย</span><br/><span class="text-xs text-slate-500">Admin เพิ่ม/เปลี่ยนเวรให้คุณ</span></div>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <p class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">วิธีตอบรับ / ปฏิเสธ</p>
+                    <div class="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm text-xs">
+                        <div class="bg-slate-50 px-3 py-2 border-b border-slate-100 font-semibold text-slate-600">🔔 การแจ้งเตือน</div>
+                        <div class="p-3 space-y-2">
+                            <div class="flex items-start gap-2 pb-2 border-b border-slate-100">
+                                <span>⇄</span>
+                                <div>
+                                    <p class="font-semibold text-slate-700">A ขอแลกเวร</p>
+                                    <p class="text-slate-400">บ่าย MED 5 เม.ย. 69</p>
+                                    <div class="flex gap-1.5 mt-1.5">
+                                        <div class="px-3 py-1 bg-emerald-500 text-white rounded-full font-semibold">ยืนยัน</div>
+                                        <div class="px-3 py-1 bg-red-100 text-red-600 rounded-full font-semibold">ปฏิเสธ</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span>✅</span>
+                                <div>
+                                    <p class="font-semibold text-slate-700 text-green-700">คำขอแลกเวรได้รับการยืนยัน</p>
+                                    <p class="text-slate-400">ระบบอัปเดตตารางเวรอัตโนมัติ</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-3 tip-box bg-rose-50 border border-rose-200 text-rose-800 text-xs">
+                        💡 กด <b>"อนุญาต"</b> ตอนที่เบราว์เซอร์ถามเรื่องการแจ้งเตือน เพื่อรับ push notification ทันทีแม้ไม่ได้เปิดแอปอยู่
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 7. โปรไฟล์ ──────────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-amber-100">👤</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-amber-500 text-white">7</div>
+                        <h2 class="text-xl font-bold text-slate-800">โปรไฟล์ & ตั้งค่าบัญชี</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">กดรูปโปรไฟล์ (วงกลมมุมขวาบน) เพื่อแก้ไขข้อมูลส่วนตัว</p>
+                </div>
+            </div>
+
+            <!-- Profile modal mockup -->
+            <div class="bg-white border border-violet-200 rounded-2xl overflow-hidden shadow-sm mb-4">
+                <div class="px-4 py-3 flex items-center gap-2 bg-gradient-to-r from-violet-600 to-indigo-600">
+                    <span class="text-white text-sm">👤</span>
+                    <p class="font-bold text-white text-sm">แก้ไขข้อมูลส่วนตัว</p>
+                </div>
+                <div class="p-4 grid grid-cols-2 gap-2">
+                    <div class="flex items-center gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200">
+                        <span class="text-base shrink-0">✏️</span>
+                        <div>
+                            <p class="text-xs font-semibold text-slate-700">คำนำหน้า / ชื่อ / นามสกุล</p>
+                            <p class="text-xs text-slate-400">แก้ไขชื่อที่แสดงในระบบ</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2.5 rounded-xl bg-violet-50 border border-violet-200">
+                        <span class="text-base shrink-0">🏷️</span>
+                        <div>
+                            <p class="text-xs font-semibold text-violet-800">ชื่อเล่น</p>
+                            <p class="text-xs text-slate-400">ชื่อที่แสดงบนตารางเวร</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2.5 rounded-xl bg-blue-50 border border-blue-200">
+                        <span class="text-base shrink-0">💼</span>
+                        <div>
+                            <p class="text-xs font-semibold text-blue-800">เลขที่รับเงินเดือน</p>
+                            <p class="text-xs text-slate-400">ตรวจสอบและแก้ไขให้ถูกต้อง</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 p-2.5 rounded-xl bg-amber-50 border border-amber-200">
+                        <span class="text-base shrink-0">🔐</span>
+                        <div>
+                            <p class="text-xs font-semibold text-amber-800">เปลี่ยนรหัสผ่าน</p>
+                            <p class="text-xs text-slate-400">ปล่อยว่างถ้าไม่ต้องการเปลี่ยน</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="tip-box bg-violet-50 border border-violet-200 text-violet-800 text-xs">
+                    🏷️ <b>ชื่อเล่น</b> จะแสดงบนตารางเวรที่ทุกคนเห็น ตั้งให้สั้นกระชับ เช่น "ปอง", "อ้อม"
+                </div>
+                <div class="tip-box bg-blue-50 border border-blue-200 text-blue-800 text-xs">
+                    💼 <b>เลขที่เงินเดือน</b> ใช้สำหรับออกหลักฐานเบิกค่าตอบแทน กรุณาตรวจสอบให้ถูกต้องทุกครั้ง
+                </div>
+                <div class="tip-box bg-red-50 border border-red-200 text-red-800 text-xs col-span-2 flex items-center gap-2">
+                    <span class="text-lg shrink-0">🚪</span>
+                    <span><b>ออกจากระบบ</b> — กดปุ่มออกจากระบบในแถบบน ระบบจะถามยืนยัน 1 ครั้งก่อนออก</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 8. พิมพ์ / Export ──────────────────────────── -->
+        <div class="card">
+            <div class="flex items-center gap-4 mb-5">
+                <div class="section-icon bg-green-100">🖨️</div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <div class="step-badge bg-green-600 text-white">8</div>
+                        <h2 class="text-xl font-bold text-slate-800">ตารางเวร & ค่าตอบแทน</h2>
+                    </div>
+                    <p class="text-slate-500 text-sm mt-0.5">ปุ่มอยู่บน Header ฝั่งขวา ใช้ได้ในหน้าปฏิทินรวม</p>
+                </div>
+            </div>
+
+            <!-- 2 ปุ่ม -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <!-- ตารางเวร Excel -->
+                <div class="rounded-2xl border-2 border-green-200 bg-green-50 p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl">📅</span>
+                        <span class="font-bold text-green-800 text-sm">ตารางเวร Excel</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">ดาวน์โหลดตารางเวรเป็นไฟล์ <b>.xlsx</b> สำหรับปริ้นติดบอร์ดหรือเก็บเป็นไฟล์สำรอง แสดงชื่อทุกคนพร้อมเวรแยกตามวันและแผนก</p>
+                </div>
+                <!-- ค่าตอบแทน -->
+                <div class="rounded-2xl border-2 border-amber-200 bg-amber-50 p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="text-2xl">💰</span>
+                        <span class="font-bold text-amber-800 text-sm">ค่าตอบแทน</span>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">ดูสรุปค่าตอบแทนของตัวเอง — เวรประเภทไหน วันที่เท่าไหร่ ได้รับเท่าไหร่ ระบบคำนวณจากข้อมูลเวรจริงให้อัตโนมัติ</p>
+                </div>
+            </div>
+
+            <!-- Tips -->
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="tip-box bg-green-50 border border-green-200 text-green-800 text-xs">
+                    📋 ไฟล์ Excel สามารถเปิดด้วย <b>Microsoft Excel</b> หรือ <b>Google Sheets</b> ได้ทันที
+                </div>
+                <div class="tip-box bg-amber-50 border border-amber-200 text-amber-800 text-xs">
+                    ⚠️ ตรวจสอบ <b>ชื่อ-นามสกุล</b> และ <b>เลขที่เงินเดือน</b> ในโปรไฟล์ให้ถูกต้องเสมอ เพราะข้อมูลนี้ใช้เป็นหลักฐานเบิกค่าตอบแทน
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Tips Summary ──────────────────────────── -->
+        <div class="bg-gradient-to-br from-purple-600 to-indigo-700 rounded-2xl p-6 text-white shadow-lg">
+            <p class="text-lg font-bold mb-4 text-center">⭐ เทคนิคการใช้งานที่ควรรู้</p>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>กด <b>↻ Refresh</b> ถ้าตารางดูไม่อัปเดต</p>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>แลกเวรข้ามเดือนได้! เลื่อนเดือนในปฏิทินเล็กได้เลย</p>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>จุดสีเหลือง 🟡 = มีคำขอรอ ต้องรีบตอบ</p>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>กดที่แถบเวรใน "เวรของฉัน" เพื่อดูว่าเวรมาจากไหน</p>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>การแลก/โอน/รับเวรจะอัปเดตตารางทันทีหลังยืนยัน</p>
+                </div>
+                <div class="flex items-start gap-2">
+                    <span class="text-yellow-300 text-base mt-0.5">✦</span>
+                    <p>กดปุ่ม <b>?</b> ใน header เพื่อดูวิธีใช้ได้ตลอด</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═══════════════ FOOTER ═══════════════ -->
+    <div class="bg-slate-800 text-slate-400 px-8 py-6 text-center text-sm">
+        <p class="font-semibold text-slate-300 mb-1">🏥 เวรดี๊ดี</p>
+    </div>
 
 </div>
 
