@@ -242,9 +242,9 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
               <p className="text-xs font-semibold text-violet-800 mb-1">👆 กดที่แถบเวร</p>
               <p className="text-[11px] text-gray-500">เพื่อดูรายละเอียดว่าเวรนี้ได้มาจากไหน (มอบหมายตั้งแต่ต้น หรือแลก/รับมา)</p>
             </div>
-            <div className="p-3 rounded-xl bg-amber-50 border border-amber-200">
-              <p className="text-xs font-semibold text-amber-800 mb-1">🟡 จุดสีเหลืองกะพริบ</p>
-              <p className="text-[11px] text-gray-500">บอกว่ามีคำขอแลกเวรที่รอการตอบรับอยู่สำหรับเวรนี้</p>
+            <div className="p-3 rounded-xl bg-red-50 border border-red-200">
+              <p className="text-xs font-semibold text-red-700 mb-1">🔴 จุดสีแดง</p>
+              <p className="text-[11px] text-gray-500">บอกว่ามีคำขอแลกเวรที่รอการตรวจสอบอยู่สำหรับเวรนี้</p>
             </div>
           </div>
           <div className="p-3 rounded-xl bg-white border border-violet-200 space-y-2">
@@ -573,7 +573,7 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
               {[
                 'กด ↻ Refresh ถ้าตารางดูไม่อัปเดต',
                 'แลกเวรข้ามเดือนได้! เลื่อนเดือนในปฏิทินเล็กได้เลย',
-                'จุดสีเหลือง 🟡 = มีคำขอรอ ต้องรีบตอบ',
+                'จุดสีแดง 🔴 = มีคำขอรอ ให้ตรวจสอบ',
                 'กดที่แถบเวรใน "เวรของฉัน" เพื่อดูว่าเวรมาจากไหน',
                 'การแลก/โอน/รับเวรจะอัปเดตตารางทันทีหลังยืนยัน',
                 'กดปุ่ม ? ใน header เพื่อดูวิธีใช้ได้ตลอด',

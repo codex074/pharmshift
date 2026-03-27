@@ -206,14 +206,14 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                               'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',
                               pillStyle,
                               onShiftClick && 'cursor-pointer active:scale-95',
-                              isPending && 'ring-2 ring-amber-400 ring-offset-1',
+                              isPending && 'ring-2 ring-red-400 ring-offset-1',
                             )}
                           >
                             <span className="font-semibold leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
                             <span className="font-semibold leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
                             {/* Pending dot */}
                             {isPending && (
-                              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-400 rounded-full animate-pulse shadow-sm [.exporting-pdf_&]:hidden" />
+                              <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full shadow-sm [.exporting-pdf_&]:hidden" />
                             )}
                           </div>
                         );
