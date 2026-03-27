@@ -92,15 +92,21 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       try { return format(new Date(d + 'T00:00'), 'd MMM', { locale: th }); }
       catch { return d; }
     };
-    /** Format one shift line: "20 มี.ค. เช้า (แผนก OPD)" */
-    const fmtShift = (date: string, shiftType: string, dept?: string) =>
-      `${fmtDate(date)} ${shiftType}${dept ? ` (${dept})` : ''}`;
-    /** Format for push: "เวรบ่าย MED วันที่ 26 มี.ค. 69" */
-    const fmtShiftPush = (date: string, shiftType: string, dept?: string) => {
+    /** ป้ายกำกับ: ใช้ position ถ้ามี, ไม่งั้นใช้ dept (ถ้า dept ≠ shiftType เพื่อหลีกเลี่ยงซ้ำซ้อน) */
+    const shiftLabel = (shiftType: string, dept?: string, position?: string): string =>
+      position || (dept && dept !== shiftType ? dept : '') || '';
+    /** Format one shift line: "20 มี.ค. รุ่งอรุณ (HIV)" */
+    const fmtShift = (date: string, shiftType: string, dept?: string, position?: string) => {
+      const label = shiftLabel(shiftType, dept, position);
+      return `${fmtDate(date)} ${shiftType}${label ? ` (${label})` : ''}`;
+    };
+    /** Format for push: "เวรรุ่งอรุณ HIV วันที่ 26 มี.ค. 69" */
+    const fmtShiftPush = (date: string, shiftType: string, dept?: string, position?: string) => {
       try {
         const d = new Date(date + 'T00:00');
         const year = (d.getFullYear() + 543).toString().slice(-2);
-        return `เวร${shiftType}${dept ? ` ${dept}` : ''} วันที่ ${format(d, 'd MMM', { locale: th })} ${year}`;
+        const label = shiftLabel(shiftType, dept, position);
+        return `เวร${shiftType}${label ? ` ${label}` : ''} วันที่ ${format(d, 'd MMM', { locale: th })} ${year}`;
       } catch { return `เวร${shiftType}`; }
     };
     try {
@@ -148,7 +154,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             deletesByUser.set(s.user_id, list);
           });
         deletesByUser.forEach((shifts, userId) => {
-          const details = shifts.map(s => fmtShift(s.date, s.shift_type as string, (s as any).department_name)).join(', ');
+          const details = shifts.map(s => fmtShift(s.date, s.shift_type as string, (s as any).department?.name || (s as any).department_name, s.position ?? undefined)).join(', ');
           insertNotifications(
             [userId],
             'shift_removed',
@@ -156,7 +162,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             `${adminName} ได้ลบเวรของคุณ: ${details} — ${timestamp}`,
           );
           const pushDetail = shifts.length === 1
-            ? fmtShiftPush(shifts[0].date, shifts[0].shift_type as string, (shifts[0] as any).department_name)
+            ? fmtShiftPush(shifts[0].date, shifts[0].shift_type as string, (shifts[0] as any).department?.name || (shifts[0] as any).department_name, shifts[0].position ?? undefined)
             : `เวร ${shifts.length} รายการ`;
           pushAdminChange([userId], '🗑️ เวรของคุณถูกลบ', `${adminName} ได้ลบ${pushDetail} ออกจากตารางของคุณ`);
         });
@@ -190,7 +196,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             }
           });
         editsByOldOwner.forEach((items, userId) => {
-          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
+          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department?.name || (e.shift as any).department_name, e.shift.position ?? undefined)).join(', ');
           insertNotifications(
             [userId],
             'shift_changed',
@@ -198,12 +204,12 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             `${adminName} ได้เปลี่ยนผู้อยู่เวรของคุณไปให้คนอื่น: ${details} — ${timestamp}`,
           );
           const pushDetail = items.length === 1
-            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department_name)
+            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department?.name || (items[0].shift as any).department_name, items[0].shift.position ?? undefined)
             : `เวร ${items.length} รายการ`;
           pushAdminChange([userId], '🔄 เวรของคุณถูกเปลี่ยนแปลง', `${adminName} ได้โอน${pushDetail} ให้คนอื่น`);
         });
         editsByNewOwner.forEach((items, userId) => {
-          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)).join(', ');
+          const details = items.map(e => fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department?.name || (e.shift as any).department_name, e.shift.position ?? undefined)).join(', ');
           insertNotifications(
             [userId],
             'shift_assigned',
@@ -211,7 +217,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             `${adminName} ได้มอบหมายเวรให้คุณ: ${details} — ${timestamp}`,
           );
           const pushDetail = items.length === 1
-            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department_name)
+            ? fmtShiftPush(items[0].shift.date, items[0].shift.shift_type as string, (items[0].shift as any).department?.name || (items[0].shift as any).department_name, items[0].shift.position ?? undefined)
             : `เวร ${items.length} รายการ`;
           pushAdminChange([userId], '📋 คุณได้รับมอบหมายเวรใหม่', `${adminName} ได้มอบหมาย${pushDetail} ให้คุณ`);
         });
@@ -243,7 +249,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             addsByUser.set(add.user.id, list);
           });
         addsByUser.forEach((adds, userId) => {
-          const details = adds.map(a => fmtShift(a.date, a.shift_type, a.department)).join(', ');
+          const details = adds.map(a => fmtShift(a.date, a.shift_type, a.department, a.position)).join(', ');
           insertNotifications(
             [userId],
             'shift_assigned',
@@ -251,7 +257,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
             `${adminName} ได้มอบหมายเวรให้คุณ: ${details} — ${timestamp}`,
           );
           const pushDetail = adds.length === 1
-            ? fmtShiftPush(adds[0].date, adds[0].shift_type, adds[0].department)
+            ? fmtShiftPush(adds[0].date, adds[0].shift_type, adds[0].department, adds[0].position)
             : `เวร ${adds.length} รายการ`;
           pushAdminChange([userId], '📋 คุณได้รับมอบหมายเวรใหม่', `${adminName} ได้มอบหมาย${pushDetail} ให้คุณ`);
         });
@@ -265,7 +271,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         if (deletes.length > 0) {
           deletes.forEach(s => {
             const ownerName = (s as any).user_f_name || s.user?.f_name || 'ไม่ทราบชื่อ';
-            summaryLines.push(`🗑️ ลบเวร ${ownerName}: ${fmtShift(s.date, s.shift_type as string, (s as any).department_name)}`);
+            summaryLines.push(`🗑️ ลบเวร ${ownerName}: ${fmtShift(s.date, s.shift_type as string, (s as any).department?.name || (s as any).department_name, s.position ?? undefined)}`);
             // Only add to affected list if month is published (for user notifications)
             if (s.user_id && s.month_year && isPublished(s.month_year, (s.user as any)?.role)) allAffectedIds.add(s.user_id);
           });
@@ -275,7 +281,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           edits.forEach(e => {
             const oldName = (e.shift as any).user_f_name || e.shift.user?.f_name || 'ไม่ทราบชื่อ';
             const newName = userDisplayName(e.newUser);
-            summaryLines.push(`🔄 เปลี่ยนเวร ${oldName} → ${newName}: ${fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department_name)}`);
+            summaryLines.push(`🔄 เปลี่ยนเวร ${oldName} → ${newName}: ${fmtShift(e.shift.date, e.shift.shift_type as string, (e.shift as any).department?.name || (e.shift as any).department_name, e.shift.position ?? undefined)}`);
             const pub = e.shift.month_year && isPublished(e.shift.month_year, (e.shift.user as any)?.role);
             if (pub) {
               if (e.shift.user_id) allAffectedIds.add(e.shift.user_id);
@@ -287,7 +293,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
         if (pendingAdds.length > 0) {
           pendingAdds.forEach(a => {
             const userName = userDisplayName(a.user);
-            summaryLines.push(`📋 เพิ่มเวร ${userName}: ${fmtShift(a.date, a.shift_type, a.department)}`);
+            summaryLines.push(`📋 เพิ่มเวร ${userName}: ${fmtShift(a.date, a.shift_type, a.department, a.position)}`);
             if (a.user.id && isPublished(a.month_year, a.user.role as any)) allAffectedIds.add(a.user.id);
           });
         }
