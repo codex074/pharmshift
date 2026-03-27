@@ -166,6 +166,15 @@ export async function POST(req: NextRequest) {
     const { data: users, error: usersError } = await supabase.from('users').select('id, nickname, pha_id');
     if (usersError) throw usersError;
 
+    // Fetch holidays for this month (and adjacent months for safety) to correctly
+    // identify public holidays that fall on weekdays
+    const { data: holidays } = await supabase
+      .from('holidays')
+      .select('date')
+      .gte('date', `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`)
+      .lte('date', `${targetYear}-${String(targetMonth).padStart(2, '0')}-31`);
+    const holidaySet = new Set((holidays || []).map((h: { date: string }) => h.date));
+
     const deptMap = new Map<string, number>();
     departments.forEach((d) => deptMap.set(d.name.toLowerCase(), d.id));
 
@@ -215,8 +224,8 @@ export async function POST(req: NextRequest) {
         const dateObj = new Date(targetYear, targetMonth - 1, day);
         if (dateObj.getMonth() !== targetMonth - 1) continue; // Skip invalid days (like Feb 30)
 
-        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
         const dateStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6 || holidaySet.has(dateStr);
 
         // Split by comma or "/" — multiple shifts in one cell (e.g. "E/ด", "C/ด", "ชM1,บM1")
         const shiftCodes = cellValue.split(/[,/]/).map(s => s.trim()).filter(Boolean);
