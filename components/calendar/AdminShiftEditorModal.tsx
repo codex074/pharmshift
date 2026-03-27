@@ -34,104 +34,77 @@ const ROLES = [
 const PAGE_SIZE = 25;
 
 const SHIFT_BADGE: Record<string, string> = {
-  'เช้า':    'bg-amber-100   text-amber-800   border-amber-200',
-  'บ่าย':    'bg-sky-100     text-sky-800     border-sky-200',
-  'ดึก':     'bg-indigo-100  text-indigo-800  border-indigo-200',
-  'รุ่งอรุณ':'bg-orange-100  text-orange-800  border-orange-200',
+  'เช้า':     'bg-amber-100  text-amber-800  border-amber-200',
+  'บ่าย':     'bg-sky-100    text-sky-800    border-sky-200',
+  'ดึก':      'bg-indigo-100 text-indigo-800 border-indigo-200',
+  'รุ่งอรุณ': 'bg-orange-100 text-orange-800 border-orange-200',
 };
 
 // ── Component ──────────────────────────────────────────────────────────
 export function AdminShiftEditorModal() {
   // ── Filters ──
   const [filterMonth, setFilterMonth] = useState(() => format(new Date(), 'yyyy-MM'));
-  const [filterRole, setFilterRole] = useState('');
-  const [filterDept, setFilterDept] = useState('');
-  const [search, setSearch] = useState('');
+  const [filterRole,  setFilterRole]  = useState('');
+  const [filterDept,  setFilterDept]  = useState('');
+  const [search,      setSearch]      = useState('');
   const [showSuspicious, setShowSuspicious] = useState(false);
 
   // ── Data ──
-  const [shifts, setShifts] = useState<ShiftRow[]>([]);
-  const [depts, setDepts] = useState<Dept[]>([]);
-  const [holidays, setHolidays] = useState<Set<string>>(new Set());
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [shifts,    setShifts]    = useState<ShiftRow[]>([]);
+  const [depts,     setDepts]     = useState<Dept[]>([]);
+  const [holidays,  setHolidays]  = useState<Set<string>>(new Set());
+  const [total,     setTotal]     = useState(0);
+  const [page,      setPage]      = useState(0);
+  const [loading,   setLoading]   = useState(false);
 
   // ── Edit state ──
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<{
+  const [editingId,   setEditingId]   = useState<string | null>(null);
+  const [editValues,  setEditValues]  = useState<{
     shift_type: string; department_id: number; position: string;
   }>({ shift_type: '', department_id: 0, position: '' });
   const [saving, setSaving] = useState(false);
 
   // ── Delete state ──
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId,    setDeletingId]    = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // ── Fetch departments once ──
+  // ── Fix suspicious state ──
+  const [fixLoading, setFixLoading] = useState(false);
+
+  // ── Fetch departments once (client-side OK, departments are public) ──
   useEffect(() => {
     supabase.from('departments').select('id, name').order('name').then(({ data }) => {
       if (data) setDepts(data as Dept[]);
     });
   }, []);
 
-  // ── Fetch holidays when month changes ──
-  useEffect(() => {
-    if (!filterMonth) return;
-    const [y, m] = filterMonth.split('-');
-    supabase
-      .from('holidays')
-      .select('date')
-      .gte('date', `${y}-${m}-01`)
-      .lte('date', `${y}-${m}-31`)
-      .then(({ data }) => {
-        setHolidays(new Set((data || []).map((h: { date: string }) => h.date)));
-      });
-  }, [filterMonth]);
-
-  // ── Fetch shifts ──
+  // ── Fetch shifts via server-side API ──
   const fetchShifts = useCallback(async () => {
     if (!filterMonth) return;
     setLoading(true);
     try {
-      // Get user IDs for role filter
-      let userIds: string[] | null = null;
-      if (filterRole) {
-        const { data: ru } = await supabase
-          .from('users').select('id').eq('role', filterRole);
-        userIds = (ru || []).map((u: { id: string }) => u.id);
-        if (userIds.length === 0) {
-          setShifts([]); setTotal(0); setLoading(false); return;
-        }
-      }
+      const params = new URLSearchParams({ month: filterMonth, page: String(page) });
+      if (filterRole) params.set('role', filterRole);
 
-      // Get dept ID for dept filter
-      let deptId: number | null = null;
+      // Find dept ID from name
       if (filterDept) {
         const found = depts.find(d => d.name === filterDept);
-        if (found) deptId = found.id;
+        if (found) params.set('dept_id', String(found.id));
       }
 
-      let query = supabase
-        .from('shifts')
-        .select(
-          'id, date, shift_type, position, month_year, user:users(id, nickname, pha_id), department:departments(id, name)',
-          { count: 'exact' }
-        )
-        .eq('month_year', filterMonth)
-        .order('date', { ascending: true })
-        .order('user_id', { ascending: true })
-        .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+      const res = await fetch(`/api/admin/shifts?${params}`);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'โหลดข้อมูลล้มเหลว');
+      }
 
-      if (userIds) query = query.in('user_id', userIds);
-      if (deptId)  query = query.eq('department_id', deptId);
+      const { shifts: rawShifts, total: rawTotal, holidayDates } = await res.json();
 
-      const { data, count, error } = await query;
-      if (error) throw error;
+      // Update holiday set from API response
+      setHolidays(new Set(holidayDates || []));
 
-      let rows = (data || []) as unknown as ShiftRow[];
-
-      // Search filter (client-side — nickname/pha_id)
+      // Client-side search filter
+      let rows: ShiftRow[] = rawShifts;
       if (search.trim()) {
         const s = search.trim().toLowerCase();
         rows = rows.filter(r =>
@@ -140,54 +113,54 @@ export function AdminShiftEditorModal() {
         );
       }
 
-      // Suspicious filter: โครงการ + บ่าย + holiday date
+      // Suspicious filter (client-side after holidays are loaded)
       if (showSuspicious) {
         rows = rows.filter(r =>
           r.department?.name === 'โครงการ' &&
           r.shift_type === 'บ่าย' &&
-          holidays.has(r.date)
+          (holidayDates || []).includes(r.date)
         );
       }
 
       setShifts(rows);
-      setTotal(count ?? 0);
+      setTotal(rawTotal);
     } catch (err: any) {
       toast.error(err.message || 'โหลดข้อมูลล้มเหลว');
     } finally {
       setLoading(false);
     }
-  }, [filterMonth, filterRole, filterDept, page, search, showSuspicious, depts, holidays]);
+  }, [filterMonth, filterRole, filterDept, page, search, showSuspicious, depts]);
 
   useEffect(() => { fetchShifts(); }, [fetchShifts]);
 
-  // Reset page when filters change
+  // Reset page when filters change (excluding page itself)
   useEffect(() => { setPage(0); }, [filterMonth, filterRole, filterDept, search, showSuspicious]);
 
   // ── Handlers ──
   function startEdit(row: ShiftRow) {
     setEditingId(row.id);
     setEditValues({
-      shift_type: row.shift_type,
+      shift_type:    row.shift_type,
       department_id: row.department.id,
-      position: row.position ?? '',
+      position:      row.position ?? '',
     });
     setDeletingId(null);
   }
 
-  function cancelEdit() { setEditingId(null); }
-
   async function saveEdit(id: string) {
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from('shifts')
-        .update({
-          shift_type: editValues.shift_type,
+      const res = await fetch('/api/admin/shifts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          shift_type:    editValues.shift_type,
           department_id: editValues.department_id,
-          position: editValues.position || null,
-        })
-        .eq('id', id);
-      if (error) throw error;
+          position:      editValues.position || null,
+        }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
       toast.success('แก้ไขเวรเรียบร้อยแล้ว');
       setEditingId(null);
       fetchShifts();
@@ -201,8 +174,12 @@ export function AdminShiftEditorModal() {
   async function confirmDelete(id: string) {
     setDeleteLoading(true);
     try {
-      const { error } = await supabase.from('shifts').delete().eq('id', id);
-      if (error) throw error;
+      const res = await fetch('/api/admin/shifts', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error); }
       toast.success('ลบเวรเรียบร้อยแล้ว');
       setDeletingId(null);
       fetchShifts();
@@ -213,24 +190,17 @@ export function AdminShiftEditorModal() {
     }
   }
 
-  // ── Fix suspicious: bulk update all โครงการ+บ่าย+holiday → เช้า ──
-  const [fixLoading, setFixLoading] = useState(false);
   async function fixSuspicious() {
-    if (holidays.size === 0) { toast.error('ไม่พบวันหยุดในเดือนนี้'); return; }
     setFixLoading(true);
     try {
-      const deptRow = depts.find(d => d.name === 'โครงการ');
-      if (!deptRow) throw new Error('ไม่พบแผนกโครงการ');
-      const holidayDates = Array.from(holidays);
-      const { error } = await supabase
-        .from('shifts')
-        .update({ shift_type: 'เช้า' })
-        .eq('department_id', deptRow.id)
-        .eq('shift_type', 'บ่าย')
-        .eq('month_year', filterMonth)
-        .in('date', holidayDates);
-      if (error) throw error;
-      toast.success('แก้ไขเวรโครงการ (วันหยุด) ทั้งหมดเป็นเวรเช้าเรียบร้อยแล้ว');
+      const res = await fetch('/api/admin/shifts', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: filterMonth, dept_name: 'โครงการ' }),
+      });
+      if (!res.ok) { const e = await res.json(); throw new Error(e.error || e.message); }
+      const { updated, message } = await res.json();
+      toast.success(message || `แก้ไขเวรโครงการ (วันหยุด) ${updated} รายการ → เวรเช้าเรียบร้อยแล้ว`);
       fetchShifts();
     } catch (err: any) {
       toast.error(err.message || 'เกิดข้อผิดพลาด');
@@ -239,15 +209,15 @@ export function AdminShiftEditorModal() {
     }
   }
 
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  // ── Helpers ───────────────────────────────────────────────────────────
+  const totalPages  = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const isHoliday   = (d: string) => holidays.has(d);
+  const isSuspicious = (r: ShiftRow) =>
+    r.department?.name === 'โครงการ' && r.shift_type === 'บ่าย' && isHoliday(r.date);
   const thaiDate = (d: string) => {
     try { return format(new Date(d + 'T00:00:00'), 'd MMM yy', { locale: th }); }
     catch { return d; }
   };
-
-  const isHoliday = (d: string) => holidays.has(d);
-  const isSuspicious = (r: ShiftRow) =>
-    r.department?.name === 'โครงการ' && r.shift_type === 'บ่าย' && isHoliday(r.date);
 
   // ── Render ────────────────────────────────────────────────────────────
   return (
@@ -258,23 +228,20 @@ export function AdminShiftEditorModal() {
         <div className="flex flex-wrap gap-2">
           {/* Month */}
           <input
-            type="month"
-            value={filterMonth}
+            type="month" value={filterMonth}
             onChange={e => setFilterMonth(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
           />
           {/* Role */}
           <select
-            value={filterRole}
-            onChange={e => setFilterRole(e.target.value)}
+            value={filterRole} onChange={e => setFilterRole(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
           >
             {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
           {/* Dept */}
           <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
+            value={filterDept} onChange={e => setFilterDept(e.target.value)}
             className="px-2.5 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
           >
             <option value="">ทุกแผนก</option>
@@ -284,16 +251,14 @@ export function AdminShiftEditorModal() {
           <div className="relative flex-1 min-w-[140px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
             <input
-              type="text"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
+              type="text" value={search} onChange={e => setSearch(e.target.value)}
               placeholder="ค้นหาชื่อ / pha_id"
               className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white"
             />
           </div>
         </div>
 
-        {/* Suspicious filter + fix button */}
+        {/* Suspicious row */}
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => setShowSuspicious(p => !p)}
@@ -310,8 +275,7 @@ export function AdminShiftEditorModal() {
 
           {showSuspicious && (
             <button
-              onClick={fixSuspicious}
-              disabled={fixLoading}
+              onClick={fixSuspicious} disabled={fixLoading}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-white transition-all disabled:opacity-50"
             >
               {fixLoading
@@ -341,7 +305,7 @@ export function AdminShiftEditorModal() {
         ) : (
           <table className="w-full text-sm border-collapse">
             <thead>
-              <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wide">
+              <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-500 uppercase tracking-wide sticky top-0">
                 <th className="px-3 py-2.5 text-left font-semibold">วันที่</th>
                 <th className="px-3 py-2.5 text-left font-semibold">ชื่อ</th>
                 <th className="px-3 py-2.5 text-left font-semibold">ประเภทเวร</th>
@@ -352,17 +316,18 @@ export function AdminShiftEditorModal() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {shifts.map(row => {
-                const isEditing = editingId === row.id;
-                const isDeleting = deletingId === row.id;
-                const suspicious = isSuspicious(row);
+                const isEditing   = editingId  === row.id;
+                const isDeleting  = deletingId === row.id;
+                const suspicious  = isSuspicious(row);
 
                 return (
                   <tr
                     key={row.id}
                     className={cn(
-                      'hover:bg-gray-50 transition-colors',
-                      suspicious && 'bg-amber-50 hover:bg-amber-100',
-                      isEditing && 'bg-indigo-50 hover:bg-indigo-50',
+                      'transition-colors',
+                      suspicious  && !isEditing && 'bg-amber-50 hover:bg-amber-100',
+                      isEditing   && 'bg-indigo-50',
+                      !suspicious && !isEditing && 'hover:bg-gray-50',
                     )}
                   >
                     {/* Date */}
@@ -422,8 +387,7 @@ export function AdminShiftEditorModal() {
                     <td className="px-3 py-2">
                       {isEditing ? (
                         <input
-                          type="text"
-                          value={editValues.position}
+                          type="text" value={editValues.position}
                           onChange={e => setEditValues(p => ({ ...p, position: e.target.value }))}
                           placeholder="—"
                           className="w-20 text-xs px-2 py-1 border border-indigo-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-400 bg-white"
@@ -438,15 +402,16 @@ export function AdminShiftEditorModal() {
                       {isEditing ? (
                         <div className="flex items-center justify-end gap-1">
                           <button
-                            onClick={() => saveEdit(row.id)}
-                            disabled={saving}
+                            onClick={() => saveEdit(row.id)} disabled={saving}
                             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-all disabled:opacity-50"
                           >
-                            {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {saving
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <Check className="w-3 h-3" />}
                             บันทึก
                           </button>
                           <button
-                            onClick={cancelEdit}
+                            onClick={() => setEditingId(null)}
                             className="px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 text-xs hover:bg-gray-100 transition-all"
                           >
                             <X className="w-3 h-3" />
@@ -456,16 +421,17 @@ export function AdminShiftEditorModal() {
                         <div className="flex items-center justify-end gap-1">
                           <span className="text-xs text-red-600 font-medium mr-1">ยืนยันลบ?</span>
                           <button
-                            onClick={() => confirmDelete(row.id)}
-                            disabled={deleteLoading}
+                            onClick={() => confirmDelete(row.id)} disabled={deleteLoading}
                             className="px-2.5 py-1 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center gap-1"
                           >
-                            {deleteLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                            {deleteLoading
+                              ? <Loader2 className="w-3 h-3 animate-spin" />
+                              : <Check className="w-3 h-3" />}
                             ลบ
                           </button>
                           <button
                             onClick={() => setDeletingId(null)}
-                            className="px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 text-xs hover:bg-gray-100 transition-all"
+                            className="px-2.5 py-1 rounded-lg border border-gray-200 text-gray-500 text-xs hover:bg-gray-100"
                           >
                             <X className="w-3 h-3" />
                           </button>
@@ -501,18 +467,14 @@ export function AdminShiftEditorModal() {
       {!showSuspicious && totalPages > 1 && (
         <div className="flex items-center justify-between px-4 py-2.5 border-t border-gray-100 bg-white shrink-0">
           <button
-            onClick={() => setPage(p => Math.max(0, p - 1))}
-            disabled={page === 0}
+            onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs hover:bg-gray-50 disabled:opacity-40 transition-all"
           >
             <ChevronLeft className="w-3.5 h-3.5" /> ก่อนหน้า
           </button>
-          <span className="text-xs text-gray-400">
-            หน้า {page + 1} / {totalPages}
-          </span>
+          <span className="text-xs text-gray-400">หน้า {page + 1} / {totalPages}</span>
           <button
-            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-            disabled={page >= totalPages - 1}
+            onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1}
             className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-500 text-xs hover:bg-gray-50 disabled:opacity-40 transition-all"
           >
             ถัดไป <ChevronRight className="w-3.5 h-3.5" />
