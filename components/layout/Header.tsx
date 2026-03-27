@@ -6,11 +6,10 @@ import { useRouter } from 'next/navigation';
 import { Pill, Bell, LogOut, ChevronLeft, ChevronRight, Users, User, HelpCircle, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
-import { userFullName, isAdminLike } from '@/lib/types';
+import { userFullName } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { UserProfileModal } from '@/components/UserProfileModal';
-import { HelpGuideModal } from '@/components/HelpGuideModal';
 
 interface HeaderProps {
   currentUser: UserType | null;
@@ -31,7 +30,6 @@ export function Header({
   const [loggingOut, setLoggingOut] = useState(false);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   async function handleLogout() {
@@ -129,14 +127,16 @@ export function Header({
               </button>
             )}
 
-            {/* Help button */}
-            <button
-              onClick={() => setIsHelpOpen(true)}
+            {/* Help button — opens user guide in new tab */}
+            <a
+              href="/guide.html"
+              target="_blank"
+              rel="noopener noreferrer"
               title="วิธีการใช้งาน"
               className="p-2 min-w-[40px] min-h-[40px] rounded-xl hover:bg-emerald-50 text-gray-400 hover:text-emerald-600 transition-all flex items-center justify-center"
             >
               <HelpCircle className="w-5 h-5" />
-            </button>
+            </a>
 
             {/* Notification bell */}
             <button
@@ -238,12 +238,6 @@ export function Header({
         />
       )}
 
-      {isHelpOpen && (
-        <HelpGuideModal
-          onClose={() => setIsHelpOpen(false)}
-          isAdmin={currentUser ? isAdminLike(currentUser) : false}
-        />
-      )}
     </>
   );
 }
