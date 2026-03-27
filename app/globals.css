@@ -175,19 +175,9 @@ body {
   color: hsl(340 75% 35%);
 }
 
-/* Notification dot animation */
-@keyframes ping-custom {
-  75%,
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
-}
+/* Notification dot — static, no animation */
 .notification-ping {
-  animation: ping-custom 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-.notification-ping-badge {
-  animation: ping-custom 1.2s cubic-bezier(0, 0, 0.2, 1) infinite;
+  /* kept for backward compat, no animation */
 }
 
 /* Glass morphism card */
