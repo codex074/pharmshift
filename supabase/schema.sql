@@ -81,7 +81,7 @@ create table if not exists public.swap_requests (
   requester_id    uuid references public.users(id) on delete cascade,
   target_user_id  uuid references public.users(id) on delete cascade,
   request_type    text not null default 'transfer'
-                  check (request_type in ('swap', 'transfer')),
+                  check (request_type in ('swap', 'transfer', 'cover')),
   target_shift_id uuid references public.shifts(id) on delete cascade,
   status          text not null default 'pending'
                   check (status in ('pending', 'accepted', 'rejected')),
