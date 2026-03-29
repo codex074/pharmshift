@@ -7,9 +7,9 @@ import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns
 import { DEPT_COLORS } from '@/lib/types';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
-// ── Shared border / layout helpers ─────────────────────────────────
-const BORDER = 'border-gray-300';
-const BORDER2 = 'border-slate-400';
+// ── Shared border / layout helpers ─────────────────────────────────────────
+const BORDER = 'border-gray-200';
+const BORDER2 = 'border-gray-300';
 const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
 
@@ -115,15 +115,18 @@ export function CalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
-    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-md bg-white">
+    <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-lg bg-white">
       <div className="min-w-[1000px] select-none">
 
         {/* Header Row — day names */}
-        <div className="grid grid-cols-7 border-b-2 border-slate-400">
+        <div className="grid grid-cols-7">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-2 text-center text-sm font-bold border-r-2 border-slate-400',
-              DOW_HDR[i]
+              'py-2.5 text-center text-sm font-bold tracking-wide',
+              i < 6 ? 'border-r border-white/20' : '',
+              DOW_HDR[i],
+              i === 0 && 'rounded-tl-2xl',
+              i === 6 && 'rounded-tr-2xl',
             )}>
               {day}
             </div>
@@ -132,20 +135,21 @@ export function CalendarGrid({
 
         {/* Days */}
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b-2 border-slate-400 h-auto">
+          <div key={wi} className="grid grid-cols-7 border-b border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
+                return <div key={di} className={cn('bg-gray-50/50', di < 6 && 'border-r border-slate-400')} />;
               }
               const dow = day.date.getDay();
               const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
               return (
                 <div key={di} className={cn(
-                  'border-r-2 border-slate-400 relative',
-                  day.isToday && 'bg-amber-50/60 z-10'
+                  di < 6 && 'border-r border-slate-400',
+                  'relative',
+                  day.isToday && 'bg-violet-50/40 z-10'
                 )}>
-                  {day.isToday && <div className="absolute inset-0 border-[3px] border-red-500 z-50 pointer-events-none shadow-[inset_0_0_8px_rgba(239,68,68,.25)] [.exporting-pdf_&]:hidden" />}
+                  {day.isToday && <div className="absolute inset-0 border-2 border-violet-500 z-50 pointer-events-none rounded-sm shadow-[inset_0_0_12px_rgba(124,58,237,.12)] [.exporting-pdf_&]:hidden" />}
                   { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
                     (dow === 5) ? <FridayGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
                     <MonThuGrid day={day} onDayClick={onDayClick} ctx={ctx} />
@@ -212,7 +216,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
-  /* ── My shift — solid violet pill, star prefix, white text ── */
+  /* ── My shift — gradient pill with ring ── */
   if (isMe) {
     return (
       <span
@@ -220,7 +224,9 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         className="block text-center w-full leading-[1.1] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
         onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
       >
-        <span className="inline-flex items-center gap-0.5 bg-violet-600 hover:bg-violet-700 active:bg-violet-800 text-white font-bold text-xs rounded-md px-1.5 py-0.5 shadow-md shadow-violet-300/60 transition-colors [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none">
+        <span className="inline-flex items-center gap-0.5 text-white font-bold text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all hover:shadow-lg ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none"
+          style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
+        >
           {displayName}
         </span>
       </span>
@@ -455,13 +461,13 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
       <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
       <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), dateBg, 'text-[21px] font-extrabold')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), dateBg, 'text-[20px] font-black')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 — morning / afternoon cells */}
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className="grid grid-rows-2 border-r-2 border-r-slate-400" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 3' }}>
         {/* SURG slot บน */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
           {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
           {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
           {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
@@ -473,9 +479,9 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
           {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
       </div>
-      <div className="grid grid-rows-2 border-r-2 border-r-slate-400" style={{ gridArea: '2 / 3 / 4 / 4' }}>
+      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 3 / 4 / 4' }}>
         {/* MED D/C slot บน */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
           {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'D/C', dateStr)}
         </div>
         {/* MED Cont slot ล่าง */}
@@ -495,7 +501,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
 
       <div className="grid grid-rows-2" style={{ gridArea: '5 / 2 / 8 / 3' }}>
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-slate-300')}>
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
           {chemoSlot0?.type === 'real'    && renderPersonalShift(chemoSlot0.shift, ctx)}
           {chemoSlot0?.type === 'pending' && renderPendingAddBadge(chemoSlot0.add, chemoSlot0.globalIdx, ctx)}
           {!chemoSlot0                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
@@ -551,12 +557,12 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 3 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-[21px] font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
       {/* SMC slot บน */}
-      <div className={cn(nameCell('bai'), 'flex-col border-b border-orange-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
+      <div className={cn(nameCell('bai'), 'flex-col border-b border-gray-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
         {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
         {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
         {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
@@ -591,7 +597,7 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       {/* ROW 1 */}
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
       <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-slate-100 text-slate-700 text-[21px] font-extrabold')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
