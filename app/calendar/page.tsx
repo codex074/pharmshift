@@ -249,27 +249,28 @@ export default function CalendarPage() {
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">
               {viewMode === 'mine' ? 'เวรของฉัน' : `ตารางเวร${ROLE_LABELS[effectiveRoleGroup]}`}
             </h1>
-            <p className="text-sm text-gray-500 mt-0.5">{formatThaiMonth(year, month)}</p>
+            <p className="text-sm text-gray-400 mt-1 font-medium tracking-wide">{formatThaiMonth(year, month)}</p>
           </div>
-        {/* Desktop action buttons (hidden on mobile — mobile uses FAB menu) */}
-        <div className={cn("flex items-center gap-2 flex-wrap", isMobile && "hidden")}>
+        {/* Desktop action buttons — unified dark/violet palette */}
+        <div className={cn("flex items-center gap-1.5 flex-wrap", isMobile && "hidden")}>
             {userIsAdminLike && (
               <>
                 {isEditMode ? (
                   <>
                     <button
                       onClick={() => setShowAdminConfirm(true)}
-                      className="bg-indigo-600 text-white hover:bg-indigo-700 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                      className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                      style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
                     >
                       <span>✅</span>
                       <span>ยืนยันการแก้ไข</span>
                     </button>
                     <button
                       onClick={handleToggleEditMode}
-                      className="bg-gray-100 text-gray-700 hover:bg-gray-200 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                      className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
                     >
                       <span>❌</span>
                       <span>ยกเลิก</span>
@@ -278,7 +279,7 @@ export default function CalendarPage() {
                 ) : (
                   <button
                     onClick={handleToggleEditMode}
-                    className="bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                    className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
                   >
                     <span>✏️</span>
                     <span className="sm:hidden">แก้ไข</span>
@@ -287,7 +288,8 @@ export default function CalendarPage() {
                 )}
                 <button
                   onClick={() => setShowDeployModal(true)}
-                  className="bg-green-100 text-green-700 hover:bg-green-200 hover:text-green-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                  className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
                 >
                   <span>📢</span>
                   <span className="sm:hidden">ประกาศ</span>
@@ -298,7 +300,8 @@ export default function CalendarPage() {
             {userIsAdminLike && (
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="bg-violet-100 text-violet-700 hover:bg-violet-200 hover:text-violet-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)' }}
               >
                 <span>📂</span>
                 <span className="sm:hidden">CSV</span>
@@ -308,7 +311,7 @@ export default function CalendarPage() {
             {userIsAdmin && (
               <button
                 onClick={() => setShowAdminSettings(true)}
-                className="bg-slate-100 text-slate-700 hover:bg-slate-200 hover:text-slate-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
               >
                 <span>⚙️</span>
                 <span className="sm:hidden">ตั้งค่า</span>
@@ -319,17 +322,17 @@ export default function CalendarPage() {
             {currentUser && (
                <button
                  onClick={() => setShowCompensationModal(true)}
-                 className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                 className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                 style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
                >
                  <span>💰</span>
-                 <span className="sm:hidden">ค่าตอบแทน</span>
-                 <span className="hidden sm:inline">ค่าตอบแทน</span>
+                 <span>ค่าตอบแทน</span>
                </button>
             )}
             {userIsAdminLike && (
               <button
                 onClick={() => setShowAdminExportModal(true)}
-                className="bg-indigo-100 text-indigo-700 hover:bg-indigo-200 hover:text-indigo-800 font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm transition-colors shadow-sm flex items-center gap-1.5"
+                className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
               >
                 <span>📊</span>
                 <span className="sm:hidden">Export</span>
@@ -342,7 +345,8 @@ export default function CalendarPage() {
           {isMobile && currentUser && !userIsAdminLike && (
             <button
               onClick={() => setShowCompensationModal(true)}
-              className="bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800 font-medium px-3 py-2 rounded-xl text-xs transition-colors shadow-sm flex items-center gap-1.5"
+              className="text-white font-bold px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
             >
               <span>💰</span>
               <span>ค่าตอบแทน</span>
@@ -353,23 +357,21 @@ export default function CalendarPage() {
         {/* Admin/Sub-admin: role group tab switcher */}
         {userIsAdminLike && (
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
-            <div className="flex items-center gap-2 bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200/50 shadow-sm w-max min-w-full sm:w-auto">
+            <div className="flex items-center gap-1 p-1 rounded-2xl w-max min-w-full sm:w-auto shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #0f0a2e, #1a1145, #2d1b69)' }}
+            >
               {STAFF_ROLES.map((role) => {
                 const isActive = viewRoleGroup === role;
-                let activeClass = 'bg-gray-800 text-white shadow-md';
-                if (role === 'pharmacist') activeClass = 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20';
-                if (role === 'pharmacy_technician') activeClass = 'bg-violet-600 text-white shadow-md shadow-violet-600/20';
-                if (role === 'officer') activeClass = 'bg-sky-500 text-white shadow-md shadow-sky-500/20';
 
                 return (
                   <button
                     key={role}
                     onClick={() => setViewRoleGroup(role)}
                     className={cn(
-                      'px-4 sm:px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 whitespace-nowrap',
+                      'px-5 sm:px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 whitespace-nowrap tracking-tight active:scale-95',
                       isActive
-                        ? activeClass
-                        : 'text-gray-500 hover:text-gray-900 hover:bg-white/60'
+                        ? 'bg-white text-gray-900 shadow-lg'
+                        : 'text-white/50 hover:text-white/80 hover:bg-white/[0.06]'
                     )}
                   >
                     {ROLE_LABELS[role]}
@@ -381,20 +383,23 @@ export default function CalendarPage() {
         )}
 
         {!publishedRoles[effectiveRoleGroup] && userIsAdminLike && (
-          <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl p-3 text-sm flex items-center gap-2">
-            ⚠️ ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด &ldquo;ประกาศตารางเวร&rdquo; เมื่อพร้อม
+          <div className="border border-amber-300/40 text-amber-100 rounded-2xl p-3.5 text-sm flex items-center gap-3 shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #92400e, #78350f)' }}
+          >
+            <span className="text-lg">⚠️</span>
+            <span className="font-semibold">ตารางเวรตำแหน่งนี้ยังไม่ถูกประกาศให้ผู้ใช้ทั่วไปเห็น กรุณาตรวจสอบความถูกต้องและกด &ldquo;ประกาศตารางเวร&rdquo; เมื่อพร้อม</span>
           </div>
         )}
 
-        {/* Stats cards */}
-        <div className="grid grid-cols-5 gap-1 sm:gap-2 pdf-hide">
+        {/* Stats cards — gradient backgrounds */}
+        <div className="grid grid-cols-5 gap-1.5 sm:gap-2.5 pdf-hide">
           {[
-            { id: 'all',      label: 'Total',    short: 'Total', value: totalCount, bg: 'bg-slate-100 hover:bg-slate-200',    text: 'text-slate-800',    num: 'text-slate-900'  },
-            { id: 'เช้า',     label: 'เช้า',     short: 'เช้า',  value: chaoCount,  bg: 'bg-amber-100  hover:bg-amber-200',    text: 'text-amber-700',    num: 'text-amber-900'  },
-            { id: 'บ่าย',     label: 'บ่าย',     short: 'บ่าย',  value: baiCount,   bg: 'bg-orange-100 hover:bg-orange-200',   text: 'text-orange-700',   num: 'text-orange-900' },
-            { id: 'ดึก',      label: 'ดึก',      short: 'ดึก',   value: duekCount,  bg: 'bg-indigo-100 hover:bg-indigo-200',   text: 'text-indigo-700',   num: 'text-indigo-900' },
-            { id: 'รุ่งอรุณ', label: 'รุ่งอรุณ', short: 'รุ่ง',  value: rungCount,  bg: 'bg-rose-100   hover:bg-rose-200',     text: 'text-rose-700',     num: 'text-rose-900'   },
-          ].map(({ id, label, short, value, bg, text, num }) => (
+            { id: 'all',      label: 'Total',    short: 'Total', value: totalCount, gradient: 'linear-gradient(135deg, #334155, #1e293b)' },
+            { id: 'เช้า',     label: 'เช้า',     short: 'เช้า',  value: chaoCount,  gradient: 'linear-gradient(135deg, #2dd4bf, #0f766e)' }, // Teal/Cyan
+            { id: 'บ่าย',     label: 'บ่าย',     short: 'บ่าย',  value: baiCount,   gradient: 'linear-gradient(135deg, #a855f7, #7e22ce)' }, // Purple
+            { id: 'ดึก',      label: 'ดึก',      short: 'ดึก',   value: duekCount,  gradient: 'linear-gradient(135deg, #818cf8, #4338ca)' }, // Periwinkle/Indigo
+            { id: 'รุ่งอรุณ', label: 'รุ่งอรุณ', short: 'รุ่ง',  value: rungCount,  gradient: 'linear-gradient(135deg, #fbbf24, #d97706)' }, // Amber
+          ].map(({ id, label, short, value, gradient }) => (
             <div
               key={id}
               onClick={() => {
@@ -403,11 +408,17 @@ export default function CalendarPage() {
                   setShowPersonalShiftsModal(true);
                 }
               }}
-              className={cn(`rounded-xl border-0 p-1.5 sm:p-3 transition-all duration-200 ${bg}`, currentUser && value > 0 ? "cursor-pointer hover:scale-105 hover:shadow-md active:scale-95" : "")}
+              className={cn(
+                'rounded-xl p-2 sm:p-3 transition-all duration-300 shadow text-white relative overflow-hidden',
+                currentUser && value > 0 ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md active:scale-[0.97]' : ''
+              )}
+              style={{ background: gradient }}
             >
-              <div className="flex flex-col items-center sm:flex-row sm:items-center sm:gap-2">
-                <p className={cn("text-base sm:text-xl font-extrabold leading-none", num)}>{value}</p>
-                <p className={cn("text-[9px] sm:text-sm font-semibold opacity-90 leading-tight mt-0.5 sm:mt-0 text-center sm:text-left", text)}>
+              {/* Decorative circle */}
+              <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full bg-white/10" />
+              <div className="relative z-10">
+                <p className="text-xl sm:text-2xl font-extrabold leading-none tracking-tight">{value}</p>
+                <p className="text-[10px] sm:text-xs font-bold opacity-90 mt-0.5 tracking-wide">
                   <span className="sm:hidden">{short}</span>
                   <span className="hidden sm:inline">{label}</span>
                 </p>
@@ -416,7 +427,7 @@ export default function CalendarPage() {
           ))}
         </div>
 
-        <div id="pdf-export-target" className="space-y-4 bg-white p-2">
+        <div id="pdf-export-target" className="space-y-4 bg-white rounded-2xl p-2 sm:p-3 shadow-sm border border-gray-100/60">
           {/* PDF Title Header (hidden on web, shown in PDF) */}
           <div className="hidden pdf-show pb-2 border-b-2 border-gray-900 mb-4 flex justify-between items-end">
             <h2 className="text-2xl font-bold text-gray-900 pb-2">
@@ -474,7 +485,7 @@ export default function CalendarPage() {
           )}
 
           {/* Calendar */}
-          <div ref={isMobile ? swipeRef : undefined} className={cn("bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto", isMobile ? "p-0 border-0 shadow-none bg-transparent" : "p-2 sm:p-3")}>
+          <div ref={isMobile ? swipeRef : undefined} className={cn("bg-white rounded-2xl overflow-x-auto", isMobile ? "p-0 border-0 shadow-none bg-transparent" : "p-1 sm:p-2")}>
             <div className={cn(!isMobile && "min-w-[360px]")}>
             {shiftsLoading ? (
               <div className="flex items-center justify-center py-20 gap-3 text-gray-400">
@@ -571,7 +582,7 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <p className="text-[10px] text-gray-400 text-center pb-4 pdf-hide">
+        <p className="text-[10px] text-gray-400 text-center pb-4 pdf-hide font-medium">
           คลิกชื่อตัวเองเพื่อโอนเวร · คลิกชื่อคนอื่นเพื่อขอแลกเวร
         </p>
       </main>
