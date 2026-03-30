@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { Bell, LogOut, ChevronLeft, ChevronRight, Users, User, HelpCircle, RefreshCw } from 'lucide-react';
+import { LogOut, ChevronLeft, ChevronRight, Users, User } from 'lucide-react';
+import { RefreshIcon3D, HelpIcon3D, BellIcon3D } from '@/components/ui/icons3d';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
 import { userFullName } from '@/lib/types';
@@ -124,26 +125,26 @@ export function Header({
                 onClick={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }}
                 disabled={refreshing}
                 title="โหลดข้อมูลใหม่"
-                className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 transition-all duration-200 flex items-center justify-center disabled:opacity-40 active:scale-95"
+                className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center disabled:opacity-40 active:scale-95"
               >
-                <RefreshCw className={cn("w-[18px] h-[18px]", refreshing && "animate-spin")} />
+                <RefreshIcon3D spinning={refreshing} />
               </button>
             )}
 
             <button
               onClick={() => setIsGuideOpen(true)}
               title="วิธีการใช้งาน"
-              className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition-all duration-200 flex items-center justify-center active:scale-95"
+              className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
-              <HelpCircle className="w-[18px] h-[18px]" />
+              <HelpIcon3D />
             </button>
 
             <button
               onClick={onBellClick}
               id="notifications-button"
-              className="relative p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 transition-all duration-200 flex items-center justify-center active:scale-95"
+              className="relative p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
-              <Bell className="w-[18px] h-[18px]" />
+              <BellIcon3D />
               {pendingCount > 0 && (
                 <span className="absolute -top-0.5 -right-0.5 min-w-[20px] h-[20px] px-1 text-white text-[10px] font-black rounded-full flex items-center justify-center leading-none shadow-lg animate-scale-in"
                   style={{ background: 'linear-gradient(135deg, #f43f5e, #e11d48)' }}
