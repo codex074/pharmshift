@@ -89,7 +89,7 @@ function LoginForm() {
             เวรดี๊ดี
           </h1>
           <p className="text-violet-300/80 text-lg font-medium leading-relaxed mb-8">
-            ระบบจัดการตารางเวรอัจฉริยะ
+            ระบบจัดการตารางเวรออนไลน์
             <br />
             <span className="text-violet-400/60 text-base">กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์</span>
           </p>
