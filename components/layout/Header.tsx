@@ -10,6 +10,7 @@ import { userFullName } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { UserProfileModal } from '@/components/UserProfileModal';
+import { HelpGuideModal } from '@/components/HelpGuideModal';
 
 interface HeaderProps {
   currentUser: UserType | null;
@@ -31,6 +32,7 @@ export function Header({
   const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   async function handleLogout() {
     setLoggingOut(true);
@@ -128,15 +130,13 @@ export function Header({
               </button>
             )}
 
-            <a
-              href="/guide.html"
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              onClick={() => setIsGuideOpen(true)}
               title="วิธีการใช้งาน"
               className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-white/10 text-white/50 hover:text-emerald-300 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
               <HelpCircle className="w-[18px] h-[18px]" />
-            </a>
+            </button>
 
             <button
               onClick={onBellClick}
@@ -237,6 +237,12 @@ export function Header({
           onSuccess={() => {
             router.refresh();
           }}
+        />
+      )}
+      {isGuideOpen && (
+        <HelpGuideModal
+          isAdmin={currentUser?.role === 'admin'}
+          onClose={() => setIsGuideOpen(false)}
         />
       )}
     </>
