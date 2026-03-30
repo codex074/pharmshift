@@ -113,28 +113,67 @@ function LoginForm() {
       </div>
 
       {/* Right Panel — Login Form */}
-      <div className="flex-1 flex items-center justify-center px-6 sm:px-12 relative"
-        style={{ background: 'linear-gradient(180deg, #fafafa 0%, #f5f3ff 100%)' }}
+      <div className="flex-1 flex flex-col lg:items-center lg:justify-center relative overflow-y-auto"
+        style={{ background: 'linear-gradient(180deg, #f5f3ff 0%, #fafafa 40%, #f5f3ff 100%)' }}
       >
-        {/* Mobile logo (hidden on lg+) */}
-        <div className="absolute top-6 left-6 flex items-center gap-3 lg:hidden">
-          <div className="w-10 h-10 rounded-xl shadow-md overflow-hidden bg-white">
-            <Image src="/icon.png" alt="Logo" width={40} height={40} className="w-full h-full object-cover" priority />
+
+        {/* ── Mobile Hero (hidden on desktop) ─────────────────────── */}
+        <div className="lg:hidden relative flex flex-col items-center pt-14 pb-10 px-6"
+          style={{ background: 'linear-gradient(160deg, #4c1d95 0%, #6d28d9 50%, #7c3aed 100%)' }}
+        >
+          {/* Dot-grid overlay */}
+          <div className="absolute inset-0 opacity-[0.07]"
+            style={{ backgroundImage: 'radial-gradient(circle, #fff 1px, transparent 1px)', backgroundSize: '22px 22px' }} />
+
+          {/* Glowing orb */}
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-64 h-32 rounded-full opacity-30 blur-2xl"
+            style={{ background: 'radial-gradient(circle, #a78bfa, transparent 70%)' }} />
+
+          {/* Logo */}
+          <div className="relative z-10 w-24 h-24 rounded-3xl shadow-2xl overflow-hidden mb-5
+                          ring-4 ring-white/20"
+            style={{ boxShadow: '0 0 48px rgba(167,139,250,0.4)' }}
+          >
+            <Image src="/icon.png" alt="Logo" width={96} height={96} className="w-full h-full object-cover" priority />
           </div>
-          <span className="font-extrabold text-gray-800 text-lg tracking-tight">เวรดี๊ดี</span>
+
+          <h1 className="relative z-10 text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
+            เวรดี๊ดี
+          </h1>
+          <p className="relative z-10 text-violet-200/80 text-sm font-medium mt-2 text-center leading-snug">
+            ระบบจัดการตารางเวร<br />
+            <span className="text-violet-300/60 text-xs">กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์</span>
+          </p>
+
+          {/* Feature pills */}
+          <div className="relative z-10 flex flex-wrap justify-center gap-2 mt-5">
+            {['📅 ดูตาราง', '🔄 แลกเวร', '🔔 แจ้งเตือน'].map((t) => (
+              <span key={t}
+                className="text-[11px] font-semibold text-white/80 bg-white/10 border border-white/20 px-3 py-1 rounded-full backdrop-blur-sm">
+                {t}
+              </span>
+            ))}
+          </div>
+
+          {/* Wave bottom */}
+          <svg className="absolute bottom-0 left-0 w-full" viewBox="0 0 390 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0 28 C100 0 290 28 390 0 L390 28 Z" fill="#fafafa"/>
+          </svg>
         </div>
 
-        <div className="w-full max-w-[420px] animate-slide-up-fade">
-          {/* Welcome text */}
-          <div className="mb-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-100 text-violet-600 text-xs font-bold mb-4 tracking-wide">
+        {/* ── Form Card ────────────────────────────────────────────── */}
+        <div className="w-full max-w-[420px] mx-auto px-6 sm:px-8 lg:px-0 py-8 lg:py-0 animate-slide-up-fade">
+
+          {/* Welcome text — desktop only badge + heading */}
+          <div className="mb-8">
+            <div className="hidden lg:inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-100 text-violet-600 text-xs font-bold mb-4 tracking-wide">
               <Sparkles className="w-3.5 h-3.5" />
               ระบบจัดการตารางเวร
             </div>
-            <h2 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 tracking-tight leading-tight">
               เข้าสู่ระบบ
             </h2>
-            <p className="text-gray-400 mt-2 text-base font-medium">
+            <p className="text-gray-400 mt-1.5 text-sm sm:text-base font-medium">
               เข้าใช้งานด้วยรหัสผู้ใช้งานของคุณ
             </p>
           </div>
@@ -194,7 +233,7 @@ function LoginForm() {
           </form>
 
           {/* Footer */}
-          <div className="mt-10 text-center">
+          <div className="mt-8 text-center">
             <p className="text-[11px] text-gray-400 font-medium">
               กลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์ — เวรดี๊ดี v2.0
             </p>
