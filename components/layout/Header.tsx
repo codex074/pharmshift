@@ -124,7 +124,7 @@ export function Header({
                 onClick={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }}
                 disabled={refreshing}
                 title="โหลดข้อมูลใหม่"
-                className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 flex items-center justify-center disabled:opacity-40 active:scale-95"
+                className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-sky-500/20 text-sky-400 hover:text-sky-300 transition-all duration-200 flex items-center justify-center disabled:opacity-40 active:scale-95"
               >
                 <RefreshCw className={cn("w-[18px] h-[18px]", refreshing && "animate-spin")} />
               </button>
@@ -133,7 +133,7 @@ export function Header({
             <button
               onClick={() => setIsGuideOpen(true)}
               title="วิธีการใช้งาน"
-              className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-white/10 text-white/50 hover:text-emerald-300 transition-all duration-200 flex items-center justify-center active:scale-95"
+              className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-emerald-500/20 text-emerald-400 hover:text-emerald-300 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
               <HelpCircle className="w-[18px] h-[18px]" />
             </button>
@@ -141,7 +141,7 @@ export function Header({
             <button
               onClick={onBellClick}
               id="notifications-button"
-              className="relative p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-white/10 text-white/50 hover:text-white transition-all duration-200 flex items-center justify-center active:scale-95"
+              className="relative p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
               <Bell className="w-[18px] h-[18px]" />
               {pendingCount > 0 && (
