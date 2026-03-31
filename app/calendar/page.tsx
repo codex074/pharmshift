@@ -440,14 +440,16 @@ export default function CalendarPage() {
             <div
               key={id}
               onClick={() => {
-                if (currentUser) {
+                if (currentUser && (userIsAdminLike || myRolePublished)) {
                   setPersonalShiftsFilter(id as ShiftType | 'all');
                   setShowPersonalShiftsModal(true);
                 }
               }}
               className={cn(
                 'rounded-xl p-2 sm:p-3 transition-all duration-300 shadow text-white relative overflow-hidden',
-                currentUser && value > 0 ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md active:scale-[0.97]' : ''
+                currentUser && value > 0 && (userIsAdminLike || myRolePublished)
+                  ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md active:scale-[0.97]'
+                  : 'cursor-default'
               )}
               style={{ background: gradient }}
             >
