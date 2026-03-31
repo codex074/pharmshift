@@ -26,7 +26,9 @@
       "Bash(node /tmp/create_excel.js)",
       "Bash(git commit -m \"feat: เพิ่มคู่มือตัวย่อเวรใน modal + อัปเดต Excel ตัวอย่างครบ 3 ตำแหน่ง:*)",
       "Bash(git commit:*)",
-      "Bash(grep -l \"published_months\\\\|published\" /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/*.sql /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/migrations/*.sql)"
+      "Bash(grep -l \"published_months\\\\|published\" /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/*.sql /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/migrations/*.sql)",
+      "Bash(git checkout:*)",
+      "Bash(git stash:*)"
     ]
   }
 }
