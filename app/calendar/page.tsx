@@ -118,14 +118,17 @@ export default function CalendarPage() {
   }
 
   function handleDayClick(day: CalendarDay) {
+    if (!userIsAdminLike && !myRolePublished) return;
     if (isMobile) setMobileDaySelected(day);
   }
 
   function handleMobileDayClick(day: CalendarDay) {
+    if (!userIsAdminLike && !myRolePublished) return;
     setMobileDaySelected(day);
   }
 
   function handleShiftClick(shift: Shift) {
+    if (!userIsAdminLike && !myRolePublished) return;
     if (isEditMode) return; // Don't open swap modal in edit mode
     if (currentUser?.is_active === false) {
       toastError('บัญชีของคุณถูกระงับ — ไม่สามารถแลก/ซื้อเวรได้');
@@ -538,7 +541,7 @@ export default function CalendarPage() {
                 shifts={visibleMyShifts}
                 holidays={holidays}
                 onDayClick={handleDayClick}
-                onShiftClick={(s) => setDetailShift(s)}
+                onShiftClick={(s) => { if (!userIsAdminLike && !myRolePublished) return; setDetailShift(s); }}
                 pendingShiftIds={pendingShiftIds}
               />
             ) : isMobile ? (
