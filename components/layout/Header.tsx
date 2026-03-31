@@ -3,8 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { LogOut, ChevronLeft, ChevronRight, Users, User } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Users, User } from 'lucide-react';
 import { RefreshIcon3D, HelpIcon3D, BellIcon3D } from '@/components/ui/icons3d';
+import PharmSwal from '@/lib/swal';
 import { toast } from 'sonner';
 import type { User as UserType } from '@/lib/types';
 import { userFullName } from '@/lib/types';
@@ -30,12 +31,22 @@ export function Header({
 }: HeaderProps) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
-  const [confirmingLogout, setConfirmingLogout] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
 
   async function handleLogout() {
+    const result = await PharmSwal.fire({
+      title: 'ออกจากระบบ?',
+      html: '<span style="font-size:14px;color:#64748b">คุณต้องการออกจากระบบใช่หรือไม่</span>',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: '🚪 ออกจากระบบ',
+      cancelButtonText: 'ยกเลิก',
+      reverseButtons: true,
+      focusCancel: true,
+    });
+    if (!result.isConfirmed) return;
     setLoggingOut(true);
     await fetch('/api/auth/logout', { method: 'POST' });
     toast.info('ออกจากระบบแล้ว');
@@ -173,34 +184,37 @@ export function Header({
             )}
 
             {/* Logout */}
-            {confirmingLogout ? (
-              <div className="flex items-center gap-1 bg-red-500/20 border border-red-400/30 rounded-xl px-2 py-1 animate-scale-in backdrop-blur-sm">
-                <span className="text-xs text-red-300 font-semibold mr-0.5 hidden sm:inline">ออกจากระบบ?</span>
-                <button
-                  onClick={() => setConfirmingLogout(false)}
-                  className="text-xs text-white/60 hover:text-white px-2 py-1 rounded-lg hover:bg-white/10 transition-all"
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={handleLogout}
-                  disabled={loggingOut}
-                  id="logout-button"
-                  className="text-xs text-white bg-red-500 hover:bg-red-600 px-2.5 py-1 rounded-lg font-bold transition-all disabled:opacity-50 flex items-center gap-1"
-                >
-                  {loggingOut ? '...' : 'ออก'}
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmingLogout(true)}
-                id="logout-button"
-                className="p-2.5 min-w-[40px] min-h-[40px] rounded-xl hover:bg-red-500/20 text-white/40 hover:text-red-300 transition-all duration-200 flex items-center justify-center active:scale-95"
-                title="ออกจากระบบ"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              id="logout-button"
+              title="ออกจากระบบ"
+              className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95 disabled:opacity-50"
+            >
+              <svg width="30" height="30" viewBox="0 0 30 30" fill="none"
+                style={{ filter: 'drop-shadow(0 2px 4px rgba(239,68,68,0.5))' }}>
+                <defs>
+                  <radialGradient id="icon3d-logout-bg" cx="38%" cy="32%" r="70%">
+                    <stop offset="0%"   stopColor="#fca5a5" />
+                    <stop offset="55%"  stopColor="#ef4444" />
+                    <stop offset="100%" stopColor="#7f1d1d" />
+                  </radialGradient>
+                  <radialGradient id="icon3d-logout-gl" cx="48%" cy="22%" r="52%">
+                    <stop offset="0%"   stopColor="#ffffff" stopOpacity="0.6" />
+                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+                  </radialGradient>
+                </defs>
+                <rect width="30" height="30" rx="9" fill="url(#icon3d-logout-bg)" />
+                <rect width="30" height="15" rx="9" fill="url(#icon3d-logout-gl)" />
+                {/* Door frame */}
+                <path d="M13 8h-4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h4" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                {/* Arrow out */}
+                <path d="M17 19l4-4-4-4" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                <line x1="21" y1="15" x2="12" y2="15" stroke="white" strokeWidth="2.2" strokeLinecap="round" />
+                {/* Shine */}
+                <ellipse cx="11" cy="9.5" rx="4" ry="2.2" fill="white" opacity="0.25" />
+              </svg>
+            </button>
           </div>
         </div>
 
