@@ -24,9 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 
-# PWA files
-public/sw.js
-public/sw.js.map
+# PWA build artifacts
 public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
