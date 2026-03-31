@@ -6,6 +6,17 @@ import type { Shift, CalendarDay, Holiday } from '@/lib/types';
 import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
 
 
+// Per-weekday header colours (Sun=0 … Sat=6) — matches OfficeCalendarGrid
+const DOW_HDR: Record<number, string> = {
+  0: 'bg-[#F3828A] text-red-900',
+  1: 'bg-[#FEE66A] text-yellow-900',
+  2: 'bg-[#FFB1DC] text-pink-900',
+  3: 'bg-[#B6E666] text-green-900',
+  4: 'bg-[#FEA86F] text-orange-900',
+  5: 'bg-[#A1DDFF] text-sky-900',
+  6: 'bg-[#D0AEEF] text-purple-900',
+};
+
 interface MyCalendarGridProps {
   year: number;
   month: number;
@@ -97,11 +108,11 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
       {/* ── Calendar Grid ── */}
       <div className="w-full border border-gray-200 rounded-xl overflow-hidden bg-white">
         {/* Header Row */}
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50/80">
+        <div className="grid grid-cols-7 border-b border-gray-200">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
               'py-2 sm:py-3 text-center text-[10px] sm:text-sm font-semibold',
-              i === 0 ? 'text-red-500' : i === 6 ? 'text-indigo-500' : 'text-gray-600'
+              DOW_HDR[i]
             )}>
               <span className="sm:hidden">{day.charAt(0)}</span>
               <span className="hidden sm:inline">{day}</span>
