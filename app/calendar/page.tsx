@@ -186,11 +186,16 @@ export default function CalendarPage() {
       .map(r => r.shift_id)
       .filter(Boolean) as string[]
   );
-  const totalCount = sourceShiftsForStats.length;
-  const chaoCount = sourceShiftsForStats.filter((s) => s.shift_type === 'เช้า').length;
-  const baiCount  = sourceShiftsForStats.filter((s) => s.shift_type === 'บ่าย').length;
-  const duekCount = sourceShiftsForStats.filter((s) => s.shift_type === 'ดึก').length;
-  const rungCount = sourceShiftsForStats.filter((s) => s.shift_type === 'รุ่งอรุณ').length;
+  // For non-admin users: hide all shift counts/data when the month isn't published for their role
+  const visibleShifts    = (!userIsAdminLike && !myRolePublished) ? [] : shifts;
+  const visibleMyShifts  = (!userIsAdminLike && !myRolePublished) ? [] : myShifts;
+  const visibleSource    = (!userIsAdminLike && !myRolePublished) ? [] : sourceShiftsForStats;
+
+  const totalCount = visibleSource.length;
+  const chaoCount = visibleSource.filter((s) => s.shift_type === 'เช้า').length;
+  const baiCount  = visibleSource.filter((s) => s.shift_type === 'บ่าย').length;
+  const duekCount = visibleSource.filter((s) => s.shift_type === 'ดึก').length;
+  const rungCount = visibleSource.filter((s) => s.shift_type === 'รุ่งอรุณ').length;
 
   const handleSwipeLeft = useCallback(() => {
     const d = new Date(year, month);
@@ -248,7 +253,7 @@ export default function CalendarPage() {
       <CompensationModal
         isOpen={showCompensationModal}
         onClose={() => setShowCompensationModal(false)}
-        shifts={myShifts}
+        shifts={visibleMyShifts}
         currentUser={currentUser}
         month={month}
         year={year}
@@ -530,7 +535,7 @@ export default function CalendarPage() {
               <MyCalendarGrid
                 year={year}
                 month={month}
-                shifts={myShifts}
+                shifts={visibleMyShifts}
                 holidays={holidays}
                 onDayClick={handleDayClick}
                 onShiftClick={(s) => setDetailShift(s)}
