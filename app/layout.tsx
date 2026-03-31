@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Sarabun } from 'next/font/google';
 import './globals.css';
 import { Toaster } from 'sonner';
+import { PWAProvider } from '@/components/pwa/PWAProvider';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const sarabun = Sarabun({
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background antialiased">
         {children}
         <Toaster richColors position="top-right" />
+        <PWAProvider />
       </body>
     </html>
   );
