@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Loader2, X } from 'lucide-react';
+import { Loader2, X, Lock } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { exportScheduleTable } from '@/lib/scheduleTableExport';
 import type { Shift, Holiday } from '@/lib/types';
@@ -11,9 +11,10 @@ interface Props {
   holidays: Holiday[];
   year: number;
   month: number;
+  isPublished: boolean;
 }
 
-export function ScheduleTableExportButton({ shifts, holidays, year, month }: Props) {
+export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished }: Props) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -31,6 +32,28 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month }: Pro
       setLoading(false);
     }
   };
+
+  if (!isPublished) {
+    return (
+      <div className="relative group">
+        <button
+          disabled
+          className="bg-gray-100 text-gray-400 cursor-not-allowed font-medium px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center gap-1.5 shadow-sm"
+        >
+          <Lock className="w-3.5 h-3.5" />
+          <span className="sm:hidden">ตารางเวร</span>
+          <span className="hidden sm:inline">ตารางเวร Excel</span>
+        </button>
+        {/* Tooltip */}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+          <div className="bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+            ยังไม่ได้ประกาศตารางเวรเดือนนี้
+            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
