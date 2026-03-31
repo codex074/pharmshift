@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Lock } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
@@ -92,6 +92,13 @@ export default function CalendarPage() {
 
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
+
+  // Publish guards — disable export buttons if the month hasn't been published
+  const pharmacistPublished = publishedRoles.pharmacist ?? false;
+  const myRoleKey = (currentUser?.role ?? 'pharmacist') as keyof typeof publishedRoles;
+  const myRolePublished = userIsAdminLike
+    ? (publishedRoles[viewRoleGroup as keyof typeof publishedRoles] ?? false)
+    : (publishedRoles[myRoleKey] ?? false);
   const {
     swapRequests, pendingCount, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
@@ -318,16 +325,27 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
             )}
-<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} />
+<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} />
             {currentUser && (
-               <button
-                 onClick={() => setShowCompensationModal(true)}
-                 className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
-                 style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-               >
-                 <span>💰</span>
-                 <span>ค่าตอบแทน</span>
-               </button>
+              <div className="relative group">
+                <button
+                  onClick={() => myRolePublished && setShowCompensationModal(true)}
+                  disabled={!myRolePublished}
+                  className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                  style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af' }}
+                >
+                  {myRolePublished ? <span>💰</span> : <Lock className="w-3.5 h-3.5" />}
+                  <span>ค่าตอบแทน</span>
+                </button>
+                {!myRolePublished && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+                    <div className="bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                      ยังไม่ได้ประกาศตารางเวรเดือนนี้
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
             {userIsAdminLike && (
               <button
@@ -343,14 +361,25 @@ export default function CalendarPage() {
 
           {/* Mobile: compensation button for non-admin users */}
           {isMobile && currentUser && !userIsAdminLike && (
-            <button
-              onClick={() => setShowCompensationModal(true)}
-              className="text-white font-bold px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-lg"
-              style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}
-            >
-              <span>💰</span>
-              <span>ค่าตอบแทน</span>
-            </button>
+            <div className="relative group">
+              <button
+                onClick={() => myRolePublished && setShowCompensationModal(true)}
+                disabled={!myRolePublished}
+                className="text-white font-bold px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+                style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af' }}
+              >
+                {myRolePublished ? <span>💰</span> : <Lock className="w-3 h-3" />}
+                <span>ค่าตอบแทน</span>
+              </button>
+              {!myRolePublished && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
+                  <div className="bg-gray-800 text-white text-xs font-medium px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg">
+                    ยังไม่ได้ประกาศตารางเวรเดือนนี้
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
