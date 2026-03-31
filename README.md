@@ -53,7 +53,7 @@
 | **Authentication** | Iron-session (JWT Cookie — ไม่ใช้ Supabase Auth) |
 | **Realtime** | Supabase Realtime (postgres_changes) |
 | **Push Notifications** | Web Push API + VAPID (`web-push` v3.6.7) |
-| **PWA** | `@ducanh2912/next-pwa` |
+| **PWA** | Web App Manifest + manual Service Worker |
 | **Excel Export** | ExcelJS (v4.4.0) |
 | **Excel Import** | xlsx (v0.18.5) |
 | **Icons** | Lucide React |
