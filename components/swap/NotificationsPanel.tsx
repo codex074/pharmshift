@@ -514,13 +514,6 @@ export function NotificationsPanel({
                 )}
               </div>
 
-              {/* Schedule info — only when subscribed */}
-              {isSubscribed && (
-                <div className="text-[10px] text-gray-500 space-y-0.5 pl-6 border-t border-green-100 pt-2">
-                  <p>🕕 18:00 วันก่อน — แจ้งเตือนเวรวันรุ่งขึ้นทุกเวร</p>
-                  <p>🕗 08:00 วันนั้น — แจ้งเตือนเวรวันนี้ (ยกเว้นเวรรุ่งอรุณ)</p>
-                </div>
-              )}
             </div>
           ) : null}
 
