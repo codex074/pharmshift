@@ -295,13 +295,24 @@ body.exporting-pdf .overflow-x-auto {
   font-size: 1.5rem !important;
 }
 
+/* Actions container — equal-width buttons with gap */
+.pharmshift-swal-popup .swal2-actions {
+  display: flex !important;
+  flex-direction: row !important;
+  gap: 0.625rem !important;
+  margin-top: 1.25rem !important;
+  width: 100% !important;
+  padding: 0 !important;
+}
+
 /* Confirm Button */
 .pharmshift-swal-confirm {
+  flex: 1 1 0 !important;
   background: linear-gradient(135deg, hsl(252 80% 52%), hsl(271 81% 50%)) !important;
   color: #fff !important;
   font-weight: 600 !important;
-  font-size: 0.8rem !important;
-  padding: 0.5rem 1.5rem !important;
+  font-size: 0.85rem !important;
+  padding: 0.65rem 1rem !important;
   border-radius: 0.75rem !important;
   border: none !important;
   cursor: pointer !important;
@@ -327,11 +338,12 @@ body.exporting-pdf .overflow-x-auto {
 
 /* Cancel Button */
 .pharmshift-swal-cancel {
+  flex: 1 1 0 !important;
   background: transparent !important;
   color: hsl(220 9% 48%) !important;
   font-weight: 500 !important;
-  font-size: 0.8rem !important;
-  padding: 0.5rem 1.5rem !important;
+  font-size: 0.85rem !important;
+  padding: 0.65rem 1rem !important;
   border-radius: 0.75rem !important;
   border: 1px solid hsl(220 13% 88%) !important;
   cursor: pointer !important;
