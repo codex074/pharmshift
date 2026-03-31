@@ -31,6 +31,51 @@ function shiftsOverlap(a: ShiftType, b: ShiftType): boolean {
   return ta.start < tb.end && tb.start < ta.end;
 }
 
+function dateOffsetDays(dateStr: string, days: number): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  d.setDate(d.getDate() + days);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+async function hasBaiDuekSeq(
+  supa: any,
+  userId: string,
+  shiftType: string,
+  date: string,
+  excludeShiftId?: string,
+): Promise<boolean> {
+  if (shiftType !== 'บ่าย' && shiftType !== 'ดึก') return false;
+  const paired = shiftType === 'ดึก' ? 'บ่าย' : 'ดึก';
+  const { data } = await supa.from('shifts').select('id, shift_type')
+    .eq('user_id', userId).eq('date', date);
+  return (data || []).some((s: any) => {
+    if (excludeShiftId && s.id === excludeShiftId) return false;
+    return s.shift_type === paired;
+  });
+}
+
+async function hasDuekChaoSeq(
+  supa: any,
+  userId: string,
+  shiftType: string,
+  date: string,
+  excludeShiftId?: string,
+): Promise<boolean> {
+  if (shiftType !== 'เช้า' && shiftType !== 'รุ่งอรุณ' && shiftType !== 'ดึก') return false;
+  const isAfterDuek = shiftType === 'เช้า' || shiftType === 'รุ่งอรุณ';
+  const adjDate = isAfterDuek ? dateOffsetDays(date, -1) : dateOffsetDays(date, 1);
+  const { data } = await supa.from('shifts').select('id, shift_type')
+    .eq('user_id', userId).eq('date', adjDate);
+  return (data || []).some((s: any) => {
+    if (excludeShiftId && s.id === excludeShiftId) return false;
+    if (isAfterDuek) return s.shift_type === 'ดึก';
+    return s.shift_type === 'เช้า' || s.shift_type === 'รุ่งอรุณ';
+  });
+}
+
 function fmtShift(s: any): string {
   if (!s) return 'เวรดังกล่าว';
   const d = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
@@ -105,6 +150,23 @@ export async function POST(request: NextRequest) {
     if ((r2.data || []).some((s: any) => shiftsOverlap(s.shift_type, req.target_shift.shift_type))) {
       collisionMsg = collisionMsg ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน' : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
     }
+    // Check บ่าย→ดึก and ดึก→เช้า sequences for swap
+    if (!collisionMsg) {
+      const [seqBDR, seqBDT, seqDCR, seqDCT] = await Promise.all([
+        hasBaiDuekSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
+        hasBaiDuekSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
+        hasDuekChaoSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
+        hasDuekChaoSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
+      ]);
+      const msgs: string[] = [];
+      if (seqBDR && seqBDT) msgs.push('ทั้งสองฝ่ายมีเวรบ่าย-ดึกต่อเนื่องกัน');
+      else if (seqBDR) msgs.push('ผู้ขอมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+      else if (seqBDT) msgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+      if (seqDCR && seqDCT) msgs.push('ทั้งสองฝ่ายมีเวรดึก-เช้าต่อเนื่องกัน');
+      else if (seqDCR) msgs.push('ผู้ขอมีเวรดึก-เช้าต่อเนื่องกัน');
+      else if (seqDCT) msgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
+      if (msgs.length > 0) collisionMsg = msgs.join(' และ ');
+    }
   } else if (req.shift) {
     const currentOwnerId = req.shift.user_id;
     const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
@@ -112,6 +174,17 @@ export async function POST(request: NextRequest) {
       .eq('user_id', newUserId).eq('date', req.shift.date);
     if ((newUserShifts || []).some((s: any) => shiftsOverlap(s.shift_type, req.shift.shift_type))) {
       collisionMsg = 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+    }
+    // Check บ่าย→ดึก and ดึก→เช้า sequences for transfer/cover
+    if (!collisionMsg) {
+      const [hasBD, hasDC] = await Promise.all([
+        hasBaiDuekSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
+        hasDuekChaoSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
+      ]);
+      const msgs: string[] = [];
+      if (hasBD) msgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+      if (hasDC) msgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
+      if (msgs.length > 0) collisionMsg = msgs.join(' และ ');
     }
   }
 
