@@ -7,7 +7,7 @@ import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isPushSupported, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
+import { isPushSupported, isIosNonPwa, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
 
 /** "เช้า SURG (Cont) 23 มี.ค." */
 function shiftLabel(s: any): string {
@@ -210,6 +210,11 @@ export function NotificationsPanel({
         setPushPermission(getPermissionStatus());
         toast.success('ปิดการแจ้งเตือนแล้ว');
       } else {
+        // iOS Safari (non-PWA) ไม่รองรับ Web Push — แนะนำให้ Add to Home Screen
+        if (isIosNonPwa()) {
+          toast.info('บน iPhone/iPad ต้องติดตั้งแอปก่อน — กด Share แล้วเลือก "Add to Home Screen"', { duration: 6000 });
+          return;
+        }
         // Turn ON — request permission (if needed) + subscribe
         const ok = await subscribeToPush(currentUser.id);
         const newPerm = getPermissionStatus();
@@ -486,7 +491,9 @@ export function NotificationsPanel({
                         ? '⚠️ ถูกบล็อก — อนุญาตใน ⚙️ เบราว์เซอร์'
                         : isSubscribed
                           ? 'เปิดอยู่ — รับแจ้งเตือนเวรล่วงหน้า'
-                          : 'ปิดอยู่ — กดเพื่อเปิดรับแจ้งเตือนเวร'
+                          : isIosNonPwa()
+                            ? '📲 ต้องติดตั้งแอปก่อน (Add to Home Screen)'
+                            : 'ปิดอยู่ — กดเพื่อเปิดรับแจ้งเตือนเวร'
                       }
                     </p>
                   </div>
