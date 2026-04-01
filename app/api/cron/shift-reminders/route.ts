@@ -8,9 +8,9 @@ import { createClient } from '@supabase/supabase-js';
 /**
  * Cron-based shift reminder notifications
  *
- * Schedule (vercel.json):
- *   1) 01:00 UTC  = 08:00 Bangkok  →  remind today's shifts (EXCEPT รุ่งอรุณ)
- *   2) 11:00 UTC  = 18:00 Bangkok  →  remind tomorrow's shifts (ALL including รุ่งอรุณ)
+ * Schedule (GitHub Actions cron):
+ *   1) 23:00 UTC  = 06:00 Bangkok  →  remind today's shifts (EXCEPT รุ่งอรุณ)
+ *   2) 09:00 UTC  = 16:00 Bangkok  →  remind tomorrow's shifts (ALL including รุ่งอรุณ)
  *
  * Only notifies users whose shifts are in published months.
  */
@@ -81,15 +81,15 @@ export async function GET(req: NextRequest) {
 
     const isMorningRun =
       runParam === 'morning' ||
-      (!runParam && bkkHour >= 6 && bkkHour < 14); // widened fallback window
+      (!runParam && bkkHour >= 4 && bkkHour < 12); // widened fallback window
 
     if (isMorningRun) {
-      // Morning run (08:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
+      // Morning run (06:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
       targetDate = `${bkk.year}-${String(bkk.month).padStart(2, '0')}-${String(bkk.day).padStart(2, '0')}`;
       excludeDawn = true;
       timeLabel = 'วันนี้';
     } else {
-      // Evening run (18:00 BKK) → remind tomorrow's shifts (ALL)
+      // Evening run (16:00 BKK) → remind tomorrow's shifts (ALL)
       const todayUTC = Date.UTC(bkk.year, bkk.month - 1, bkk.day);
       const tomorrowUTC = todayUTC + 24 * 60 * 60 * 1000;
       const t = new Date(tomorrowUTC);
