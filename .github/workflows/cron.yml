@@ -3,10 +3,10 @@ name: Cron Jobs
 on:
   schedule:
     # ── Shift Reminders ────────────────────────────────────────
-    # 01:00 UTC = 08:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
-    - cron: '0 1 * * *'
-    # 11:00 UTC = 18:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
-    - cron: '0 11 * * *'
+    # 23:00 UTC = 06:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
+    - cron: '0 23 * * *'
+    # 09:00 UTC = 16:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
+    - cron: '0 9 * * *'
     # ── Cleanup ────────────────────────────────────────────────
     # 21:00 UTC = 04:00 Bangkok  →  ลบข้อมูลเก่า
     - cron: '0 21 * * *'
@@ -26,7 +26,7 @@ on:
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # แจ้งเตือนเวร (08:00 + 18:00 Bangkok)
+  # แจ้งเตือนเวร (06:00 + 16:00 Bangkok)
   # ─────────────────────────────────────────────────────────────
   shift-reminders:
     name: Shift Reminders
@@ -36,14 +36,14 @@ jobs:
       (github.event.inputs.job == 'reminders' || github.event.inputs.job == 'all')
       || (
         github.event_name == 'schedule' &&
-        (github.event.schedule == '0 1 * * *' || github.event.schedule == '0 11 * * *')
+        (github.event.schedule == '0 23 * * *' || github.event.schedule == '0 9 * * *')
       )
     steps:
       - name: Determine run type
         id: run_type
         run: |
           SCHEDULE="${{ github.event.schedule }}"
-          if [ "$SCHEDULE" = "0 1 * * *" ]; then
+          if [ "$SCHEDULE" = "0 23 * * *" ]; then
             echo "run=morning" >> $GITHUB_OUTPUT
           else
             echo "run=evening" >> $GITHUB_OUTPUT
