@@ -223,8 +223,12 @@ export function NotificationsPanel({
           toast.info('ไม่สามารถเปิดการแจ้งเตือนได้ในขณะนี้');
         }
       }
-    } catch {
-      toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+    } catch (err: any) {
+      if (err?.message === 'SW_TIMEOUT') {
+        toast.error('Service Worker ยังไม่พร้อม — รีโหลดหน้าแล้วลองใหม่');
+      } else {
+        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
+      }
     } finally {
       setIsSubscribing(false);
     }

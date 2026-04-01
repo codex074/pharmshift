@@ -54,10 +54,16 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
   }
 
   try {
-    const registration = await navigator.serviceWorker.ready;
+    // Wait for SW with a 10-second timeout so the button never gets stuck
+    const registration = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('SW_TIMEOUT')), 10_000)
+      ),
+    ]);
 
     // Check existing subscription
-    let subscription = await registration.pushManager.getSubscription();
+    let subscription = await (registration as ServiceWorkerRegistration).pushManager.getSubscription();
 
     if (!subscription) {
       // Request permission (shows browser prompt)
