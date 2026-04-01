@@ -34,6 +34,15 @@ export function isPWA(): boolean {
   );
 }
 
+/** Check if running on iOS Safari (non-PWA) — push requires standalone mode on iOS */
+export function isIosNonPwa(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+  const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
+  return isIos && isSafari && !isPWA();
+}
+
 /** Get current notification permission status */
 export function getPermissionStatus(): NotificationPermission | 'unsupported' {
   if (!isPushSupported()) return 'unsupported';
