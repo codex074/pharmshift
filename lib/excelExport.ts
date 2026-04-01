@@ -221,8 +221,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         const salaryNumber = s.user?.salary_number || '';
         
         const role = s.user?.role || 'pharmacist';
-        const phaIdRaw = s.user?.pha_id || 0;
-        const phaId = typeof phaIdRaw === 'number' ? phaIdRaw : parseInt(phaIdRaw as string, 10) || 0;
+        const phaIdRaw = s.user?.pha_id ?? 0;
+        const phaId = typeof phaIdRaw === 'number'
+          ? phaIdRaw
+          : parseInt(String(phaIdRaw).replace(/\D/g, ''), 10) || 0;
 
         userRow = {
           userId: s.user_id,
