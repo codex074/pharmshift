@@ -204,36 +204,56 @@ export function NotificationsPanel({
     setIsSubscribing(true);
     try {
       if (isSubscribed) {
-        // Turn OFF — unsubscribe from push manager + remove from server
+        // Turn OFF
         await unsubscribeFromPush();
         setIsSubscribed(false);
         setPushPermission(getPermissionStatus());
         toast.success('ปิดการแจ้งเตือนแล้ว');
       } else {
-        // iOS Safari (non-PWA) ไม่รองรับ Web Push — แนะนำให้ Add to Home Screen
+        // iOS Safari (non-PWA) ไม่รองรับ Web Push
         if (isIosNonPwa()) {
           toast.info('บน iPhone/iPad ต้องติดตั้งแอปก่อน — กด Share แล้วเลือก "Add to Home Screen"', { duration: 6000 });
           return;
         }
-        // Turn ON — request permission (if needed) + subscribe
-        const ok = await subscribeToPush(currentUser.id);
+        // Turn ON
+        const result = await subscribeToPush(currentUser.id);
         const newPerm = getPermissionStatus();
         setPushPermission(newPerm);
-        if (ok) {
+
+        if (result.ok) {
           setIsSubscribed(true);
           toast.success('เปิดการแจ้งเตือนเรียบร้อย — ระบบจะแจ้งเวรให้ทุกวัน');
-        } else if (newPerm === 'denied') {
-          toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
         } else {
-          toast.info('ไม่สามารถเปิดการแจ้งเตือนได้ในขณะนี้');
+          // Show specific error based on reason
+          switch (result.reason) {
+            case 'NOT_SUPPORTED':
+              toast.error('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน Push');
+              break;
+            case 'PERMISSION_DENIED':
+              toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
+              break;
+            case 'PERMISSION_DISMISSED':
+              toast.info('กรุณากดอนุญาต (Allow) เมื่อมีป๊อปอัพถาม');
+              break;
+            case 'NO_VAPID_KEY':
+              toast.error('ระบบตั้งค่าไม่ครบ (VAPID key) — แจ้งแอดมิน');
+              break;
+            case 'SW_TIMEOUT':
+              toast.error('Service Worker ยังไม่พร้อม — รีโหลดหน้าแล้วลองใหม่');
+              break;
+            case 'SUBSCRIBE_FAILED':
+              toast.error(`ลงทะเบียนไม่สำเร็จ: ${result.detail || 'ไม่ทราบสาเหตุ'}`);
+              break;
+            case 'SERVER_ERROR':
+              toast.error(`เซิร์ฟเวอร์ผิดพลาด: ${result.detail || 'ลองใหม่อีกครั้ง'}`);
+              break;
+            default:
+              toast.error('ไม่สามารถเปิดการแจ้งเตือนได้ — ลองใหม่อีกครั้ง');
+          }
         }
       }
     } catch (err: any) {
-      if (err?.message === 'SW_TIMEOUT') {
-        toast.error('Service Worker ยังไม่พร้อม — รีโหลดหน้าแล้วลองใหม่');
-      } else {
-        toast.error('เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
-      }
+      toast.error(`เกิดข้อผิดพลาด: ${err?.message || 'ลองใหม่อีกครั้ง'}`);
     } finally {
       setIsSubscribing(false);
     }
