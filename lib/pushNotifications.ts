@@ -49,53 +49,76 @@ export function getPermissionStatus(): NotificationPermission | 'unsupported' {
   return Notification.permission;
 }
 
+// ── Subscribe result ──
+
+export type SubscribeResult =
+  | { ok: true }
+  | { ok: false; reason: 'NOT_SUPPORTED' | 'PERMISSION_DENIED' | 'PERMISSION_DISMISSED' | 'NO_VAPID_KEY' | 'SW_TIMEOUT' | 'SUBSCRIBE_FAILED' | 'SERVER_ERROR'; detail?: string };
+
 /** Subscribe this device to push notifications */
-export async function subscribeToPush(userId: string): Promise<boolean> {
+export async function subscribeToPush(userId: string): Promise<SubscribeResult> {
   if (!isPushSupported()) {
-    console.log('[Push] Push notifications not supported');
-    return false;
+    return { ok: false, reason: 'NOT_SUPPORTED' };
   }
 
-  // Don't ask for permission if already denied
   if (Notification.permission === 'denied') {
-    console.log('[Push] Notification permission denied');
-    return false;
+    return { ok: false, reason: 'PERMISSION_DENIED' };
   }
 
+  // Wait for SW with a 10-second timeout
+  let registration: ServiceWorkerRegistration;
   try {
-    // Wait for SW with a 10-second timeout so the button never gets stuck
-    const registration = await Promise.race([
+    registration = await Promise.race([
       navigator.serviceWorker.ready,
       new Promise<never>((_, reject) =>
         setTimeout(() => reject(new Error('SW_TIMEOUT')), 10_000)
       ),
     ]);
+  } catch {
+    return { ok: false, reason: 'SW_TIMEOUT' };
+  }
 
-    // Check existing subscription
-    let subscription = await (registration as ServiceWorkerRegistration).pushManager.getSubscription();
+  // Check existing subscription
+  let subscription: PushSubscription | null;
+  try {
+    subscription = await registration.pushManager.getSubscription();
+  } catch (err: any) {
+    return { ok: false, reason: 'SUBSCRIBE_FAILED', detail: err?.message };
+  }
 
-    if (!subscription) {
-      // Request permission (shows browser prompt)
+  if (!subscription) {
+    // Request permission (shows browser prompt)
+    try {
       const permission = await Notification.requestPermission();
+      if (permission === 'denied') {
+        return { ok: false, reason: 'PERMISSION_DENIED' };
+      }
       if (permission !== 'granted') {
-        console.log('[Push] Permission not granted:', permission);
-        return false;
+        return { ok: false, reason: 'PERMISSION_DISMISSED' };
       }
+    } catch (err: any) {
+      return { ok: false, reason: 'SUBSCRIBE_FAILED', detail: `requestPermission: ${err?.message}` };
+    }
 
-      // Subscribe
-      const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!vapidPublicKey) {
-        console.error('[Push] VAPID public key not configured');
-        return false;
-      }
+    // VAPID key
+    const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    if (!vapidPublicKey) {
+      return { ok: false, reason: 'NO_VAPID_KEY' };
+    }
 
+    // Subscribe to push manager
+    try {
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as BufferSource,
       });
+    } catch (err: any) {
+      return { ok: false, reason: 'SUBSCRIBE_FAILED', detail: `pushManager.subscribe: ${err?.message}` };
     }
+  }
 
-    // Send subscription to our API
+  // Save to server
+  try {
     const res = await fetch('/api/push/subscribe', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -106,16 +129,14 @@ export async function subscribeToPush(userId: string): Promise<boolean> {
     });
 
     if (!res.ok) {
-      console.error('[Push] Failed to save subscription');
-      return false;
+      const body = await res.text().catch(() => '');
+      return { ok: false, reason: 'SERVER_ERROR', detail: `${res.status} ${body.slice(0, 200)}` };
     }
-
-    console.log('[Push] Successfully subscribed');
-    return true;
-  } catch (err) {
-    console.error('[Push] Subscribe error:', err);
-    return false;
+  } catch (err: any) {
+    return { ok: false, reason: 'SERVER_ERROR', detail: err?.message };
   }
+
+  return { ok: true };
 }
 
 /** Check whether this device has an active push subscription */
