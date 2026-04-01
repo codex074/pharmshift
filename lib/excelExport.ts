@@ -205,7 +205,12 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
     for (const s of relevantShifts) {
       if (!s.user_id) continue;
-      const day = new Date(s.date).getDate();
+      // เวรดึก ปฏิบัติงานถึง 08.30 ของวันถัดไป → นับเป็นวันถัดไป
+      const shiftDate = new Date(s.date);
+      if (s.shift_type === 'ดึก') shiftDate.setDate(shiftDate.getDate() + 1);
+      // ถ้า shift ข้ามเดือน (เช่น ดึกวันสุดท้ายของเดือน) ให้ข้ามไป
+      if (shiftDate.getMonth() + 1 !== month) continue;
+      const day = shiftDate.getDate();
       
       let userRow = userMap.get(s.user_id);
       if (!userRow) {
