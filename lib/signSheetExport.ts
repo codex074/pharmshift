@@ -145,13 +145,21 @@ function buildGroups(
     const fName = userInfo?.f_name || s.user?.f_name || '-';
     const role = userInfo?.role || s.user?.role || 'officer';
 
+    // เวรดึก ปฏิบัติงานถึง 08.30 ของวันถัดไป → แสดงวันที่ถัดไปในตาราง
+    let effectiveDate = s.date;
+    if (s.shift_type === 'ดึก') {
+      const d = new Date(s.date);
+      d.setDate(d.getDate() + 1);
+      effectiveDate = d.toISOString().slice(0, 10);
+    }
+
     const subtype = config.getSubtype ? config.getSubtype(s) : '';
     const key = config.layout === 'with-subtype'
-      ? `${s.date}__${subtype}`
-      : s.date;
+      ? `${effectiveDate}__${subtype}`
+      : effectiveDate;
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { date: s.date, subtype, pharmacists: [], pharm_techs: [], officers: [] });
+      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_techs: [], officers: [] });
     }
     const grp = groupMap.get(key)!;
     if (role === 'pharmacist') grp.pharmacists.push(fName);
