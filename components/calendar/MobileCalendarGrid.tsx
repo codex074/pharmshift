@@ -44,7 +44,7 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, prevMonthLas
           const dow = day.date.getDay();
           const hasShifts = day.shifts.length > 0;
           const shiftTypes = SHIFT_ORDER.filter(t => day.shifts.some(s => s.shift_type === t));
-          const hasPrevMonthDuek = !day.isCurrentMonth && hasShifts;
+          const hasPrevMonthShifts = !day.isCurrentMonth && hasShifts;
 
           return (
             <button
@@ -55,8 +55,8 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, prevMonthLas
                 'relative flex flex-col items-center justify-start pt-1.5 pb-1.5 min-h-[62px] border-r border-b border-gray-50 transition-colors select-none',
                 day.isCurrentMonth
                   ? 'cursor-pointer active:bg-violet-50/80'
-                  : hasPrevMonthDuek
-                  ? 'opacity-60 pointer-events-none bg-indigo-50/40'
+                  : hasPrevMonthShifts
+                  ? 'opacity-40 pointer-events-none'
                   : 'opacity-20 pointer-events-none',
                 day.isToday && 'bg-violet-50',
                 !day.isToday && day.isHoliday && day.isCurrentMonth && 'bg-red-50/40',
@@ -98,9 +98,9 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, prevMonthLas
                 </span>
               )}
 
-              {hasPrevMonthDuek && (
-                <span className="text-[8px] text-indigo-500 mt-0.5 leading-none font-medium">
-                  ดึก
+              {hasPrevMonthShifts && (
+                <span className="text-[8px] text-gray-400 mt-0.5 leading-none font-medium">
+                  {format(day.date, 'd')}
                 </span>
               )}
             </button>

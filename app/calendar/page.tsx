@@ -84,7 +84,6 @@ export default function CalendarPage() {
       .select(`*, department:departments(id, name), user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role), original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)`)
       .eq('month_year', prevMonthYear)
       .eq('date', lastDayStr)
-      .eq('shift_type', 'ดึก')
       .then(({ data }) => { setPrevMonthLastDayShifts((data as Shift[]) ?? []); });
   }, [year, month]);
 

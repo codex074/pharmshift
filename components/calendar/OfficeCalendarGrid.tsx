@@ -81,25 +81,13 @@ export function OfficeCalendarGrid({
           <div key={wi} className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                const duekShifts = day.shifts.filter(s => s.shift_type === 'ดึก');
-                if (duekShifts.length === 0) {
+                if (day.shifts.length === 0) {
                   return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
                 }
+                const prevCtx: RenderContext = { ...ctx, isEditMode: false, pendingDeletes: undefined, pendingEdits: undefined, pendingAdds: undefined };
                 return (
-                  <div key={di} className="border-r-2 border-slate-400 bg-white flex flex-col">
-                    <div className={cn('h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center', SHIFT_HDR.duek)}>
-                      ดึก {format(day.date, 'd')}
-                    </div>
-                    <div className="flex flex-col flex-1 p-0.5 gap-0.5 bg-white">
-                      {duekShifts.map(s => {
-                        const name = (s as any).user_nickname || s.user?.nickname || s.user?.f_name || (s as any).user_f_name || '';
-                        return (
-                          <span key={s.id} className={cn(nameTextStyle, 'text-slate-700')}>
-                            {name}
-                          </span>
-                        );
-                      })}
-                    </div>
+                  <div key={di} className="border-r-2 border-slate-400 relative opacity-40 pointer-events-none">
+                    <DayGrid day={day} onDayClick={() => {}} ctx={prevCtx} />
                   </div>
                 );
               }
