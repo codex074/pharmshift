@@ -107,26 +107,23 @@ export function CalendarGrid({
           <div key={wi} className="grid grid-cols-7 border-b border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                const duekShifts = day.shifts.filter((shift) => shift.shift_type === 'ดึก');
-                if (duekShifts.length === 0) {
+                if (day.shifts.length === 0) {
                   return <div key={di} className={cn('bg-gray-50/50', di < 6 && 'border-r border-slate-400')} />;
                 }
 
+                // Render full day layout with opacity for previous month
+                const dow = day.date.getDay();
+                const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
+                const prevCtx: RenderContext = { ...ctx, isEditMode: false, pendingDeletes: undefined, pendingEdits: undefined, pendingAdds: undefined };
                 return (
-                  <div key={di} className={cn('bg-white flex flex-col', di < 6 && 'border-r border-slate-400')}>
-                    <div className={cn('h-7 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center', SHIFT_HDR.duek)}>
-                      ดึก {format(day.date, 'd')}
-                    </div>
-                    <div className="flex flex-col flex-1 justify-start p-1 gap-1 bg-white">
-                      {duekShifts.map((shift) => (
-                        <span
-                          key={shift.id}
-                          className={cn(nameTextStyle, 'text-slate-700')}
-                        >
-                          {getUserName(shift)}
-                        </span>
-                      ))}
-                    </div>
+                  <div key={di} className={cn(
+                    di < 6 && 'border-r border-slate-400',
+                    'relative opacity-40 pointer-events-none',
+                  )}>
+                    { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={() => {}} ctx={prevCtx} /> :
+                      (dow === 5) ? <FridayGrid day={day} onDayClick={() => {}} ctx={prevCtx} /> :
+                      <MonThuGrid day={day} onDayClick={() => {}} ctx={prevCtx} />
+                    }
                   </div>
                 );
               }

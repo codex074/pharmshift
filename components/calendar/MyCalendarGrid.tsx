@@ -97,16 +97,16 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                 const dayNum = format(day.date, 'd');
                 const isWeekend = di === 0 || di === 6;
                 const hasShifts = day.shifts.length > 0;
-                const hasPrevMonthDuek = !day.isCurrentMonth && hasShifts;
+                const hasPrevMonthShifts = !day.isCurrentMonth && hasShifts;
 
                 return (
                   <div
                     key={di}
-                    onClick={() => onDayClick(day)}
+                    onClick={() => day.isCurrentMonth ? onDayClick(day) : undefined}
                     className={cn(
                       'min-h-[72px] sm:min-h-[120px] p-1 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
-                      !day.isCurrentMonth && !hasPrevMonthDuek && 'bg-gray-50/50 text-gray-400',
-                      hasPrevMonthDuek && 'bg-indigo-50/40 text-slate-500',
+                      !day.isCurrentMonth && !hasPrevMonthShifts && 'bg-gray-50/50 text-gray-400',
+                      hasPrevMonthShifts && 'bg-white opacity-40 pointer-events-none',
                       day.isCurrentMonth && 'hover:bg-purple-50/40 cursor-pointer text-gray-700',
                       day.isToday && 'bg-pink-50/60 ring-[3px] ring-pink-300 [.exporting-pdf_&]:ring-0 ring-inset z-20'
                     )}
@@ -187,7 +187,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                             className={cn(
                               'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',
                               pillStyle,
-                              hasPrevMonthDuek && 'opacity-70',
+                              hasPrevMonthShifts && 'opacity-70',
                               onShiftClick && 'cursor-pointer active:scale-95',
                               isPending && 'ring-2 ring-red-400 ring-offset-1',
                             )}
