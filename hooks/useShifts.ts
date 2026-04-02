@@ -50,7 +50,8 @@ export function useShifts(year: number, month: number) {
       .select(`
         *,
         department:departments(id, name),
-        user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
+        user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
+        original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
       `)
       .eq('month_year', monthYear)
       .order('date', { ascending: true });

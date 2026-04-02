@@ -1,45 +1,25 @@
 'use client';
 
-import { format, startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, isSameMonth } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { Shift, Holiday, CalendarDay, ShiftType } from '@/lib/types';
 import { SHIFT_CONFIG } from '@/lib/types';
+import { buildCalendarDays } from '@/lib/calendarMonthGrid';
 
 interface MobileCalendarGridProps {
   year: number;
   month: number;
   shifts: Shift[];
   holidays: Holiday[];
+  prevMonthLastDayShifts?: Shift[];
   onDayClick: (day: CalendarDay) => void;
 }
 
 const THAI_DAY_ABBR = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 const SHIFT_ORDER: ShiftType[] = ['เช้า', 'บ่าย', 'ดึก', 'รุ่งอรุณ'];
 
-function buildCalendarGrid(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[] {
-  const monthStart = startOfMonth(new Date(year, month - 1));
-  const monthEnd = endOfMonth(monthStart);
-  const gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-  const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
-
-  const days = eachDayOfInterval({ start: gridStart, end: gridEnd });
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  return days.map(date => {
-    const dateStr = format(date, 'yyyy-MM-dd');
-    return {
-      date,
-      shifts: shifts.filter(s => s.date === dateStr),
-      isCurrentMonth: isSameMonth(date, monthStart),
-      isToday: date.getTime() === today.getTime(),
-      isHoliday: holidays.some(h => h.date === dateStr),
-    };
-  });
-}
-
-export function MobileCalendarGrid({ year, month, shifts, holidays, onDayClick }: MobileCalendarGridProps) {
-  const days = buildCalendarGrid(year, month, shifts, holidays);
+export function MobileCalendarGrid({ year, month, shifts, holidays, prevMonthLastDayShifts, onDayClick }: MobileCalendarGridProps) {
+  const days = buildCalendarDays(year, month, shifts, holidays, prevMonthLastDayShifts);
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
@@ -64,6 +44,7 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, onDayClick }
           const dow = day.date.getDay();
           const hasShifts = day.shifts.length > 0;
           const shiftTypes = SHIFT_ORDER.filter(t => day.shifts.some(s => s.shift_type === t));
+          const hasPrevMonthDuek = !day.isCurrentMonth && hasShifts;
 
           return (
             <button
@@ -74,6 +55,8 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, onDayClick }
                 'relative flex flex-col items-center justify-start pt-1.5 pb-1.5 min-h-[62px] border-r border-b border-gray-50 transition-colors select-none',
                 day.isCurrentMonth
                   ? 'cursor-pointer active:bg-violet-50/80'
+                  : hasPrevMonthDuek
+                  ? 'opacity-60 pointer-events-none bg-indigo-50/40'
                   : 'opacity-20 pointer-events-none',
                 day.isToday && 'bg-violet-50',
                 !day.isToday && day.isHoliday && day.isCurrentMonth && 'bg-red-50/40',
@@ -112,6 +95,12 @@ export function MobileCalendarGrid({ year, month, shifts, holidays, onDayClick }
               {hasShifts && (
                 <span className="text-[9px] text-gray-400 mt-0.5 leading-none">
                   {day.shifts.length}
+                </span>
+              )}
+
+              {hasPrevMonthDuek && (
+                <span className="text-[8px] text-indigo-500 mt-0.5 leading-none font-medium">
+                  ดึก
                 </span>
               )}
             </button>

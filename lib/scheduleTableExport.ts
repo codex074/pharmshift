@@ -2,6 +2,7 @@ import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 import { Shift, Holiday } from './types';
 import { THAI_MONTHS } from './utils';
+import { getPreviousMonthLastDay } from './calendarMonthGrid';
 
 // Column layout: Sun(A-E)=5, Mon(F-I)=4, Tue(J-M)=4, Wed(N-Q)=4, Thu(R-U)=4, Fri(V-Y)=4, Sat(Z-AD)=5
 const DAY_COL = [1, 6, 10, 14, 18, 22, 26]; // start col per dow
@@ -57,6 +58,45 @@ interface DayShifts {
   smc1: string; smc2: string;
   rungOPD: string; rungER: string; rungHIV: string;
   duek: string;
+  isPrevMonthDuek?: boolean;
+}
+
+function buildUserLookup(...shiftGroups: Shift[][]): Map<string, NonNullable<Shift['user']>> {
+  const userLookup = new Map<string, NonNullable<Shift['user']>>();
+
+  for (const shifts of shiftGroups) {
+    for (const shift of shifts) {
+      if (shift.user && shift.user_id) {
+        userLookup.set(shift.user_id, shift.user);
+      }
+
+      if (shift.original_user && shift.original_user_id) {
+        userLookup.set(shift.original_user_id, shift.original_user);
+      }
+    }
+  }
+
+  return userLookup;
+}
+
+function withOriginalUser(shift: Shift, userLookup: Map<string, NonNullable<Shift['user']>>): Shift {
+  if (!shift.original_user_id || shift.original_user_id === shift.user_id) {
+    return shift;
+  }
+
+  const originalUser = shift.original_user || userLookup.get(shift.original_user_id);
+  if (!originalUser) {
+    return shift;
+  }
+
+  return {
+    ...shift,
+    user: originalUser,
+    user_prefix: originalUser.prefix,
+    user_f_name: originalUser.f_name,
+    user_l_name: originalUser.l_name,
+    user_nickname: originalUser.nickname,
+  };
 }
 
 function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<string>): DayShifts {
@@ -106,19 +146,13 @@ export async function exportScheduleTable(
   year: number,
   month: number,
   useOriginal: boolean = false,
+  prevMonthLastDayShifts: Shift[] = [],
 ) {
   // ถ้า useOriginal ให้แทนที่ user ด้วย original user (ถ้ามี)
   if (useOriginal) {
-    // สร้าง lookup: userId → user object จาก shifts ทั้งหมด
-    const userMap = new Map<string, Shift['user']>();
-    for (const s of shifts) {
-      if (s.user && s.user_id) userMap.set(s.user_id, s.user);
-    }
-    shifts = shifts.map(s => {
-      if (!s.original_user_id || s.original_user_id === s.user_id) return s;
-      const origUser = userMap.get(s.original_user_id);
-      return origUser ? { ...s, user: origUser } : s;
-    });
+    const userLookup = buildUserLookup(shifts, prevMonthLastDayShifts);
+    shifts = shifts.map((shift) => withOriginalUser(shift, userLookup));
+    prevMonthLastDayShifts = prevMonthLastDayShifts.map((shift) => withOriginalUser(shift, userLookup));
   }
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Form', {
@@ -178,6 +212,33 @@ export async function exportScheduleTable(
   const holSet = new Set(holidays.map(h => h.date));
   const weeks: (DayShifts | null)[][] = [];
   let cw: (DayShifts | null)[] = new Array(7).fill(null);
+  const firstDayDow = new Date(year, month - 1, 1).getDay();
+
+  if (prevMonthLastDayShifts.length > 0) {
+    const prevLastDate = getPreviousMonthLastDay(year, month);
+    const prevLastDow = prevLastDate.getDay();
+    const prevLastDateNum = prevLastDate.getDate();
+    const duekNames = prevMonthLastDayShifts.map(getNickname).filter(Boolean);
+
+    if (duekNames.length > 0) {
+      const prevWeek: (DayShifts | null)[] = new Array(7).fill(null);
+      prevWeek[prevLastDow] = {
+        date: prevLastDateNum, dow: prevLastDow, isHoliday: false,
+        project: '', surg1: '', surg2: '', medDC: '', medCont: '', er: '',
+        chemo1: '', chemo2: '', baiER: '', baiMED: '', baiProject: '',
+        smc1: '', smc2: '', rungOPD: '', rungER: '', rungHIV: '',
+        duek: duekNames.join(', '),
+        isPrevMonthDuek: true,
+      };
+
+      if (firstDayDow === 0) {
+        weeks.push(prevWeek);
+      } else {
+        cw = prevWeek;
+      }
+    }
+  }
+
   for (let d = 1; d <= daysInMonth; d++) {
     const dt = new Date(year, month - 1, d);
     const dow = dt.getDay();
@@ -292,6 +353,29 @@ function renderWeek(
     }
 
     if (!day) continue;
+
+    // Previous month last day: show only ดึก header + name in a muted style
+    if (day.isPrevMonthDuek) {
+      const whiteFill = 'FFFFFFFF';
+      for (let r = 0; r < ROWS_PER_WEEK; r++) {
+        for (let c = sc; c <= lastCol; c++) {
+          const cell = ws.getCell(sr + r, c);
+          cell.fill = fill(whiteFill);
+        }
+      }
+      // ดึก header row
+      merge(0, sc, 0, lastCol, `ดึก ${day.date}`, {
+        font: { name: F, size: 18, bold: true, color: { argb: PAL.duek.hdrText } },
+        fill: PAL.duek.hdr,
+      });
+      // ดึก name
+      merge(1, sc, ROWS_PER_WEEK - 1, lastCol, day.duek, {
+        font: { name: F, size: 18, color: { argb: 'FF334155' } },
+        fill: whiteFill,
+      });
+      for (let r = 0; r < ROWS_PER_WEEK; r++) dayRightBorder(r, lastCol);
+      continue;
+    }
 
     // Determine if this day is holiday (weekend or public holiday)
     const holiday = day.isHoliday;
