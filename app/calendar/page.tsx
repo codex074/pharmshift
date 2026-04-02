@@ -32,7 +32,7 @@ import { AdminSettingsModal } from '@/components/calendar/AdminSettingsModal';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
-import { format } from 'date-fns';
+import { format, endOfMonth, subMonths } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike } from '@/lib/types';
@@ -73,6 +73,21 @@ export default function CalendarPage() {
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
   const { notifications, unreadCount: notifUnreadCount, markAllRead: markNotifsRead } = useNotifications(currentUser?.id);
 
+  const [prevMonthLastDayShifts, setPrevMonthLastDayShifts] = useState<Shift[]>([]);
+  useEffect(() => {
+    const prevMonthDate = subMonths(new Date(year, month - 1, 1), 1);
+    const lastDay = endOfMonth(prevMonthDate);
+    const lastDayStr = format(lastDay, 'yyyy-MM-dd');
+    const prevMonthYear = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    supabase
+      .from('shifts')
+      .select(`*, department:departments(id, name), user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role), original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)`)
+      .eq('month_year', prevMonthYear)
+      .eq('date', lastDayStr)
+      .eq('shift_type', 'ดึก')
+      .then(({ data }) => { setPrevMonthLastDayShifts((data as Shift[]) ?? []); });
+  }, [year, month]);
+
   // Auto-subscribe to push notifications when user is authenticated
   useEffect(() => {
     if (!currentUser?.id || authLoading) return;
@@ -92,6 +107,9 @@ export default function CalendarPage() {
 
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
+
+  // Previous month last day ดึก shifts filtered by role
+  const prevMonthLastDayShiftsByRole = prevMonthLastDayShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
 
   // Publish guards — disable export buttons if the month hasn't been published
   const pharmacistPublished = publishedRoles.pharmacist ?? false;
@@ -333,7 +351,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
             )}
-<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} />
+<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} prevMonthLastDayShifts={prevMonthLastDayShifts} />
             {currentUser && (
               <div className="relative group">
                 <button
@@ -542,6 +560,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={visibleMyShifts}
                 holidays={holidays}
+                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole.filter(s => s.user_id === currentUser?.id)}
                 onDayClick={handleDayClick}
                 onShiftClick={(s) => { if (!userIsAdminLike && !myRolePublished) return; setDetailShift(s); }}
                 pendingShiftIds={pendingShiftIds}
@@ -552,6 +571,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
+                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 onDayClick={handleMobileDayClick}
               />
             ) : effectiveRoleGroup === 'pharmacy_technician' ? (
@@ -560,6 +580,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
+                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={handleShiftClick}
@@ -579,6 +600,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
+                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={handleShiftClick}
@@ -598,6 +620,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
+                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={handleShiftClick}

@@ -3,7 +3,8 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, CalendarDay, Holiday } from '@/lib/types';
-import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
+import { format } from 'date-fns';
+import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 
 
 // Per-weekday header colours (Sun=0 … Sat=6) — matches OfficeCalendarGrid
@@ -22,49 +23,17 @@ interface MyCalendarGridProps {
   month: number;
   shifts: Shift[]; // already filtered to only mine
   holidays: Holiday[];
+  prevMonthLastDayShifts?: Shift[];
   onDayClick: (day: CalendarDay) => void;
   onShiftClick?: (shift: Shift) => void;
   pendingShiftIds?: Set<string>;
-}
-
-function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
-  const monthStart = startOfMonth(new Date(year, month - 1));
-  const monthEnd = endOfMonth(monthStart);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-
-  const weeks: CalendarDay[][] = [];
-  let current = calStart;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  while (current <= monthEnd || (weeks.length > 0 && weeks[weeks.length - 1].length < 7)) {
-    if (weeks.length === 0 || weeks[weeks.length - 1].length === 7) {
-      weeks.push([]);
-    }
-    const dateStr = format(current, 'yyyy-MM-dd');
-    const dayShifts = shifts.filter(s => s.date === dateStr);
-    const isHoliday = holidays.some(h => h.date === dateStr);
-
-    weeks[weeks.length - 1].push({
-      date: new Date(current),
-      shifts: dayShifts,
-      isCurrentMonth: current.getMonth() === month - 1,
-      isToday: current.getTime() === today.getTime(),
-      isHoliday,
-    });
-
-    current = addDays(current, 1);
-    if (weeks[weeks.length - 1].length === 7 && current > monthEnd) break;
-  }
-
-  return weeks;
 }
 
 function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onShiftClick, pendingShiftIds }: MyCalendarGridProps) {
+export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDayShifts, onDayClick, onShiftClick, pendingShiftIds }: MyCalendarGridProps) {
   // ── Improvement 3: Empty state ───────────────────────────────────────
   if (shifts.length === 0) {
     return (
@@ -78,7 +47,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
     );
   }
 
-  const weeks = buildWeeks(year, month, shifts, holidays);
+  const weeks = buildCalendarWeeks(year, month, shifts, holidays, prevMonthLastDayShifts);
 
   // ── Improvement 1: Stats counts ─────────────────────────────────────
   const chaoCount = shifts.filter(s => s.shift_type === 'เช้า').length;
@@ -128,6 +97,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                 const dayNum = format(day.date, 'd');
                 const isWeekend = di === 0 || di === 6;
                 const hasShifts = day.shifts.length > 0;
+                const hasPrevMonthDuek = !day.isCurrentMonth && hasShifts;
 
                 return (
                   <div
@@ -135,7 +105,8 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                     onClick={() => onDayClick(day)}
                     className={cn(
                       'min-h-[72px] sm:min-h-[120px] p-1 sm:p-2 border-r border-gray-200 last:border-r-0 relative transition-colors',
-                      !day.isCurrentMonth && 'bg-gray-50/50 text-gray-400',
+                      !day.isCurrentMonth && !hasPrevMonthDuek && 'bg-gray-50/50 text-gray-400',
+                      hasPrevMonthDuek && 'bg-indigo-50/40 text-slate-500',
                       day.isCurrentMonth && 'hover:bg-purple-50/40 cursor-pointer text-gray-700',
                       day.isToday && 'bg-pink-50/60 ring-[3px] ring-pink-300 [.exporting-pdf_&]:ring-0 ring-inset z-20'
                     )}
@@ -216,6 +187,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, onDayClick, onSh
                             className={cn(
                               'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',
                               pillStyle,
+                              hasPrevMonthDuek && 'opacity-70',
                               onShiftClick && 'cursor-pointer active:scale-95',
                               isPending && 'ring-2 ring-red-400 ring-offset-1',
                             )}

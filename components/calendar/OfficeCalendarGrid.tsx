@@ -3,7 +3,8 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
-import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
+import { format } from 'date-fns';
+import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 const BORDER = 'border-gray-300';
@@ -35,6 +36,7 @@ interface CalendarGridProps {
   month: number;
   shifts: Shift[];
   holidays: Holiday[];
+  prevMonthLastDayShifts?: Shift[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   onShiftClick?: (shift: Shift) => void;
@@ -49,45 +51,12 @@ interface CalendarGridProps {
   onRemovePendingAdd?: (index: number) => void;
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
-  const monthStart = startOfMonth(new Date(year, month - 1));
-  const monthEnd = endOfMonth(monthStart);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-
-  const weeks: CalendarDay[][] = [];
-  let current = calStart;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  while (current <= monthEnd || (weeks.length > 0 && weeks[weeks.length - 1].length < 7)) {
-    if (weeks.length === 0 || weeks[weeks.length - 1].length === 7) {
-      weeks.push([]);
-    }
-    const dateStr = format(current, 'yyyy-MM-dd');
-    const dayShifts = shifts.filter(s => s.date === dateStr);
-    const isHoliday = holidays.some(h => h.date === dateStr);
-
-    weeks[weeks.length - 1].push({
-      date: new Date(current),
-      shifts: dayShifts,
-      isCurrentMonth: current.getMonth() === month - 1,
-      isToday: current.getTime() === today.getTime(),
-      isHoliday,
-    });
-
-    current = addDays(current, 1);
-    if (weeks[weeks.length - 1].length === 7 && current > monthEnd) break;
-  }
-
-  return weeks;
-}
-
-export function OfficeCalendarGrid({ 
-  year, month, shifts, holidays, currentUser, onDayClick, onShiftClick, viewMode,
+export function OfficeCalendarGrid({
+  year, month, shifts, holidays, prevMonthLastDayShifts, currentUser, onDayClick, onShiftClick, viewMode,
   isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift,
   pendingAdds, onAddShift, onRemovePendingAdd
 }: CalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts, holidays);
+  const weeks = buildCalendarWeeks(year, month, shifts, holidays, prevMonthLastDayShifts);
 
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
@@ -112,7 +81,27 @@ export function OfficeCalendarGrid({
           <div key={wi} className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
+                const duekShifts = day.shifts.filter(s => s.shift_type === 'ดึก');
+                if (duekShifts.length === 0) {
+                  return <div key={di} className="border-r-2 border-slate-400 bg-gray-50" />;
+                }
+                return (
+                  <div key={di} className="border-r-2 border-slate-400 bg-white flex flex-col">
+                    <div className={cn('h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center', SHIFT_HDR.duek)}>
+                      ดึก {format(day.date, 'd')}
+                    </div>
+                    <div className="flex flex-col flex-1 p-0.5 gap-0.5 bg-white">
+                      {duekShifts.map(s => {
+                        const name = (s as any).user_nickname || s.user?.nickname || s.user?.f_name || (s as any).user_f_name || '';
+                        return (
+                          <span key={s.id} className={cn(nameTextStyle, 'text-slate-700')}>
+                            {name}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
               }
               const dow = day.date.getDay();
 
@@ -614,4 +603,3 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     </div>
   );
 }
-

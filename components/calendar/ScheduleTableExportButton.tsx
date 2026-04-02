@@ -12,9 +12,10 @@ interface Props {
   year: number;
   month: number;
   isPublished: boolean;
+  prevMonthLastDayShifts?: Shift[];
 }
 
-export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished }: Props) {
+export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, prevMonthLastDayShifts }: Props) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -24,7 +25,8 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
     try {
       const pharmacistShifts = shifts.filter(s => (s.user as any)?.role === 'pharmacist');
       if (!pharmacistShifts.length) throw new Error('ไม่พบข้อมูลเวรเภสัชกรในเดือนนี้');
-      await exportScheduleTable(pharmacistShifts, holidays, year, month, useOriginal);
+      const prevDuekPharmacist = (prevMonthLastDayShifts || []).filter(s => (s.user as any)?.role === 'pharmacist');
+      await exportScheduleTable(pharmacistShifts, holidays, year, month, useOriginal, prevDuekPharmacist);
       toastSuccess(useOriginal ? 'ส่งออกตารางเวร (ตารางเดิม) สำเร็จ' : 'ส่งออกตารางเวรสำเร็จ');
     } catch (err: any) {
       toastError(err.message || 'เกิดข้อผิดพลาดในการสร้างไฟล์');

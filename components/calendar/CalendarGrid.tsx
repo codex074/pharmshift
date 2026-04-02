@@ -3,8 +3,9 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
-import { format, startOfMonth, endOfMonth, startOfWeek, addDays } from 'date-fns';
+import { format } from 'date-fns';
 import { DEPT_COLORS } from '@/lib/types';
+import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 // ── Shared border / layout helpers ─────────────────────────────────────────
@@ -58,6 +59,7 @@ interface CalendarGridProps {
   month: number;
   shifts: Shift[];
   holidays: Holiday[];
+  prevMonthLastDayShifts?: Shift[];
   currentUser?: User | null;
   onDayClick: (day: CalendarDay) => void;
   onShiftClick?: (shift: Shift) => void;
@@ -72,45 +74,12 @@ interface CalendarGridProps {
   onRemovePendingAdd?: (index: number) => void;
 }
 
-function buildWeeks(year: number, month: number, shifts: Shift[], holidays: Holiday[]): CalendarDay[][] {
-  const monthStart = startOfMonth(new Date(year, month - 1));
-  const monthEnd = endOfMonth(monthStart);
-  const calStart = startOfWeek(monthStart, { weekStartsOn: 0 });
-
-  const weeks: CalendarDay[][] = [];
-  let current = calStart;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  while (current <= monthEnd || (weeks.length > 0 && weeks[weeks.length - 1].length < 7)) {
-    if (weeks.length === 0 || weeks[weeks.length - 1].length === 7) {
-      weeks.push([]);
-    }
-    const dateStr = format(current, 'yyyy-MM-dd');
-    const dayShifts = shifts.filter(s => s.date === dateStr);
-    const isHoliday = holidays.some(h => h.date === dateStr);
-
-    weeks[weeks.length - 1].push({
-      date: new Date(current),
-      shifts: dayShifts,
-      isCurrentMonth: current.getMonth() === month - 1,
-      isToday: current.getTime() === today.getTime(),
-      isHoliday,
-    });
-
-    current = addDays(current, 1);
-    if (weeks[weeks.length - 1].length === 7 && current > monthEnd) break;
-  }
-
-  return weeks;
-}
-
 export function CalendarGrid({ 
-  year, month, shifts, holidays, currentUser, onDayClick, onShiftClick,
+  year, month, shifts, holidays, prevMonthLastDayShifts, currentUser, onDayClick, onShiftClick,
   isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift,
   pendingAdds, onAddShift, onRemovePendingAdd
 }: CalendarGridProps) {
-  const weeks = buildWeeks(year, month, shifts, holidays);
+  const weeks = buildCalendarWeeks(year, month, shifts, holidays, prevMonthLastDayShifts);
 
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
@@ -138,7 +107,28 @@ export function CalendarGrid({
           <div key={wi} className="grid grid-cols-7 border-b border-slate-400 h-auto">
             {week.map((day, di) => {
               if (!day.isCurrentMonth) {
-                return <div key={di} className={cn('bg-gray-50/50', di < 6 && 'border-r border-slate-400')} />;
+                const duekShifts = day.shifts.filter((shift) => shift.shift_type === 'ดึก');
+                if (duekShifts.length === 0) {
+                  return <div key={di} className={cn('bg-gray-50/50', di < 6 && 'border-r border-slate-400')} />;
+                }
+
+                return (
+                  <div key={di} className={cn('bg-white flex flex-col', di < 6 && 'border-r border-slate-400')}>
+                    <div className={cn('h-7 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center', SHIFT_HDR.duek)}>
+                      ดึก {format(day.date, 'd')}
+                    </div>
+                    <div className="flex flex-col flex-1 justify-start p-1 gap-1 bg-white">
+                      {duekShifts.map((shift) => (
+                        <span
+                          key={shift.id}
+                          className={cn(nameTextStyle, 'text-slate-700')}
+                        >
+                          {getUserName(shift)}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                );
               }
               const dow = day.date.getDay();
               const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
