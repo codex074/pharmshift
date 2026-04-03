@@ -12,6 +12,7 @@ import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
 import { OfficeCalendarGrid } from '@/components/calendar/OfficeCalendarGrid';
 import { MobileCalendarGrid } from '@/components/calendar/MobileCalendarGrid';
+import { MobileEditDayModal } from '@/components/calendar/MobileEditDayModal';
 import { DayDetailModal } from '@/components/calendar/DayDetailModal';
 import { ShiftDetailModal } from '@/components/calendar/ShiftDetailModal';
 import { SwapModal } from '@/components/swap/SwapModal';
@@ -68,6 +69,7 @@ export default function CalendarPage() {
 
   const isMobile = useIsMobile();
   const [mobileDaySelected, setMobileDaySelected] = useState<CalendarDay | null>(null);
+  const [mobileEditDaySelected, setMobileEditDaySelected] = useState<CalendarDay | null>(null);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
@@ -141,6 +143,10 @@ export default function CalendarPage() {
 
   function handleMobileDayClick(day: CalendarDay) {
     if (!userIsAdminLike && !myRolePublished) return;
+    if (userIsAdminLike && isEditMode && viewMode === 'all') {
+      setMobileEditDaySelected(day);
+      return;
+    }
     setMobileDaySelected(day);
   }
 
@@ -156,7 +162,17 @@ export default function CalendarPage() {
   }
 
   function handleToggleEditMode() {
-    setIsEditMode(!isEditMode);
+    const nextEditMode = !isEditMode;
+    setIsEditMode(nextEditMode);
+    if (nextEditMode) {
+      setViewMode('all');
+      setMobileDaySelected(null);
+      setMobileEditDaySelected(null);
+      setSelectedShift(null);
+      setDetailShift(null);
+    } else {
+      setMobileEditDaySelected(null);
+    }
     setPendingDeletes(new Set());
     setPendingEdits({});
     setPendingAdds([]);
@@ -210,7 +226,6 @@ export default function CalendarPage() {
   const visibleShifts    = (!userIsAdminLike && !myRolePublished) ? [] : shifts;
   const visibleMyShifts  = (!userIsAdminLike && !myRolePublished) ? [] : myShifts;
   const visibleSource    = (!userIsAdminLike && !myRolePublished) ? [] : sourceShiftsForStats;
-
   const totalCount = visibleSource.length;
   const chaoCount = visibleSource.filter((s) => s.shift_type === 'เช้า').length;
   const baiCount  = visibleSource.filter((s) => s.shift_type === 'บ่าย').length;
@@ -572,6 +587,11 @@ export default function CalendarPage() {
                 holidays={holidays}
                 prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 onDayClick={handleMobileDayClick}
+                isEditMode={userIsAdminLike && isEditMode && viewMode === 'all'}
+                roleGroup={effectiveRoleGroup}
+                pendingDeletes={pendingDeletes}
+                pendingEdits={pendingEdits}
+                pendingAdds={pendingAdds}
               />
             ) : effectiveRoleGroup === 'pharmacy_technician' ? (
               <PharmacyTechCalendarGrid
@@ -768,6 +788,21 @@ export default function CalendarPage() {
         />
       )}
 
+      {mobileEditDaySelected && userIsAdminLike && isEditMode && viewMode === 'all' && (
+        <MobileEditDayModal
+          day={mobileEditDaySelected}
+          roleGroup={effectiveRoleGroup}
+          pendingDeletes={pendingDeletes}
+          pendingEdits={pendingEdits}
+          pendingAdds={pendingAdds}
+          onClose={() => setMobileEditDaySelected(null)}
+          onToggleDelete={handleToggleDelete}
+          onEditShift={handleEditShiftFromCalendar}
+          onAddShift={handleAddShift}
+          onRemovePendingAdd={handleRemovePendingAdd}
+        />
+      )}
+
       {/* Mobile Bottom Navigation */}
       {isMobile && (
         <MobileBottomNav
@@ -775,6 +810,7 @@ export default function CalendarPage() {
           onViewModeChange={setViewMode}
           onBellClick={() => setShowNotifications(true)}
           pendingCount={pendingCount}
+          isEditMode={isEditMode}
         />
       )}
 
