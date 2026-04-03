@@ -8,10 +8,11 @@ interface MobileBottomNavProps {
   onViewModeChange: (mode: 'all' | 'mine') => void;
   onBellClick: () => void;
   pendingCount: number;
+  isEditMode?: boolean;
 }
 
 export function MobileBottomNav({
-  viewMode, onViewModeChange, onBellClick, pendingCount,
+  viewMode, onViewModeChange, onBellClick, pendingCount, isEditMode = false,
 }: MobileBottomNavProps) {
   const tabs = [
     {
@@ -19,14 +20,17 @@ export function MobileBottomNav({
       label: 'ทุกเวร',
       icon: Users,
       action: () => onViewModeChange('all'),
-      active: viewMode === 'all',
+      active: viewMode === 'all' || isEditMode,
     },
     {
       id: 'mine' as const,
       label: 'เวรของฉัน',
       icon: User,
-      action: () => onViewModeChange('mine'),
-      active: viewMode === 'mine',
+      action: () => {
+        if (!isEditMode) onViewModeChange('mine');
+      },
+      active: viewMode === 'mine' && !isEditMode,
+      disabled: isEditMode,
     },
     {
       id: 'notifications' as const,
@@ -53,7 +57,9 @@ export function MobileBottomNav({
               className={cn(
                 'flex flex-col items-center justify-center gap-0.5 flex-1 h-full min-w-[60px] transition-all duration-300 relative active:scale-90',
                 tab.active ? 'text-violet-600' : 'text-gray-400',
+                tab.disabled && 'opacity-40',
               )}
+              disabled={tab.disabled}
             >
               {/* Active pill indicator */}
               {tab.active && (
