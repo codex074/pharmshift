@@ -17,6 +17,27 @@ import { th } from 'date-fns/locale';
 
 const THAI_DAY_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
 
+function getShiftPillStyle(shiftType: string): string {
+  if (shiftType === 'เช้า')     return 'bg-[#E8F9FA] border-[#9FDCE0] text-teal-900';
+  if (shiftType === 'บ่าย')     return 'bg-[#F3EDF8] border-[#9E76B4] text-purple-900';
+  if (shiftType === 'ดึก')      return 'bg-[#EEF0FF] border-[#99ABFF] text-indigo-900';
+  if (shiftType === 'รุ่งอรุณ') return 'bg-[#FEF3DC] border-[#FFCA72] text-amber-900';
+  return 'bg-violet-100 border-violet-300 text-violet-800';
+}
+
+function getShiftLabel(shiftType: string, deptName: string, position?: string): string {
+  if (shiftType === 'เช้า' && deptName === 'MED' && position) return `MED ${position}`;
+  if (shiftType === 'เช้า' && deptName === 'SURG') return 'SURG';
+  if (deptName === 'Chemo') return 'Chemo';
+  if (shiftType === 'บ่าย' && deptName === 'SMC') return 'SMC';
+  if (shiftType === 'ดึก') return 'ดึก';
+  if (shiftType === 'รุ่งอรุณ') return position ? `รุ่ง${position}` : 'รุ่ง';
+  if (deptName === 'โครงการ') return 'Ext';
+  if (deptName === 'Chemo') return 'Chem';
+  if (deptName) return deptName;
+  return shiftType;
+}
+
 interface SwapModalProps {
   shift: Shift | null;
   currentUser: UserType | null;
@@ -507,15 +528,24 @@ export function SwapModal({
                   {calDays.map((day, i) => {
                     const inMonth = isSameMonth(day, calViewDate);
                     const dateStr = format(day, 'yyyy-MM-dd');
-                    const hasMyShift = inMonth && !!myShiftsByDate[dateStr];
+                    const dayShifts = inMonth ? (myShiftsByDate[dateStr] || []) : [];
+                    const hasMyShift = dayShifts.length > 0;
                     const isSelected = dateStr === selectedDate;
                     return (
                       <button
                         key={i}
                         disabled={!hasMyShift}
-                        onClick={() => setSelectedDate(isSelected ? null : dateStr)}
+                        onClick={() => {
+                          if (isSelected) {
+                            setSelectedDate(null);
+                            setSelectedMyShift(null);
+                          } else {
+                            setSelectedDate(dateStr);
+                            setSelectedMyShift(dayShifts.length === 1 ? dayShifts[0] : null);
+                          }
+                        }}
                         className={cn(
-                          'relative flex flex-col items-center justify-center py-1.5 min-h-[2.2rem] transition-all',
+                          'flex flex-col items-center gap-0.5 py-1 px-0.5 min-h-[3.5rem] transition-all',
                           hasMyShift ? 'cursor-pointer hover:bg-blue-50' : 'cursor-default',
                           isSelected && 'bg-blue-100 rounded-lg',
                           !inMonth && 'opacity-0 pointer-events-none',
@@ -523,13 +553,21 @@ export function SwapModal({
                         <span className={cn('text-xs font-medium leading-none',
                           !inMonth ? 'text-gray-300' :
                           isSelected ? 'text-blue-700 font-bold' :
-                          hasMyShift ? 'text-blue-600 font-semibold' : 'text-gray-500')}>
+                          hasMyShift ? 'text-blue-600 font-semibold' : 'text-gray-400')}>
                           {format(day, 'd')}
                         </span>
-                        {hasMyShift && inMonth && (
-                          <span className={cn('w-1.5 h-1.5 rounded-full mt-0.5',
-                            isSelected ? 'bg-blue-600' : 'bg-blue-400')} />
-                        )}
+                        {dayShifts.map((s, si) => {
+                          const dept = (s.department as any)?.name || '';
+                          const pos = (s as any).position;
+                          return (
+                            <span key={si} className={cn(
+                              'text-[8px] font-semibold px-0.5 py-px rounded border leading-tight w-full text-center truncate',
+                              getShiftPillStyle(s.shift_type),
+                            )}>
+                              {getShiftLabel(s.shift_type, dept, pos)}
+                            </span>
+                          );
+                        })}
                       </button>
                     );
                   })}
@@ -538,14 +576,14 @@ export function SwapModal({
 
               {!selectedDate && (
                 <p className="text-xs text-center text-gray-400">
-                  กดที่วันที่มีจุดสีน้ำเงิน • เพื่อเลือกเวรของคุณ
+                  กดที่วันที่มีเวร • เพื่อเลือกเวรที่ต้องการแลก
                 </p>
               )}
 
-              {selectedDate && myShiftsOnSelectedDate.length > 0 && (
+              {selectedDate && myShiftsOnSelectedDate.length > 1 && (
                 <div className="space-y-1.5">
                   <p className="text-xs text-gray-500 font-medium">
-                    เวรของคุณวันที่ {format(new Date(selectedDate + 'T00:00:00'), 'd MMMM', { locale: th })}:
+                    เลือกเวรวันที่ {format(new Date(selectedDate + 'T00:00:00'), 'd MMMM', { locale: th })}:
                   </p>
                   {myShiftsOnSelectedDate.map(s => {
                     const sDept = (s.department as any)?.name || '';
