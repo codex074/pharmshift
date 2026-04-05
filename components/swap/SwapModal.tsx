@@ -70,6 +70,7 @@ export function SwapModal({
   const [calViewDate, setCalViewDate] = useState<Date>(() => startOfMonth(shift ? new Date(shift.date + 'T00:00:00') : new Date()));
   const [calViewShifts, setCalViewShifts] = useState<Shift[]>(userShifts);
   const [fetchingCalShifts, setFetchingCalShifts] = useState(false);
+  const [calMonthPublished, setCalMonthPublished] = useState<boolean>(true);
 
   // ── Derived ──────────────────────────────────────────────────────────
   const isOwnShift = !!(currentUser && shift && currentUser.id === shift.user_id);
@@ -114,20 +115,40 @@ export function SwapModal({
     setCollisionConfirmed(false);
   }, [selectedUser, selectedMyShift]);
 
-  // Fetch user shifts when calendar month changes
+  // Fetch user shifts when calendar month changes (only if month is published)
   useEffect(() => {
     if (!currentUser || swapAction !== 'swap') return;
-    const from = format(startOfMonth(calViewDate), 'yyyy-MM-dd');
-    const to   = format(endOfMonth(calViewDate),   'yyyy-MM-dd');
+    const monthYear = format(calViewDate, 'yyyy-MM');
+    const roleCol =
+      currentUser.role === 'pharmacist'          ? 'pharmacist_published' :
+      currentUser.role === 'pharmacy_technician' ? 'pharmacy_technician_published' :
+      currentUser.role === 'officer'             ? 'officer_published' : null;
+
     setFetchingCalShifts(true);
+    setCalViewShifts([]);
+
     supabase
-      .from('shifts')
-      .select('*, department:departments(name)')
-      .eq('user_id', currentUser.id)
-      .gte('date', from)
-      .lte('date', to)
-      .then(({ data }) => {
-        setCalViewShifts((data as Shift[]) || []);
+      .from('published_months')
+      .select(roleCol ? `${roleCol}` : 'is_published')
+      .eq('month_year', monthYear)
+      .maybeSingle()
+      .then(async ({ data }) => {
+        const published = roleCol
+          ? !!(data as any)?.[roleCol]
+          : !!(data as any)?.is_published;
+
+        setCalMonthPublished(published);
+        if (!published) { setFetchingCalShifts(false); return; }
+
+        const from = format(startOfMonth(calViewDate), 'yyyy-MM-dd');
+        const to   = format(endOfMonth(calViewDate),   'yyyy-MM-dd');
+        const { data: shifts } = await supabase
+          .from('shifts')
+          .select('*, department:departments(name)')
+          .eq('user_id', currentUser.id)
+          .gte('date', from)
+          .lte('date', to);
+        setCalViewShifts((shifts as Shift[]) || []);
         setFetchingCalShifts(false);
       });
   }, [calViewDate, swapAction, currentUser]);
@@ -574,7 +595,11 @@ export function SwapModal({
                 </div>
               </div>
 
-              {!selectedDate && (
+              {!calMonthPublished ? (
+                <p className="text-xs text-center text-amber-600 bg-amber-50 border border-amber-200 rounded-lg py-2 px-3">
+                  ตารางเวรเดือนนี้ยังไม่ได้ประกาศ
+                </p>
+              ) : !selectedDate && (
                 <p className="text-xs text-center text-gray-400">
                   กดที่วันที่มีเวร • เพื่อเลือกเวรที่ต้องการแลก
                 </p>
