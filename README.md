@@ -1,19 +1,25 @@
-# เวรดี๊ดี (PharmShift)
+# 🏥 เวรดี๊ดี
 
-ระบบจัดตารางเวรเภสัชกร โรงพยาบาลอุตรดิตถ์
+> ระบบจัดการตารางเวรกลุ่มงานเภสัชกรรม โรงพยาบาลอุตรดิตถ์
+
+[![Next.js](https://img.shields.io/badge/Next.js-14.2.5-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-38BDF8?logo=tailwindcss&logoColor=white)](https://tailwindcss.com)
+[![Vercel](https://img.shields.io/badge/Deploy-Vercel-black?logo=vercel&logoColor=white)](https://vercel.com)
 
 ---
 
 ## ภาพรวม
 
-PharmShift เป็น Progressive Web App (PWA) สำหรับจัดการตารางเวรเภสัชกรและบุคลากรเภสัชกรรม รองรับ 3 กลุ่มบุคลากร (เภสัชกร, เจ้าพนักงานเภสัชกรรม, เจ้าหน้าที่) พร้อมระบบแลกเวร, แจ้งเตือน Push, และส่งออก Excel หลายรูปแบบ
+PharmShift เป็น Progressive Web App (PWA) สำหรับจัดการตารางเวรฝ่ายเภสัชกรรม รองรับ 3 กลุ่มบุคลากร (เภสัชกร, เจ้าพนักงานเภสัชกรรม, เจ้าหน้าที่) พร้อมระบบแลกเวร, แจ้งเตือน Push, และส่งออก Excel หลายรูปแบบ
 
 ---
 
-## Tech Stack
+## 🛠 Tech Stack
 
 | ส่วน | เทคโนโลยี | เวอร์ชัน |
-|-----|-----------|---------|
+| ---- | --------- | -------- |
 | Framework | Next.js (App Router) | 14.2.5 |
 | Language | TypeScript | 5 |
 | Styling | Tailwind CSS + Radix UI | 3.4.1 |
@@ -28,22 +34,24 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 
 ---
 
-## Features
+## ✨ Features
 
-### สำหรับบุคลากรทั่วไป
-- ดูตารางเวรแบบปฏิทิน (รายเดือน) — ทุกเวร หรือ เวรของตัวเอง
-- ขอแลกเวร / โอนเวร / อยู่เวรแทน พร้อม collision detection อัตโนมัติ
-- แจ้งเตือน Push Notification เมื่อมีคำขอแลกเวรใหม่ และเตือนก่อนเวร
-- ดูสรุปค่าตอบแทนรายเดือน
-- รองรับ Mobile (Bottom Nav, Swipe gesture, Edit Day Modal)
+### 👤 สำหรับบุคลากรทั่วไป
 
-### สำหรับ Admin / Sub-Admin
-- นำเข้าตารางเวรจาก Excel (รองรับ 3 role, หลาย sheet)
-- แก้ไข / ลบ / เพิ่มเวรโดยตรงบนปฏิทิน (Edit Mode)
-- ประกาศตารางเวรรายเดือน (per-role publish flags)
-- จัดการวันหยุดนักขัตฤกษ์
-- จัดการผู้ใช้งาน (เพิ่ม / แก้ไข / reset รหัสผ่าน)
-- ส่งออก Excel 4 รูปแบบ:
+- 📅 ดูตารางเวรแบบปฏิทิน (รายเดือน) — ทุกเวร หรือ เวรของตัวเอง
+- 🔄 ขอแลกเวร / โอนเวร / อยู่เวรแทน พร้อม collision detection อัตโนมัติ
+- 🔔 แจ้งเตือน Push Notification เมื่อมีคำขอแลกเวรใหม่ และเตือนก่อนเวร
+- 💰 ดูสรุปค่าตอบแทนรายเดือน
+- 📱 รองรับ Mobile (Bottom Nav, Swipe gesture, Edit Day Modal)
+
+### 🔧 สำหรับ Admin / Sub-Admin
+
+- 📤 นำเข้าตารางเวรจาก Excel (รองรับ 3 role, หลาย sheet)
+- ✏️ แก้ไข / ลบ / เพิ่มเวรโดยตรงบนปฏิทิน (Edit Mode)
+- 📢 ประกาศตารางเวรรายเดือน (per-role publish flags)
+- 🗓 จัดการวันหยุดนักขัตฤกษ์
+- 👥 จัดการผู้ใช้งาน (เพิ่ม / แก้ไข / reset รหัสผ่าน)
+- 📊 ส่งออก Excel 4 รูปแบบ:
   - ตารางเวรแบบปฏิทิน (schedule table)
   - ใบหลักฐานค่าตอบแทน (evidence — ใช้ original_user_id)
   - ใบเบิกค่าตอบแทน (compensation — 5 sheets, Thai Baht text)
@@ -51,7 +59,7 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
 
 ### Prerequisites
 
@@ -88,6 +96,7 @@ APP_URL=https://pharmshift.vercel.app
 ```
 
 สร้าง VAPID keys:
+
 ```bash
 npx web-push generate-vapid-keys
 ```
@@ -106,7 +115,7 @@ npm run dev
 
 ---
 
-## Database Schema
+## 🗄 Database Schema
 
 ```
 users               — บัญชีผู้ใช้งาน
@@ -123,19 +132,19 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 
 ---
 
-## ประเภทเวร
+## 🕐 ประเภทเวร
 
 | ประเภท | เวลา | หมายเหตุ |
-|--------|------|---------|
-| เช้า | 08:30–16:30 | วันทำการ + วันหยุดนักขัตฤกษ์ |
-| บ่าย | 16:30–23:59 | ทุกวัน |
-| ดึก | 00:00–08:30 | ทุกวัน (model เป็น 1440–1950 นาที) |
-| รุ่งอรุณ | 07:00–08:30 | วันทำการเท่านั้น |
-| smc | 16:30–20:30 | จันทร์–พฤหัสเท่านั้น |
+| ------ | ---- | -------- |
+| ☀️ เช้า | 08:30–16:30 | วันทำการ + วันหยุดนักขัตฤกษ์ |
+| 🌤 บ่าย | 16:30–23:59 | ทุกวัน |
+| 🌙 ดึก | 00:00–08:30 | ทุกวัน (model เป็น 1440–1950 นาที) |
+| 🌅 รุ่งอรุณ | 07:00–08:30 | วันทำการเท่านั้น |
+| 🏥 smc | 16:30–20:30 | จันทร์–พฤหัสเท่านั้น |
 
 ---
 
-## Authentication
+## 🔐 Authentication
 
 - JWT (HS256) เก็บใน HttpOnly cookie ชื่อ `pharmshift_session` (30 วัน)
 - Rolling refresh: middleware ต่ออายุอัตโนมัติถ้าเหลือ < 15 วัน (ป้องกัน iOS 7-day purge)
@@ -146,7 +155,7 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 ### Roles
 
 | Role | สิทธิ์ |
-|------|-------|
+| ---- | ------ |
 | `admin` | ทุกอย่าง |
 | `pharmacist` / `pharmacy_technician` / `officer` | ดูตาราง + แลกเวร |
 | `is_sub_admin = true` | manage shifts สำหรับ role ตัวเอง |
@@ -154,14 +163,14 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 
 ---
 
-## Swap / Transfer / Cover Flow
+## 🔄 Swap / Transfer / Cover Flow
 
 ```
 1. กดที่เวร → SwapModal เปิด
 2. เลือกประเภท:
-   ├── แลกเวร   → เลือกเวรตัวเองจาก mini calendar (badge สีตามประเภทเวร)
-   ├── โอนเวร   → เลือกผู้รับเวร
-   └── อยู่แทน → ยืนยันโดยตรง
+   ├── 🔄 แลกเวร   → เลือกเวรตัวเองจาก mini calendar (badge สีตามประเภทเวร)
+   ├── ➡️ โอนเวร   → เลือกผู้รับเวร
+   └── 🙋 อยู่แทน → ยืนยันโดยตรง
 3. กด "ส่งคำขอ"
 4. Backend ตรวจสอบ:
    - ownership (fresh DB read)
@@ -175,7 +184,7 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 
 ---
 
-## Excel Import
+## 📥 Excel Import
 
 ไฟล์ตัวอย่าง: `public/sample_shifts.xlsx`
 
@@ -186,21 +195,21 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 
 ---
 
-## Push Notifications & Cron
+## 🔔 Push Notifications & Cron
 
 ### Cron Schedule (GitHub Actions)
 
 | เวลา Bangkok | Job |
-|-------------|-----|
-| 06:00 | เตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ) |
-| 16:00 | เตือนเวรพรุ่งนี้ (ทุกประเภท) |
-| 04:00 | ลบข้อมูลเก่า (swap_requests > 2 เดือน, notifications > 1 สัปดาห์) |
+| ------------ | --- |
+| 🌅 06:00 | เตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ) |
+| 🌆 16:00 | เตือนเวรพรุ่งนี้ (ทุกประเภท) |
+| 🧹 04:00 | ลบข้อมูลเก่า (swap_requests > 2 เดือน, notifications > 1 สัปดาห์) |
 
 Cron ทำงานผ่าน `GET /api/cron/...` โดยใช้ `Authorization: Bearer CRON_SECRET`
 
 ---
 
-## Deployment
+## 🚢 Deployment
 
 ### Vercel
 
@@ -212,12 +221,13 @@ Cron ทำงานผ่าน `GET /api/cron/...` โดยใช้ `Authori
 ### GitHub Actions (Cron)
 
 ตั้งค่า Secrets ใน repository:
+
 - `APP_URL` — URL ของ Vercel deployment
 - `CRON_SECRET` — ค่าเดียวกับ env var
 
 ---
 
-## Project Structure
+## 📁 Project Structure
 
 ```
 app/
@@ -242,7 +252,7 @@ supabase/migrations/— SQL schema
 
 ---
 
-## Scripts
+## 💻 Scripts
 
 ```bash
 npm run dev     # Dev server (http://localhost:3000)
@@ -253,6 +263,6 @@ npm run lint    # ESLint
 
 ---
 
-## License
+## 📄 License
 
 Internal use — โรงพยาบาลอุตรดิตถ์ กลุ่มงานเภสัชกรรม
