@@ -17,16 +17,16 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // ── 1) Delete swap_requests older than 2 months ────────────────────────
-  const cutoff2m = new Date();
-  cutoff2m.setMonth(cutoff2m.getMonth() - 2);
+  // ── 1) Delete swap_requests older than 4 weeks ─────────────────────────
+  const cutoff4w = new Date();
+  cutoff4w.setDate(cutoff4w.getDate() - 28);
 
-  const { error: err2m, count: count2m } = await supabase
+  const { error: err4w, count: count4w } = await supabase
     .from('swap_requests')
     .delete({ count: 'exact' })
-    .lt('created_at', cutoff2m.toISOString());
+    .lt('created_at', cutoff4w.toISOString());
 
-  if (err2m) console.error('[cron/cleanup] swap_requests 2-month delete error:', err2m);
+  if (err4w) console.error('[cron/cleanup] swap_requests 4-week delete error:', err4w);
 
   // ── 2) Delete rejected swap_requests older than 48 hours ───────────────
   const cutoff48h = new Date();
@@ -85,10 +85,6 @@ export async function GET(request: Request) {
     }
   }
 
-  console.log(
-    `[cron/cleanup] Deleted: ${count2m ?? 0} old(>2mo) | ${count48h ?? 0} rejected(>48h) | ${countChain} chain-hops`,
-  );
-
   // ── 4) Delete shift_reminder notifications older than 12 hours ─────────
   const cutoff12h = new Date();
   cutoff12h.setHours(cutoff12h.getHours() - 12);
@@ -101,28 +97,55 @@ export async function GET(request: Request) {
 
   if (errReminder) console.error('[cron/cleanup] notifications shift_reminder 12h delete error:', errReminder);
 
-  // ── 5) Delete all other notifications older than 1 week ────────────────
-  const cutoff1w = new Date();
-  cutoff1w.setDate(cutoff1w.getDate() - 7);
+  // ── 5) Delete all other notifications older than 3 days ────────────────
+  const cutoff3d = new Date();
+  cutoff3d.setDate(cutoff3d.getDate() - 3);
 
   const { error: errNotif, count: countNotif } = await supabase
     .from('notifications')
     .delete({ count: 'exact' })
     .neq('type', 'shift_reminder')
-    .lt('created_at', cutoff1w.toISOString());
+    .lt('created_at', cutoff3d.toISOString());
 
-  if (errNotif) console.error('[cron/cleanup] notifications 1-week delete error:', errNotif);
+  if (errNotif) console.error('[cron/cleanup] notifications 3-day delete error:', errNotif);
 
-  console.log(
-    `[cron/cleanup] Deleted: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} notifications(>1w)`,
-  );
+  // ── 6) Delete shift_logs older than 3 months ───────────────────────────
+  const cutoff3m = new Date();
+  cutoff3m.setMonth(cutoff3m.getMonth() - 3);
+
+  const { error: errLogs, count: countLogs } = await supabase
+    .from('shift_logs')
+    .delete({ count: 'exact' })
+    .lt('created_at', cutoff3m.toISOString());
+
+  if (errLogs) console.error('[cron/cleanup] shift_logs 3-month delete error:', errLogs);
+
+  // ── 7) Delete push_subscriptions inactive for 60 days ──────────────────
+  const cutoff60d = new Date();
+  cutoff60d.setDate(cutoff60d.getDate() - 60);
+
+  const { error: errPush, count: countPush } = await supabase
+    .from('push_subscriptions')
+    .delete({ count: 'exact' })
+    .lt('created_at', cutoff60d.toISOString());
+
+  if (errPush) console.error('[cron/cleanup] push_subscriptions 60-day delete error:', errPush);
+
+  console.log([
+    `[cron/cleanup] swap_requests: ${count4w ?? 0} old(>4w) | ${count48h ?? 0} rejected(>48h) | ${countChain} chain-hops`,
+    `[cron/cleanup] notifications: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} others(>3d)`,
+    `[cron/cleanup] shift_logs: ${countLogs ?? 0} old(>3mo)`,
+    `[cron/cleanup] push_subscriptions: ${countPush ?? 0} inactive(>60d)`,
+  ].join('\n'));
 
   return NextResponse.json({
     ok: true,
-    deleted_old_2months: count2m ?? 0,
-    deleted_rejected_48h: count48h ?? 0,
-    deleted_chain_hops: countChain,
-    deleted_reminder_notifs: countReminder ?? 0,
-    deleted_other_notifs: countNotif ?? 0,
+    deleted_swap_requests_4w:       count4w      ?? 0,
+    deleted_swap_requests_rejected: count48h     ?? 0,
+    deleted_chain_hops:             countChain,
+    deleted_reminder_notifs:        countReminder ?? 0,
+    deleted_other_notifs:           countNotif   ?? 0,
+    deleted_shift_logs:             countLogs    ?? 0,
+    deleted_push_subscriptions:     countPush    ?? 0,
   });
 }
