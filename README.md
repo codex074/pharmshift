@@ -108,6 +108,10 @@ npx web-push generate-vapid-keys
 
 รัน migrations ใน `supabase/migrations/` ตามลำดับผ่าน Supabase dashboard หรือ CLI
 
+หมายเหตุ:
+- migration `20260407_make_swap_accept_atomic.sql` สำคัญสำหรับกันเคสกดรับคำขอเวรพร้อมกันหลายคน
+- ถ้าไม่ได้ใช้ migration runner สามารถรัน SQL จาก `supabase/run_accept_swap_atomic.sql` ใน Supabase SQL Editor ได้
+
 ### 4. รัน Dev Server
 
 ```bash
@@ -180,11 +184,26 @@ shift_logs          — audit trail (swap, transfer, admin_edit, admin_delete)
    - collision: เวรทับกัน, บ่าย→ดึก, ดึก→เช้า
    - ถ้ามี collision → แจ้งเตือน (user กดยืนยันได้)
 5. ถ้า accepted:
+   - เรียก DB function แบบ atomic เพื่อ lock คำขอและ shift rows
    - เปลี่ยน user_id บน shifts
    - Push + in-app notify ผู้ขอ
-   - Auto-reject คำขออื่นที่ค้างสำหรับ shift เดียวกัน
-   - บันทึกลง shift_logs
+   - Auto-reject คำขออื่นที่ค้างสำหรับ shift/target_shift เดียวกัน
 ```
+
+### Realtime Flow (Optimized)
+
+```
+1. User ทำรายการสำเร็จ (send / accept / reject / cancel)
+2. Client patch state เฉพาะ row ที่เกี่ยวข้องทันที
+3. Server/DB เป็น source of truth และบันทึกผลจริง
+4. Supabase Realtime ส่ง event กลับมา
+5. Client patch เฉพาะ request / notification / shift row ที่เปลี่ยน
+```
+
+แนวทางนี้ช่วยให้:
+- UI อัปเดตเร็วขึ้นโดยไม่ต้อง refetch ทั้งก้อนทุกครั้ง
+- ลด read/query บน Supabase free tier
+- ยังรักษา realtime ระหว่างหลายอุปกรณ์/หลายผู้ใช้ได้
 
 ---
 
@@ -244,6 +263,7 @@ components/
   layout/           — Header, Mobile nav
 hooks/
   useShifts.ts      — useShifts + useSwapRequests + useNotifications + useCurrentUser
+                     (realtime + targeted row patching)
   useIsMobile.ts    — viewport breakpoint
   useSwipeGesture.ts — touch swipe for month navigation
 lib/
