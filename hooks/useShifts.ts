@@ -39,6 +39,51 @@ function countSwapPending(items: SwapRequest[], userId?: string): number {
   return incomingPending + unreadResults;
 }
 
+function escapeLikePattern(value: string): string {
+  return value.replace(/[%_]/g, (match) => `\\${match}`);
+}
+
+function buildSwapRequestNotificationMatcher(req: {
+  request_type: 'swap' | 'transfer' | 'cover';
+  requester?: { f_name?: string; nickname?: string } | null;
+  shift?: { shift_type?: string; date?: string; department?: { name?: string } | null } | null;
+  target_shift?: { shift_type?: string; date?: string; department?: { name?: string } | null } | null;
+}) {
+  const requesterName = req.requester?.nickname || req.requester?.f_name || 'เพื่อนร่วมงาน';
+  const shiftType = req.shift?.shift_type || '';
+  const shiftDate = req.shift?.date ? new Date(req.shift.date + 'T00:00:00') : null;
+  const shiftDept = req.shift?.department?.name || '';
+
+  if (req.request_type === 'transfer') {
+    const shiftDateFmt = shiftDate ? format(shiftDate, 'd MMM', { locale: th }) : '';
+    return {
+      title: '📩 คำขอโอนเวร',
+      bodyLike: `${escapeLikePattern(`${requesterName} ขอให้คุณรับ เวร${shiftType} ${shiftDateFmt}${shiftDept ? ` (${shiftDept})` : ''}`)}%`,
+    };
+  }
+
+  if (req.request_type === 'cover') {
+    const shiftDateFmt = shiftDate ? format(shiftDate, 'd/M', { locale: th }) : '';
+    return {
+      title: '🙋 คำขออยู่เวรแทน',
+      bodyLike: escapeLikePattern(`${requesterName} ต้องการขออยู่เวร${shiftType}${shiftDept ? ` ${shiftDept}` : ''} ${shiftDateFmt} แทนคุณ`),
+    };
+  }
+
+  const myShiftType = req.target_shift?.shift_type || '';
+  const myDate = req.target_shift?.date ? new Date(req.target_shift.date + 'T00:00:00') : null;
+  const myDateFmt = myDate ? format(myDate, 'd MMM', { locale: th }) : '';
+  const yourDateFmt = shiftDate ? format(shiftDate, 'd MMM', { locale: th }) : '';
+  const myDept = req.target_shift?.department?.name || '';
+
+  return {
+    title: '🔄 คำขอแลกเวร',
+    bodyLike: escapeLikePattern(
+      `${requesterName} เสนอแลก เวร${myShiftType} ${myDateFmt}${myDept ? ` (${myDept})` : ''} ของเขา กับ เวร${shiftType} ${yourDateFmt}${shiftDept ? ` (${shiftDept})` : ''} ของคุณ`
+    ),
+  };
+}
+
 export function useShifts(year: number, month: number) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isPublished, setIsPublished] = useState(false);
@@ -350,13 +395,29 @@ export function useSwapRequests(userId?: string) {
     // Verify it's still pending before deleting
     const { data: freshReq } = await supabase
       .from('swap_requests')
-      .select('status, requester_id, target_user_id, request_type')
+      .select(`
+        status, requester_id, target_user_id, request_type, created_at,
+        requester:users!requester_id(f_name, nickname),
+        shift:shifts!shift_id(shift_type, date, department:departments(name)),
+        target_shift:shifts!target_shift_id(shift_type, date, department:departments(name))
+      `)
       .eq('id', swapId)
       .single();
 
     if (!freshReq) throw new Error('ไม่พบคำขอนี้ในระบบ');
     if (freshReq.status !== 'pending') throw new Error('คำขอนี้ดำเนินการไปแล้ว ไม่สามารถยกเลิกได้');
     if (freshReq.requester_id !== userId) throw new Error('คุณไม่มีสิทธิ์ยกเลิกคำขอนี้');
+
+    const notifMatcher = buildSwapRequestNotificationMatcher(freshReq as any);
+
+    await supabase
+      .from('notifications')
+      .delete()
+      .eq('user_id', freshReq.target_user_id)
+      .eq('type', 'swap_request')
+      .eq('title', notifMatcher.title)
+      .like('body', notifMatcher.bodyLike)
+      .gte('created_at', freshReq.created_at);
 
     // Delete from DB immediately
     await supabase.from('swap_requests').delete().eq('id', swapId);
