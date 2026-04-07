@@ -12,10 +12,11 @@ interface Props {
   year: number;
   month: number;
   isPublished: boolean;
+  isAdminLike?: boolean;
   prevMonthLastDayShifts?: Shift[];
 }
 
-export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, prevMonthLastDayShifts }: Props) {
+export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, isAdminLike, prevMonthLastDayShifts }: Props) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -35,7 +36,7 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
     }
   };
 
-  if (!isPublished) {
+  if (!isPublished && !isAdminLike) {
     return (
       <div className="relative group">
         <button
