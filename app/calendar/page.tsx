@@ -125,7 +125,6 @@ export default function CalendarPage() {
   async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0], force = false) {
     const result = await acceptSwap(req, force);
     if (result?.collision) return result;
-    refetch();
     return result;
   }
 
