@@ -551,10 +551,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           </div>
           
           <div className="grid grid-cols-[1fr_2fr] flex-1">
-             {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
-             <div className={cn(br, 'grid grid-rows-2')}>
+             {/* รุ่งอรุณ Column - 3 rows (OPD / ER / HIV) */}
+             <div className={cn(br, 'grid grid-rows-3')}>
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV', 'h-full border-b-0')}
              </div>
              {/* ดึก ER — 1 slot เดียว */}
              {slot('ดึก', 'ER', 0, 'h-full border-b-0 flex-1')}
@@ -570,10 +571,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           </div>
 
           <div className="grid grid-cols-3 flex-1">
-             {/* รุ่งอรุณ Column - 2 rows (OPD top, ER bottom) */}
-             <div className={cn(br, 'grid grid-rows-2')}>
+             {/* รุ่งอรุณ Column - 3 rows (OPD / ER / HIV) */}
+             <div className={cn(br, 'grid grid-rows-3')}>
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV', 'h-full border-b-0')}
              </div>
              
              {/* SMC Column - 2 rows */}

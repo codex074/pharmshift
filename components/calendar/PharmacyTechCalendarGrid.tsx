@@ -372,14 +372,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             </div>
           </div>
         </div>
+
       </div>
     );
   }
 
   // Monday - Friday layout
-  let rungAroonSlots = 2; // Wed, Thu, Fri default
-  if (dow === 1) rungAroonSlots = 1; // Mon
-  if (dow === 2) rungAroonSlots = 3; // Tue
+  const rungAroonSlots = 3;
 
   return (
     <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
