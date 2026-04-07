@@ -19,6 +19,7 @@ Full-stack Next.js 14 · TypeScript · Supabase · Tailwind CSS · Radix UI
 | PWA | Manifest + Service Worker (manual) | — |
 | Excel Export | ExcelJS | 4.4.0 |
 | Excel Import | XLSX | 0.18.5 |
+| File Save | file-saver | 2.0.5 |
 | Icons | Lucide React | 0.395.0 |
 | Toast | Sonner | 1.5.0 |
 | Alerts | SweetAlert2 | 11.26.20 |
@@ -42,31 +43,53 @@ pharmshift/
 │   │   ├── swap/accept/    # swap/transfer/cover + collision check
 │   │   ├── push/           # subscribe (POST/DELETE), send (POST)
 │   │   ├── notifications/  # GET POST PUT(mark-read)
-│   │   ├── holidays/       # GET POST DELETE/[id] + import
+│   │   ├── holidays/       # GET POST PATCH/[id] DELETE/[id] + import
 │   │   ├── user/profile/   # PUT (self-update)
 │   │   └── cron/           # shift-reminders, test-reminders, cleanup
-│   ├── calendar/page.tsx   # Main page — all state + modal orchestration (~1000 LOC)
+│   ├── calendar/page.tsx   # Main page — all state + modal orchestration (~830 LOC)
 │   ├── login/
 │   ├── change-password/
 │   ├── layout.tsx          # Root layout + PWAProvider
 │   └── page.tsx            # redirect → /calendar
 ├── components/
-│   ├── calendar/           # CalendarGrid, MyCalendarGrid, role-specific grids,
-│   │                       # DayCell, ShiftBadge, DayDetailModal, ShiftDetailModal,
-│   │                       # MobileCalendarGrid, MobileEditDayModal,
-│   │                       # Admin*Modal (8 modals), ShiftUploadModal,
-│   │                       # DeployModal, PersonalShiftsModal, CompensationModal,
-│   │                       # ExportButtons (3 types), HelpGuideModal
+│   ├── calendar/
+│   │   ├── CalendarGrid.tsx            # Role-neutral all-staff grid
+│   │   ├── MyCalendarGrid.tsx          # "เวรของฉัน" — pill badges
+│   │   ├── PharmacyTechCalendarGrid.tsx
+│   │   ├── OfficeCalendarGrid.tsx
+│   │   ├── MobileCalendarGrid.tsx
+│   │   ├── MobileCalendarList.tsx      # Mobile list view
+│   │   ├── DayCell.tsx
+│   │   ├── ShiftBadge.tsx
+│   │   ├── DayDetailModal.tsx
+│   │   ├── ShiftDetailModal.tsx
+│   │   ├── AdminConfirmModal.tsx       # Bulk operation confirm dialog
+│   │   ├── AdminShiftEditorModal.tsx   # Edit individual shifts
+│   │   ├── AdminShiftSubstituteModal.tsx
+│   │   ├── AdminAddShiftModal.tsx
+│   │   ├── AdminUserManagementModal.tsx
+│   │   ├── AdminExportModal.tsx        # Export options selector
+│   │   ├── AdminBackupModal.tsx        # Data backup/restore
+│   │   ├── AdminSettingsModal.tsx
+│   │   ├── CompensationExportModal.tsx
+│   │   ├── ShiftUploadModal.tsx        # Excel import dialog
+│   │   ├── PersonalShiftsModal.tsx
+│   │   ├── CompensationModal.tsx
+│   │   ├── DeployModal.tsx             # Publish schedule per role
+│   │   ├── ManageHolidaysModal.tsx
+│   │   ├── MobileEditDayModal.tsx
+│   │   ├── ScheduleTableExportButton.tsx
+│   │   ├── UserProfileModal.tsx        # Self-update profile
+│   │   ├── ExcelExportButton.tsx
+│   │   ├── ExportButton.tsx
+│   │   └── HelpGuideModal.tsx
 │   ├── swap/               # SwapModal, NotificationsPanel
 │   ├── layout/             # Header, MobileBottomNav, MobileAdminMenu
 │   ├── pwa/                # PWAProvider
 │   ├── ui/                 # ripple, loading-overlay, icons3d
 │   └── providers/          # Context providers
 ├── hooks/
-│   ├── useShifts.ts        # shifts + holidays + publishStatus + Realtime
-│   ├── useSwapRequests.ts  # incoming/outgoing requests + actions
-│   ├── useNotifications.ts # notification list + mark-as-read
-│   ├── useCurrentUser.ts   # /api/auth/me on mount
+│   ├── useShifts.ts        # useShifts + useSwapRequests + useNotifications + useCurrentUser
 │   ├── useIsMobile.ts      # viewport ≤ 767px
 │   └── useSwipeGesture.ts  # touch swipe (month navigation)
 ├── lib/
@@ -95,6 +118,8 @@ pharmshift/
 └── .env.local              # not committed
 ```
 
+> **Note**: All hooks (`useShifts`, `useSwapRequests`, `useNotifications`, `useCurrentUser`) are exported from the single file `hooks/useShifts.ts`. `useIsMobile` and `useSwipeGesture` are in their own files.
+
 ---
 
 ## Authentication
@@ -122,18 +147,29 @@ decrypt(token)        // verify JWT → payload | null
 
 | Table | Key Columns |
 |-------|------------|
-| `users` | id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, is_readonly, password, must_change_password, salary_number |
+| `users` | id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, is_readonly, password, must_change_password, salary_number, profile_image |
 | `departments` | id, name |
 | `shifts` | id, date, user_id, **original_user_id** (immutable), department_id, shift_type, position, month_year |
 | `swap_requests` | id, shift_id, requester_id, target_user_id, request_type, target_shift_id, status, message, requester_read |
 | `holidays` | id, date (UNIQUE), name |
-| `published_months` | month_year, pharmacist_published, pharmacy_technician_published, officer_published |
+| `published_months` | month_year (PK), pharmacist_published, pharmacy_technician_published, officer_published |
 | `push_subscriptions` | user_id, endpoint (UNIQUE), p256dh, auth |
 | `notifications` | user_id, type, title, body, is_read, url |
-| `shift_logs` | audit trail |
+| `shift_logs` | shift_id, action, old_user_id, new_user_id, performed_by, details, created_at |
 
 ### Key field: `original_user_id`
 Set immutably when shift first assigned. Survives swaps. Used for evidence/compensation reporting.
+
+### `profile_image` field
+Type: `'male' | 'female'` — avatar type selector (not actual image upload).
+
+### `shift_logs` audit actions
+| Action | Trigger |
+|--------|---------|
+| `swap` | Shift exchanged via swap request |
+| `transfer` | Shift transferred to another user |
+| `admin_edit` | Admin changed shift details |
+| `admin_delete` | Admin deleted a shift |
 
 ---
 
@@ -143,8 +179,9 @@ Set immutably when shift first assigned. Survives swaps. Used for evidence/compe
 ```ts
 type UserRole = 'admin' | 'pharmacist' | 'pharmacy_technician' | 'officer'
 ```
-- `is_sub_admin`: non-admin who can manage shifts for their own role group
-- `canManageRoleGroup(user, roleGroup)` — admin OR matching sub-admin
+- `is_sub_admin`: non-admin who can manage shifts for their own role group only
+- `is_readonly`: can log in and view schedule but cannot be assigned shifts or participate in swaps
+- `canManageRoleGroup(user, roleGroup)` — returns true for admin OR matching sub-admin
 
 ### Shift Types (5 kinds)
 | Type | Time | Notes |
@@ -190,11 +227,23 @@ Also validates: no `ดึก → เช้า` consecutive, no `บ่าย �
 deptName fallback         → deptName
 ```
 
+### Notification Types
+| Type | When sent |
+|------|-----------|
+| `shift_assigned` | New shift assigned to user |
+| `shift_changed` | Shift details modified |
+| `shift_removed` | Shift deleted |
+| `schedule_published` | Monthly schedule published |
+| `shift_reminder` | Cron job morning/evening reminder |
+| `swap_request` | Incoming swap/transfer/cover request |
+| `swap_result` | Swap/transfer/cover accepted or rejected |
+
 ---
 
 ## API Patterns
 
 All under `app/api/`. Returns `NextResponse.json(data)` or `NextResponse.json({ error }, { status: N })`.
+All routes use `export const dynamic = 'force-dynamic'`.
 
 ### Routes
 ```
@@ -206,18 +255,18 @@ POST   /api/auth/change-password
 GET    /api/admin/shifts?month=2026-04&role=pharmacist&page=0   # 25/page
 PUT    /api/admin/shifts          # update shift_type/dept/position
 DELETE /api/admin/shifts          # delete by id
-PATCH  /api/admin/shifts/fix-suspicious   # bulk fix holiday shifts
+PATCH  /api/admin/shifts/fix-suspicious   # bulk fix suspicious holiday shifts
 
 GET    /api/admin/users
 POST   /api/admin/users
 PUT    /api/admin/users
-POST   /api/admin/users/reset-password
+POST   /api/admin/users/reset-password   # reset to '1234' + set must_change_password
 
 POST   /api/shifts/upload         # Excel import → upsert (with overwrite confirm)
 
 POST   /api/swap/accept           # swap/transfer/cover + collision + notify
 
-PUT    /api/user/profile          # self-update
+PUT    /api/user/profile          # self-update (prefix, name, nickname, password, salary_number)
 
 GET    /api/notifications         # 50 most recent
 POST   /api/notifications         # insert for userIds[]
@@ -229,13 +278,19 @@ POST   /api/push/send
 
 GET    /api/holidays
 POST   /api/holidays
+PATCH  /api/holidays/[id]         # update holiday name/date
 DELETE /api/holidays/[id]
 POST   /api/holidays/import       # from holidays.json, upsert on date
 
-GET    /api/cron/shift-reminders?run=morning|evening
+GET    /api/cron/shift-reminders?run=morning|evening   # secured by CRON_SECRET
 POST   /api/cron/test-reminders   # admin manual trigger
-GET    /api/cron/cleanup
+GET    /api/cron/cleanup          # secured by CRON_SECRET
 ```
+
+### Authorization
+- Admin routes: require `session.role === 'admin'` or `session.is_sub_admin === true`
+- Sub-admin routes: operations scoped to their own role group
+- Cron routes: `Authorization: Bearer ${CRON_SECRET}` header required
 
 ---
 
@@ -243,15 +298,15 @@ GET    /api/cron/cleanup
 
 No Redux/Zustand. React hooks + Supabase Realtime.
 
-### Hooks
+### Hooks (all in `hooks/useShifts.ts`)
 | Hook | Returns |
 |------|---------|
-| `useShifts(year, month)` | shifts, holidays, publishedRoles, loading, refetch |
-| `useSwapRequests(userId)` | requests, pendingCount, accept/reject/cancel/markRead |
-| `useNotifications(userId)` | notifications, unreadCount, markAllRead |
+| `useShifts(year, month)` | shifts, holidays, isPublished, publishedRoles, loading, refetch |
+| `useSwapRequests(userId?)` | swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead |
+| `useNotifications(userId?)` | notifications, unreadCount, fetchNotifications, markAllRead |
 | `useCurrentUser()` | user, loading |
-| `useIsMobile()` | boolean (≤767px) |
-| `useSwipeGesture(config)` | ref to attach to element |
+| `useIsMobile(breakpoint?)` | boolean (≤767px default) — in `hooks/useIsMobile.ts` |
+| `useSwipeGesture<T>(config)` | ref — in `hooks/useSwipeGesture.ts` |
 
 ### Calendar page state (app/calendar/page.tsx)
 ```ts
@@ -296,6 +351,10 @@ viewRoleGroup: UserRole
 | `excelExport.ts` | `exportCompensationExcel` | Per-role rate tables, 39 columns, TH SarabunPSK font |
 | `scheduleTableExport.ts` | `exportScheduleTable` | Week-grid calendar, colored cells, landscape |
 | `signSheetExport.ts` | `exportSignSheet` | 7 shift configs, 3-party sign-off columns |
+
+### Export Access Control
+- **ตารางเวร Excel** (`ScheduleTableExportButton`): Admin and Sub-Admin can export even before publishing. Regular staff must wait for the schedule to be published.
+- **ใบเบิกค่าตอบแทน / ใบหลักฐาน**: Requires the month to be published for the user's role.
 
 ---
 
@@ -342,7 +401,10 @@ sendPushToUsers(ids[], payload)
 |----------------|---------|-----|
 | 23:00 | 06:00 | Morning reminders — today's shifts (ยกเว้นรุ่งอรุณ) |
 | 09:00 | 16:00 | Evening reminders — tomorrow's all shifts |
-| 21:00 | 04:00 | Cleanup — old swap_requests, notifications, chain-hops |
+| 21:00 | 04:00 | Cleanup — old swap_requests (>28 days), notifications, chain-hops |
+
+Cron jobs call `GET /api/cron/...` with `Authorization: Bearer CRON_SECRET`.
+Bangkok timezone is handled via `Intl.DateTimeFormat` with `'Asia/Bangkok'` zone.
 
 ---
 
@@ -361,6 +423,8 @@ const supabase = createSupabaseServer()
 import { createClient } from '@supabase/supabase-js'
 const supabase = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ```
+
+Supabase Realtime subscriptions are set up per-month in `useShifts` to refresh on changes to `shifts`, `swap_requests`, and `published_months`.
 
 ---
 
@@ -401,16 +465,19 @@ formatThaiMonth(year, month)  // "เมษายน 2569"
 ## Environment Variables
 
 ```bash
+# Supabase — also used as JWT secret for custom auth
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 
+# Web Push VAPID
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=mailto:pharmacy@uttaradit-hospital.go.th
 
+# Cron security (also set as GitHub Actions secret APP_URL / CRON_SECRET)
 CRON_SECRET=
-APP_URL=https://pharmshift.vercel.app
+NEXT_PUBLIC_APP_URL=https://pharmshift.vercel.app
 ```
 
 ---
@@ -435,8 +502,7 @@ npm run lint   # ESLint
 | `lib/session.ts` | JWT sign/verify, cookie management |
 | `middleware.ts` | Route protection + rolling JWT refresh |
 | `app/calendar/page.tsx` | Main page — all state, modal orchestration |
-| `hooks/useShifts.ts` | Core data hook + Realtime subscription |
-| `hooks/useSwapRequests.ts` | Swap state + accept/reject/cancel |
+| `hooks/useShifts.ts` | All 4 core hooks (useShifts, useSwapRequests, useNotifications, useCurrentUser) + Realtime |
 | `app/api/swap/accept/route.ts` | Swap logic: collision check + notify + exchange |
 | `app/api/shifts/upload/route.ts` | Excel parse + shift code mapping + upsert |
 | `app/api/cron/shift-reminders/route.ts` | Scheduled push notification logic |
@@ -445,3 +511,4 @@ npm run lint   # ESLint
 | `lib/signSheetExport.ts` | Swap sign-off sheets (7 configs) |
 | `components/calendar/MyCalendarGrid.tsx` | "เวรของฉัน" calendar — pill badge rendering |
 | `components/swap/SwapModal.tsx` | Swap/transfer/cover modal with mini calendar |
+| `components/calendar/AdminBackupModal.tsx` | Data backup/restore operations |
