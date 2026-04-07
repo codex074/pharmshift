@@ -192,44 +192,35 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ collision: collisionMsg });
   }
 
-  // 4) Mark request as accepted
-  const { error: statusErr } = await supa
-    .from('swap_requests')
-    .update({ status: 'accepted', requester_read: false })
-    .eq('id', req.id);
-  if (statusErr) {
-    console.error('[swap/accept] status update error:', statusErr);
-    return NextResponse.json({ error: 'ไม่สามารถอัปเดตสถานะได้' }, { status: 500 });
+  // 4) Accept atomically in the database to prevent double-accept races
+  const { data: acceptRows, error: acceptErr } = await supa.rpc('accept_swap_request_atomic', {
+    p_swap_id: req.id,
+    p_actor_user_id: session.id,
+  });
+  if (acceptErr) {
+    console.error('[swap/accept] atomic accept error:', acceptErr);
+    return NextResponse.json({ error: 'ไม่สามารถดำเนินการรับคำขอได้' }, { status: 500 });
   }
 
-  // 5) Exchange shift owners (SERVICE ROLE — guaranteed to succeed)
-  if (req.request_type === 'swap' && req.target_shift_id) {
-    const { error: e1 } = await supa.from('shifts')
-      .update({ user_id: req.requester_id })
-      .eq('id', req.shift_id);
-    const { error: e2 } = await supa.from('shifts')
-      .update({ user_id: req.target_user_id })
-      .eq('id', req.target_shift_id);
-    if (e1 || e2) {
-      console.error('[swap/accept] shift update errors:', e1, e2);
-      // Rollback status
-      await supa.from('swap_requests').update({ status: 'pending', requester_read: true }).eq('id', req.id);
-      return NextResponse.json({ error: 'ไม่สามารถสลับเจ้าของเวรได้' }, { status: 500 });
+  const acceptResult = Array.isArray(acceptRows) ? acceptRows[0] : acceptRows;
+  if (!acceptResult?.ok) {
+    const errorCode = acceptResult?.error_code;
+    if (errorCode === 'FORBIDDEN') {
+      return NextResponse.json({ error: 'คุณไม่มีสิทธิ์ยอมรับคำขอนี้' }, { status: 403 });
     }
-  } else {
-    const currentOwnerId = req.shift?.user_id;
-    const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
-    const { error: e1 } = await supa.from('shifts')
-      .update({ user_id: newUserId })
-      .eq('id', req.shift_id);
-    if (e1) {
-      console.error('[swap/accept] shift update error:', e1);
-      await supa.from('swap_requests').update({ status: 'pending', requester_read: true }).eq('id', req.id);
-      return NextResponse.json({ error: 'ไม่สามารถเปลี่ยนเจ้าของเวรได้' }, { status: 500 });
+    if (errorCode === 'ALREADY_PROCESSED') {
+      return NextResponse.json({ error: 'คำขอนี้ถูกดำเนินการไปแล้ว' }, { status: 409 });
     }
+    if (errorCode === 'SHIFT_OWNERSHIP_CHANGED') {
+      return NextResponse.json({ error: 'เวรนี้ถูกเปลี่ยนเจ้าของไปแล้ว กรุณารีเฟรช' }, { status: 409 });
+    }
+    if (errorCode === 'NOT_FOUND' || errorCode === 'SHIFT_NOT_FOUND' || errorCode === 'TARGET_SHIFT_NOT_FOUND') {
+      return NextResponse.json({ error: 'ไม่พบคำขอนี้' }, { status: 404 });
+    }
+    return NextResponse.json({ error: 'ไม่สามารถดำเนินการรับคำขอได้' }, { status: 500 });
   }
 
-  // 6) Notifications
+  // 5) Notifications
   const acceptorName = req.target_user?.nickname || req.target_user?.f_name || 'เพื่อนร่วมงาน';
   const acceptTitle = req.request_type === 'swap' ? '✅ แลกเวรสำเร็จ' : '✅ โอนเวรสำเร็จ';
   const acceptBody = req.request_type === 'swap'
@@ -253,26 +244,18 @@ export async function POST(request: NextRequest) {
     title: acceptTitle, body: acceptBody, url: '/calendar',
   });
 
-  // 7) Auto-cancel other pending requests for the same shift(s)
-  const shiftIds = [req.shift_id];
-  if (req.target_shift_id) shiftIds.push(req.target_shift_id);
-
-  const { data: otherPending } = await supa
-    .from('swap_requests')
-    .select('id, requester_id, target_user_id')
-    .in('shift_id', shiftIds)
-    .eq('status', 'pending')
-    .neq('id', req.id);
-
-  if (otherPending?.length) {
-    await supa.from('swap_requests')
-      .update({ status: 'rejected', requester_read: false })
-      .in('id', otherPending.map((r: any) => r.id));
+  // 6) Notify requests auto-rejected by the atomic accept
+  const autoRejectedIds = (acceptResult.auto_rejected_ids || []) as string[];
+  if (autoRejectedIds.length) {
+    const { data: otherPending } = await supa
+      .from('swap_requests')
+      .select('id, requester_id, target_user_id')
+      .in('id', autoRejectedIds);
 
     const involvedIds = new Set([req.requester_id, req.target_user_id]);
     const notifyIds = Array.from(
       new Set(
-        otherPending
+        (otherPending || [])
           .flatMap((r: any) => [r.requester_id, r.target_user_id])
           .filter((id: string) => !involvedIds.has(id))
       )
