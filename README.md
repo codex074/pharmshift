@@ -21,10 +21,10 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 | ส่วน | เทคโนโลยี | เวอร์ชัน |
 | ---- | --------- | -------- |
 | Framework | Next.js (App Router) | 14.2.5 |
-| Language | TypeScript | 5 |
+| Language | TypeScript (strict) | 5 |
 | Styling | Tailwind CSS + Radix UI | 3.4.1 |
 | Database | Supabase (PostgreSQL) | Latest |
-| Auth | Custom JWT (jose) | 6.1.3 |
+| Auth | Custom JWT (jose) — ไม่ใช้ Supabase Auth | 6.1.3 |
 | Real-time | Supabase Realtime | Built-in |
 | Push Notifications | Web Push API + web-push | 3.6.7 |
 | PWA | Web App Manifest + Service Worker | Manual |
@@ -42,7 +42,8 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 - 🔄 ขอแลกเวร / โอนเวร / อยู่เวรแทน พร้อม collision detection อัตโนมัติ
 - 🔔 แจ้งเตือน Push Notification เมื่อมีคำขอแลกเวรใหม่ และเตือนก่อนเวร
 - 💰 ดูสรุปค่าตอบแทนรายเดือน
-- 📱 รองรับ Mobile (Bottom Nav, Swipe gesture, Edit Day Modal)
+- 👤 แก้ไขข้อมูลส่วนตัว (ชื่อ, ชื่อเล่น, เลขที่เงินเดือน, รหัสผ่าน)
+- 📱 รองรับ Mobile (Bottom Nav, Swipe gesture, Mobile Edit Day Modal)
 
 ### 🔧 สำหรับ Admin / Sub-Admin
 
@@ -50,12 +51,14 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 - ✏️ แก้ไข / ลบ / เพิ่มเวรโดยตรงบนปฏิทิน (Edit Mode)
 - 📢 ประกาศตารางเวรรายเดือน (per-role publish flags)
 - 🗓 จัดการวันหยุดนักขัตฤกษ์
-- 👥 จัดการผู้ใช้งาน (เพิ่ม / แก้ไข / reset รหัสผ่าน)
+- 👥 จัดการผู้ใช้งาน (เพิ่ม / แก้ไข / reset รหัสผ่าน / ตั้งค่า is_readonly, is_sub_admin)
 - 📊 ส่งออก Excel 4 รูปแบบ:
-  - ตารางเวรแบบปฏิทิน (schedule table)
+  - ตารางเวรแบบปฏิทิน (schedule table) — ดาวน์โหลดได้ก่อนประกาศตาราง
   - ใบหลักฐานค่าตอบแทน (evidence — ใช้ original_user_id)
   - ใบเบิกค่าตอบแทน (compensation — 5 sheets, Thai Baht text)
   - ใบลงชื่อแลกเวร (sign sheet — 7 configs)
+- 💾 Backup / Restore ข้อมูล (AdminBackupModal)
+- 🧹 ส่ง push reminders แบบ manual (test cron endpoint)
 
 ---
 
@@ -80,7 +83,7 @@ npm install
 สร้างไฟล์ `.env.local`:
 
 ```bash
-# Supabase
+# Supabase (ANON_KEY ยังใช้เป็น JWT secret สำหรับ custom auth)
 NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
@@ -92,7 +95,7 @@ VAPID_SUBJECT=mailto:pharmacy@uttaradit-hospital.go.th
 
 # Cron security
 CRON_SECRET=your-secret-here
-APP_URL=https://pharmshift.vercel.app
+NEXT_PUBLIC_APP_URL=https://pharmshift.vercel.app
 ```
 
 สร้าง VAPID keys:
@@ -118,16 +121,16 @@ npm run dev
 ## 🗄 Database Schema
 
 ```
-users               — บัญชีผู้ใช้งาน
+users               — บัญชีผู้ใช้งาน (รวม profile_image: 'male'|'female', salary_number)
 departments         — แผนก (ER, MED, SURG, SMC, Chemo, ...)
 shifts              — ตารางเวรที่ถูกจัดสรร
   └─ original_user_id  — ผู้รับผิดชอบเวรดั้งเดิม (ไม่เปลี่ยนหลังแลก)
 swap_requests       — คำขอแลก/โอน/อยู่แทน (pending/accepted/rejected)
 holidays            — วันหยุดนักขัตฤกษ์
-published_months    — สถานะประกาศตารางรายเดือน (per-role)
+published_months    — สถานะประกาศตารางรายเดือน (per-role flags)
 push_subscriptions  — VAPID endpoint ของแต่ละอุปกรณ์
 notifications       — in-app notification log
-shift_logs          — audit trail การเปลี่ยนแปลงเวร
+shift_logs          — audit trail (swap, transfer, admin_edit, admin_delete)
 ```
 
 ---
@@ -150,7 +153,7 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 - Rolling refresh: middleware ต่ออายุอัตโนมัติถ้าเหลือ < 15 วัน (ป้องกัน iOS 7-day purge)
 - ไม่ใช้ Supabase Auth — custom JWT ด้วย `jose`
 - รหัสผ่านเก็บ plain-text (ข้อจำกัดที่รู้อยู่แล้ว)
-- รหัสผ่านเริ่มต้น: `1234` + flag `must_change_password = true`
+- รหัสผ่านเริ่มต้น: `1234` + flag `must_change_password = true` → บังคับเปลี่ยนรหัสผ่านในครั้งแรก
 
 ### Roles
 
@@ -158,8 +161,8 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 | ---- | ------ |
 | `admin` | ทุกอย่าง |
 | `pharmacist` / `pharmacy_technician` / `officer` | ดูตาราง + แลกเวร |
-| `is_sub_admin = true` | manage shifts สำหรับ role ตัวเอง |
-| `is_readonly = true` | ดูได้อย่างเดียว ไม่รับมอบหมายเวร |
+| `is_sub_admin = true` | manage shifts สำหรับ role ตัวเอง (เหมือน admin เฉพาะกลุ่ม) |
+| `is_readonly = true` | ดูได้อย่างเดียว — ไม่รับมอบหมายเวร / ไม่แลกเวรได้ |
 
 ---
 
@@ -180,6 +183,7 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
    - เปลี่ยน user_id บน shifts
    - Push + in-app notify ผู้ขอ
    - Auto-reject คำขออื่นที่ค้างสำหรับ shift เดียวกัน
+   - บันทึกลง shift_logs
 ```
 
 ---
@@ -203,9 +207,10 @@ shift_logs          — audit trail การเปลี่ยนแปลง�
 | ------------ | --- |
 | 🌅 06:00 | เตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ) |
 | 🌆 16:00 | เตือนเวรพรุ่งนี้ (ทุกประเภท) |
-| 🧹 04:00 | ลบข้อมูลเก่า (swap_requests > 2 เดือน, notifications > 1 สัปดาห์) |
+| 🧹 04:00 | ลบข้อมูลเก่า (swap_requests > 28 วัน, notifications เก่า) |
 
 Cron ทำงานผ่าน `GET /api/cron/...` โดยใช้ `Authorization: Bearer CRON_SECRET`
+ใช้ `Intl.DateTimeFormat` กับ `'Asia/Bangkok'` สำหรับ timezone
 
 ---
 
@@ -231,20 +236,23 @@ Cron ทำงานผ่าน `GET /api/cron/...` โดยใช้ `Authori
 
 ```
 app/
-  api/              — API routes (REST)
-  calendar/         — หน้าหลัก (state + modal orchestration)
+  api/              — API routes (REST, dynamic)
+  calendar/         — หน้าหลัก (state + modal orchestration ~830 LOC)
 components/
-  calendar/         — Calendar grids + modals (30+ components)
+  calendar/         — 28 components (grids, modals, export buttons)
   swap/             — SwapModal, NotificationsPanel
   layout/           — Header, Mobile nav
-hooks/              — useShifts, useSwapRequests, useNotifications, ...
+hooks/
+  useShifts.ts      — useShifts + useSwapRequests + useNotifications + useCurrentUser
+  useIsMobile.ts    — viewport breakpoint
+  useSwipeGesture.ts — touch swipe for month navigation
 lib/
   types.ts          — Types + constants + role helpers
   utils.ts          — Calendar grid, overlap detection, Thai dates
   session.ts        — JWT helpers
   excelExport.ts    — Compensation Excel (evidence + payment)
   scheduleTableExport.ts — Schedule calendar Excel
-  signSheetExport.ts     — Sign-off sheets Excel
+  signSheetExport.ts     — Sign-off sheets Excel (7 configs)
 middleware.ts       — JWT auth + rolling refresh
 public/sw.js        — Service Worker (push notifications)
 supabase/migrations/— SQL schema
