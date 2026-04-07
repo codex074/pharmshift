@@ -339,15 +339,12 @@ function renderPersonalShift(s: Shift | undefined, ctx: RenderContext) {
   return renderShiftBadge(s, ctx);
 }
 
-function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext) {
-  const dow = day.date.getDay();
+function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext, gridArea = '5 / 1 / 8 / 2') {
   const dateStr = format(day.date, 'yyyy-MM-dd');
-  let positions = ['OPD'];
-  if (dow === 2) positions = ['OPD', 'ER', 'HIV']; // Tue
-  else if (dow >= 3 && dow <= 5) positions = ['OPD', 'ER']; // Wed-Fri
+  const positions = ['OPD', 'ER', 'HIV'];
   
   return (
-    <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea: '5 / 1 / 8 / 2' }}>
+    <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea }}>
       {positions.map((pos, idx) => {
         const realShift = day.shifts.find(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
         // Find pending add for this specific position (with its global index for remove callback)
