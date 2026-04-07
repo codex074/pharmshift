@@ -216,25 +216,27 @@ export function useSwapRequests(userId?: string) {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'swap_requests' },
         async (payload: RealtimePostgresChangesPayload<{ id: string; requester_id?: string; target_user_id?: string }>) => {
-          const newRow = payload.new || {};
-          const oldRow = payload.old || {};
-          const isRelevant = newRow.requester_id === userId
-            || newRow.target_user_id === userId
-            || oldRow.requester_id === userId
-            || oldRow.target_user_id === userId;
+          const newRow = (payload.new ?? null) as { id?: string; requester_id?: string; target_user_id?: string } | null;
+          const oldRow = (payload.old ?? null) as { id?: string; requester_id?: string; target_user_id?: string } | null;
+          const isRelevant = newRow?.requester_id === userId
+            || newRow?.target_user_id === userId
+            || oldRow?.requester_id === userId
+            || oldRow?.target_user_id === userId;
 
           if (!isRelevant) return;
 
           if (payload.eventType === 'DELETE') {
-            if (!oldRow.id) return;
-            applySwapRequests((prev) => removeById(prev, oldRow.id));
+            const deletedId = oldRow?.id;
+            if (!deletedId) return;
+            applySwapRequests((prev) => removeById(prev, deletedId));
             return;
           }
 
-          if (!newRow.id) return;
-          const fullSwap = await fetchSwapById(newRow.id);
+          const newId = newRow?.id;
+          if (!newId) return;
+          const fullSwap = await fetchSwapById(newId);
           if (!fullSwap) {
-            applySwapRequests((prev) => removeById(prev, newRow.id));
+            applySwapRequests((prev) => removeById(prev, newId));
             return;
           }
 
