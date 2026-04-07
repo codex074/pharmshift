@@ -13,6 +13,7 @@ const BORDER = 'border-gray-200';
 const BORDER2 = 'border-gray-300';
 const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+const DAY_GRID_ROWS = 'grid-rows-[repeat(7,_2.75rem)]';
 
 // ── Shift-time colour palettes ─────────────────────────────────
 // รุ่งอรุณ  → amber
@@ -438,7 +439,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
 
   return (
-    <div className="grid grid-cols-5 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className={cn("grid grid-cols-5 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
 
       {/* ROW 1 — section labels + date number */}
       <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
@@ -535,7 +536,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
     : null;
 
   return (
-    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
 
       {/* ROW 1 */}
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
@@ -576,7 +577,7 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
   const dayNum = format(day.date, 'd');
   const dateStr = format(day.date, 'yyyy-MM-dd');
   return (
-    <div className="grid grid-cols-4 grid-rows-[repeat(7,_minmax(2.275rem,_auto))] h-full" onClick={() => onDayClick(day)}>
+    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
 
       {/* ROW 1 */}
       <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
