@@ -63,9 +63,11 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
   const isFriday = dow === 5;
 
   if (roleGroup === 'pharmacist') {
-    const rungSlots: SlotConfig[] = [{ label: 'รุ่ง OPD', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'OPD' }];
-    if (!isWeekendOrHoliday && dow >= 2) rungSlots.push({ label: 'รุ่ง ER', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'ER' });
-    if (!isWeekendOrHoliday && dow === 2) rungSlots.push({ label: 'รุ่ง HIV', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'HIV' });
+    const rungSlots: SlotConfig[] = [
+      { label: 'รุ่ง OPD', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'OPD' },
+      { label: 'รุ่ง ER', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'ER' },
+      { label: 'รุ่ง HIV', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'HIV' },
+    ];
 
     if (isWeekendOrHoliday) {
       return [
@@ -120,9 +122,8 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
       ];
     }
 
-    const rungCount = dow === 1 ? 1 : dow === 2 ? 3 : 2;
     return [
-      { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: rangeLabels('รุ่งอรุณ', rungCount, 'รุ่งอรุณ', 'รุ่งอรุณ') },
+      { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: rangeLabels('รุ่งอรุณ', 3, 'รุ่งอรุณ', 'รุ่งอรุณ') },
       { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
         ...rangeLabels('SMC', 2, 'บ่าย', 'SMC'),
         ...rangeLabels('บ่าย MED', 2, 'บ่าย', 'MED'),
@@ -164,6 +165,7 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: [
       { label: 'รุ่ง OPD', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'OPD' },
       { label: 'รุ่ง ER', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'ER' },
+      { label: 'รุ่ง HIV', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'HIV' },
     ]},
     { id: 'night', title: 'ดึก', shiftType: 'ดึก', slots: [
       { label: 'ดึก ER', shiftType: 'ดึก', department: 'ER', index: 0 },

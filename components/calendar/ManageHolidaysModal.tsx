@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
-import { X, Calendar, Plus, Trash2, Loader2, Download } from 'lucide-react';
+import { X, Calendar, Plus, Trash2, Loader2, Download, Pencil } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Holiday } from '@/lib/types';
@@ -25,7 +24,11 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
   // Form state
   const [date, setDate] = useState('');
   const [name, setName] = useState('');
+  const [editingHoliday, setEditingHoliday] = useState<Holiday | null>(null);
   const [adding, setAdding] = useState(false);
+  const [editDate, setEditDate] = useState('');
+  const [editName, setEditName] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [importing, setImporting] = useState(false);
 
@@ -48,6 +51,23 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
     }
   }
 
+  function resetAddForm() {
+    setDate('');
+    setName('');
+  }
+
+  function closeEditModal() {
+    setEditingHoliday(null);
+    setEditDate('');
+    setEditName('');
+  }
+
+  function startEditingHoliday(holiday: Holiday) {
+    setEditingHoliday(holiday);
+    setEditDate(holiday.date);
+    setEditName(holiday.name);
+  }
+
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!date || !name) return;
@@ -66,15 +86,43 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
       }
 
       toastSuccess('เพิ่มวันหยุดเรียบร้อยแล้ว');
-      setDate('');
-      setName('');
-      fetchHolidays();
+      resetAddForm();
+      await fetchHolidays();
       onSuccess(); // Refresh calendar data
     } catch (error: any) {
       console.error(error);
       toastError(error.message || 'เพิ่มวันหยุดไม่สำเร็จ');
     } finally {
       setAdding(false);
+    }
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingHoliday || !editDate || !editName) return;
+
+    try {
+      setSavingEdit(true);
+      const res = await fetch(`/api/holidays/${editingHoliday.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date: editDate, name: editName }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Failed to update holiday');
+      }
+
+      toastSuccess('แก้ไขวันหยุดเรียบร้อยแล้ว');
+      closeEditModal();
+      await fetchHolidays();
+      onSuccess(); // Refresh calendar data
+    } catch (error: any) {
+      console.error(error);
+      toastError(error.message || 'แก้ไขวันหยุดไม่สำเร็จ');
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -88,7 +136,10 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
       if (!res.ok) throw new Error('Failed to delete holiday');
 
       toastSuccess('ลบวันหยุดเรียบร้อยแล้ว');
-      fetchHolidays();
+      if (editingHoliday?.id === id) {
+        closeEditModal();
+      }
+      await fetchHolidays();
       onSuccess(); // Refresh calendar data
     } catch (error) {
       console.error(error);
@@ -135,7 +186,7 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
               <button
                 type="button"
                 onClick={handleImportFromJson}
-                disabled={importing}
+                disabled={importing || adding || savingEdit}
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
@@ -213,18 +264,28 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
                             {format(dateObj, 'd MMMM yyyy', { locale: th })}
                           </p>
                         </div>
-                        <button
-                          onClick={() => handleDelete(h.id)}
-                          disabled={deletingId === h.id}
-                          title="ลบวันหยุด"
-                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                        >
-                          {deletingId === h.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Trash2 className="w-4 h-4" />
-                          )}
-                        </button>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => startEditingHoliday(h)}
+                            disabled={adding || savingEdit || deletingId === h.id}
+                            title="แก้ไขวันหยุด"
+                            className="p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(h.id)}
+                            disabled={deletingId === h.id || adding || savingEdit}
+                            title="ลบวันหยุด"
+                            className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                          >
+                            {deletingId === h.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -254,6 +315,74 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
             )}
           </div>
 
+          {editingHoliday && (
+            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/55 backdrop-blur-[1px]">
+              <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="flex items-center justify-between border-b border-gray-100 bg-gradient-to-r from-amber-50 to-white px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <div className="rounded-xl bg-amber-100 p-2 text-amber-600">
+                      <Pencil className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-bold text-gray-900">แก้ไขข้อมูลวันหยุด</h3>
+                      <p className="text-xs text-gray-500">แก้ไขชื่อวันหยุดหรือวันที่ที่เลือก</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeEditModal}
+                    disabled={savingEdit}
+                    className="rounded-full p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:opacity-50"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleEdit} className="space-y-4 p-5">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">วันที่</label>
+                    <input
+                      type="date"
+                      value={editDate}
+                      onChange={(e) => setEditDate(e.target.value)}
+                      required
+                      className="w-full rounded-lg border-gray-300 bg-gray-50 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">ชื่อวันหยุด / โอกาสพิเศษ</label>
+                    <input
+                      type="text"
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="เช่น วันสงกรานต์, วันหยุดชดเชย..."
+                      required
+                      className="w-full rounded-lg border-gray-300 px-3 py-2 text-sm shadow-sm focus:border-amber-500 focus:ring-amber-500"
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeEditModal}
+                      disabled={savingEdit}
+                      className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={savingEdit || !editDate || !editName}
+                      className="flex items-center justify-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {savingEdit ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pencil className="w-4 h-4" />}
+                      บันทึกการแก้ไข
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
         </div>
   );
 
@@ -270,7 +399,7 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-900">จัดการวันหยุดนักขัตฤกษ์</h2>
-              <p className="text-sm text-gray-500">เพิ่มหรือลบวันหยุดพิเศษ</p>
+              <p className="text-sm text-gray-500">เพิ่ม แก้ไข หรือลบวันหยุดพิเศษ</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
