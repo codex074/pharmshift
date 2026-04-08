@@ -74,6 +74,10 @@ function normalizeSubmitError(err: any): string {
   return raw;
 }
 
+function duplicateRequestMessage(name: string | undefined) {
+  return `ส่งคำขอถึง ${name || 'ผู้ใช้รายนี้'} ไปแล้วก่อนหน้านี้`;
+}
+
 interface SwapModalProps {
   shift: Shift | null;
   currentUser: UserType | null;
@@ -237,7 +241,7 @@ export function SwapModal({
         requestType: 'transfer',
       });
       if (hasDuplicate) {
-        const duplicateMessage = 'คุณส่งคำขอโอนเวรนี้ให้คนเดิมไว้แล้ว';
+        const duplicateMessage = duplicateRequestMessage(selectedUser.nickname || selectedUser.f_name);
         setSubmitError(duplicateMessage);
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
@@ -299,7 +303,7 @@ export function SwapModal({
         targetShiftId: selectedMyShift.id,
       });
       if (hasDuplicate) {
-        const duplicateMessage = 'คุณส่งคำขอแลกเวรนี้ไว้แล้ว';
+        const duplicateMessage = duplicateRequestMessage(ownerLabel);
         setSubmitError(duplicateMessage);
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
@@ -359,7 +363,7 @@ export function SwapModal({
         requestType: 'cover',
       });
       if (hasDuplicate) {
-        const duplicateMessage = 'คุณส่งคำขออยู่เวรแทนนี้ไว้แล้ว';
+        const duplicateMessage = duplicateRequestMessage(ownerLabel);
         setSubmitError(duplicateMessage);
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
