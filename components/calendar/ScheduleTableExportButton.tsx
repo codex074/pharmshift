@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Loader2, X, Lock } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { exportScheduleTable } from '@/lib/scheduleTableExport';
+import { exportMySchedule } from '@/lib/myScheduleExport';
 import type { Shift, Holiday } from '@/lib/types';
 
 interface Props {
@@ -14,19 +15,31 @@ interface Props {
   isPublished: boolean;
   isAdminLike?: boolean;
   prevMonthLastDayShifts?: Shift[];
+  currentUserId?: string;
+  currentUserName?: string;
 }
 
-export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, isAdminLike, prevMonthLastDayShifts }: Props) {
+export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, isAdminLike, prevMonthLastDayShifts, currentUserId, currentUserName }: Props) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
-  const handleExport = async (useOriginal: boolean) => {
+  const handleExport = async (useOriginal: boolean, myShiftsOnly = false) => {
     setShowModal(false);
     setLoading(true);
     try {
+      const prevDuekPharmacist = (prevMonthLastDayShifts || []).filter(s => (s.user as any)?.role === 'pharmacist');
+
+      if (myShiftsOnly && currentUserId) {
+        const myShifts = shifts.filter(s => s.user_id === currentUserId);
+        if (!myShifts.length) throw new Error('ไม่พบข้อมูลเวรของคุณในเดือนนี้');
+        const name = currentUserName || 'ฉัน';
+        await exportMySchedule(myShifts, holidays, year, month, name, prevMonthLastDayShifts || []);
+        toastSuccess('ส่งออกตารางเวรของฉันสำเร็จ');
+        return;
+      }
+
       const pharmacistShifts = shifts.filter(s => (s.user as any)?.role === 'pharmacist');
       if (!pharmacistShifts.length) throw new Error('ไม่พบข้อมูลเวรเภสัชกรในเดือนนี้');
-      const prevDuekPharmacist = (prevMonthLastDayShifts || []).filter(s => (s.user as any)?.role === 'pharmacist');
       await exportScheduleTable(pharmacistShifts, holidays, year, month, useOriginal, prevDuekPharmacist);
       toastSuccess(useOriginal ? 'ส่งออกตารางเวร (ตารางเดิม) สำเร็จ' : 'ส่งออกตารางเวรสำเร็จ');
     } catch (err: any) {
@@ -126,6 +139,22 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
                   <p className="text-xs text-gray-400 mt-0.5">แสดง original user ตอนที่ประกาศตาราง</p>
                 </div>
               </button>
+
+              {/* เวรของฉัน */}
+              {currentUserId && (
+                <button
+                  onClick={() => handleExport(false, true)}
+                  className="w-full flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-violet-400 hover:bg-violet-50 transition-all text-left group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center text-xl flex-shrink-0 group-hover:bg-violet-200 transition-colors">
+                    🙋
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-800 text-sm">เวรของฉัน</p>
+                    <p className="text-xs text-gray-400 mt-0.5">แสดงเฉพาะเวรที่คุณได้รับในเดือนนี้</p>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
         </div>

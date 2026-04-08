@@ -364,7 +364,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
             )}
-<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} isAdminLike={userIsAdminLike} prevMonthLastDayShifts={prevMonthLastDayShifts} />
+<ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} isAdminLike={userIsAdminLike} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.nickname || currentUser?.f_name} />
             {currentUser && (
               <div className="relative group">
                 <button
