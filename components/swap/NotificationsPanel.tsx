@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2, BellOff, BellRing } from 'lucide-react';
+import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2, BellOff, BellRing, RefreshCw } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -90,6 +90,7 @@ interface NotificationsPanelProps {
   onReject: (swapId: string) => Promise<void>;
   onCancel: (swapId: string) => Promise<void>;
   onMarkNotifsRead: () => Promise<void>;
+  onRefresh?: () => Promise<void>;
   onOpen?: () => void;
   onClose: () => void;
 }
@@ -102,7 +103,7 @@ function statusBadge(status: string) {
 
 export function NotificationsPanel({
   swapRequests, notifications, notifUnreadCount, currentUser, pendingCount,
-  onAccept, onReject, onCancel, onMarkNotifsRead, onOpen, onClose,
+  onAccept, onReject, onCancel, onMarkNotifsRead, onRefresh, onOpen, onClose,
 }: NotificationsPanelProps) {
 
   const PAGE_SIZE = 10;
@@ -112,6 +113,8 @@ export function NotificationsPanel({
   const [collisionMsg, setCollisionMsg] = useState('');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [cancelConfirmId, setCancelConfirmId] = useState<string | null>(null);
+
+  const [refreshing, setRefreshing] = useState(false);
 
   // Push notification state
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default');
@@ -275,9 +278,21 @@ export function NotificationsPanel({
               <Bell className="w-4 h-4 text-violet-600" />
               <h2 className="font-semibold text-gray-900 text-sm">การแจ้งเตือน</h2>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-all">
-              <X className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1">
+              {onRefresh && (
+                <button
+                  onClick={async () => { setRefreshing(true); try { await onRefresh(); } finally { setRefreshing(false); } }}
+                  disabled={refreshing}
+                  title="โหลดข้อมูลใหม่"
+                  className="p-1.5 rounded-lg hover:bg-violet-50 text-violet-500 transition-all"
+                >
+                  <RefreshCw className={cn("w-3.5 h-3.5", refreshing && "animate-spin")} />
+                </button>
+              )}
+              <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 transition-all">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           {/* Tabs */}
           <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">

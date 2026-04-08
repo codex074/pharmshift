@@ -73,7 +73,7 @@ export default function CalendarPage() {
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
   const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
-  const { notifications, unreadCount: notifUnreadCount, markAllRead: markNotifsRead } = useNotifications(currentUser?.id);
+  const { notifications, unreadCount: notifUnreadCount, fetchNotifications, markAllRead: markNotifsRead } = useNotifications(currentUser?.id);
 
   const [prevMonthLastDayShifts, setPrevMonthLastDayShifts] = useState<Shift[]>([]);
   useEffect(() => {
@@ -119,7 +119,7 @@ export default function CalendarPage() {
     ? (publishedRoles[viewRoleGroup as keyof typeof publishedRoles] ?? false)
     : (publishedRoles[myRoleKey] ?? false);
   const {
-    swapRequests, pendingCount, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
+    swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
 
   async function handleAcceptSwap(req: Parameters<typeof acceptSwap>[0], force = false) {
@@ -257,7 +257,7 @@ export default function CalendarPage() {
         currentUser={currentUser}
         pendingCount={pendingCount + notifUnreadCount}
         onBellClick={() => setShowNotifications(true)}
-        onRefresh={refetch}
+        onRefresh={async () => { await Promise.all([refetch(), fetchNotifications(), fetchSwaps()]); }}
         year={year}
         month={month}
         onMonthChange={handleMonthChange}
@@ -699,6 +699,7 @@ export default function CalendarPage() {
           onReject={rejectSwap}
           onCancel={cancelSwap}
           onMarkNotifsRead={markNotifsRead}
+          onRefresh={async () => { await Promise.all([fetchNotifications(), fetchSwaps()]); }}
           onOpen={markRequesterRead}
           onClose={() => setShowNotifications(false)}
         />
