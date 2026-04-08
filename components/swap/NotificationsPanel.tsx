@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { X, Check, Ban, Bell, ArrowRightLeft, Calendar, AlertTriangle, Loader2, Trash2, Settings2, BellOff, BellRing, RefreshCw } from 'lucide-react';
-import { format, formatDistanceToNow } from 'date-fns';
+import { useEffect, useMemo, useState } from 'react';
+import { X, Check, Ban, Bell, AlertTriangle, Loader2, Trash2, BellOff, BellRing, RefreshCw } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -26,13 +27,10 @@ function describeRequest(req: SwapRequest, currentUserId: string | undefined): s
   const iAmRequester = req.requester_id === myId;
   const iAmTarget    = req.target_user_id === myId;
 
-  // req.shift = target's shift (the one requester wants)
-  // req.target_shift = requester's offered shift (swap only)
   const sl  = shiftLabel(req.shift);
   const tsl = shiftLabel(req.target_shift);
 
   if (req.request_type === 'cover') {
-    // requester wants to cover target's shift
     if (req.status === 'pending') {
       if (iAmTarget)    return `${rName} ต้องการขออยู่เวร ${sl} แทนคุณ`;
       if (iAmRequester) return `คุณขออยู่เวร ${sl} แทน ${tName}`;
@@ -59,7 +57,6 @@ function describeRequest(req: SwapRequest, currentUserId: string | undefined): s
       if (iAmRequester) return `${tName} ปฏิเสธการรับเวร ${sl} ❌`;
     }
   } else {
-    // swap: requester offers tsl, wants sl from target
     if (req.status === 'pending') {
       if (iAmTarget)    return `${rName} ต้องการนำเวร ${tsl} แลกกับเวร ${sl} ของคุณ`;
       if (iAmRequester) return `คุณต้องการนำเวร ${tsl} แลกกับเวร ${sl} ของ ${tName}`;
@@ -74,7 +71,6 @@ function describeRequest(req: SwapRequest, currentUserId: string | undefined): s
     }
   }
 
-  // Fallback
   return iAmRequester
     ? `${tName} ${req.status === 'accepted' ? 'ยอมรับ ✅' : req.status === 'rejected' ? 'ปฏิเสธ ❌' : 'รอดำเนินการ'}`
     : `${rName} ส่งคำขอถึงคุณ`;
@@ -101,13 +97,16 @@ function statusBadge(status: string) {
   return <span className="text-[10px] font-semibold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">รอดำเนินการ</span>;
 }
 
+type UnifiedItem =
+  | { kind: 'swap'; data: SwapRequest; time: string }
+  | { kind: 'notif'; data: AppNotification; time: string };
+
 export function NotificationsPanel({
   swapRequests, notifications, notifUnreadCount, currentUser, pendingCount,
   onAccept, onReject, onCancel, onMarkNotifsRead, onRefresh, onOpen, onClose,
 }: NotificationsPanelProps) {
 
   const PAGE_SIZE = 10;
-  const [tab, setTab] = useState<'swap' | 'system'>('swap');
   const [page, setPage] = useState(0);
   const [collisionReqId, setCollisionReqId] = useState<string | null>(null);
   const [collisionMsg, setCollisionMsg] = useState('');
@@ -121,7 +120,6 @@ export function NotificationsPanel({
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
 
-  // Load both browser permission and actual subscription status on mount
   useEffect(() => {
     setPushPermission(getPermissionStatus());
     getSubscriptionStatus().then(setIsSubscribed);
@@ -132,19 +130,36 @@ export function NotificationsPanel({
     if (onOpen) onOpen();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Mark system notifications as read when switching to system tab
+  // Mark system notifications as read when panel opens
   useEffect(() => {
-    if (tab === 'system' && notifUnreadCount > 0) {
+    if (notifUnreadCount > 0) {
       onMarkNotifsRead();
     }
-  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Merge swap requests + notifications into one sorted list
+  const unifiedItems = useMemo<UnifiedItem[]>(() => {
+    const swapItems: UnifiedItem[] = swapRequests.map((s) => ({
+      kind: 'swap' as const,
+      data: s,
+      time: s.updated_at || s.created_at || '',
+    }));
+    const notifItems: UnifiedItem[] = notifications.map((n) => ({
+      kind: 'notif' as const,
+      data: n,
+      time: n.created_at || '',
+    }));
+    return [...swapItems, ...notifItems].sort((a, b) => b.time.localeCompare(a.time));
+  }, [swapRequests, notifications]);
+
+  const totalPages = Math.ceil(unifiedItems.length / PAGE_SIZE);
+  const pageItems = unifiedItems.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   async function handleAccept(req: SwapRequest, force = false) {
     setProcessingId(req.id);
     try {
       const result = await onAccept(req, force);
       if (result && 'collision' in result && result.collision) {
-        // Collision detected — show confirm in-place
         setCollisionReqId(req.id);
         setCollisionMsg(result.collision);
         setProcessingId(null);
@@ -167,9 +182,7 @@ export function NotificationsPanel({
       setCollisionReqId(null);
       setCollisionMsg('');
       toast.success('ยอมรับคำขอเรียบร้อย');
-      toast.warning('⚠️ มีเวรทับซ้อนในช่วงเวลาเดียวกัน กรุณาจัดการเวรที่ซ้อนกัน', {
-        duration: 8000,
-      });
+      toast.warning('⚠️ มีเวรทับซ้อนในช่วงเวลาเดียวกัน กรุณาจัดการเวรที่ซ้อนกัน', { duration: 8000 });
     } catch (err: any) {
       toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
     } finally {
@@ -207,18 +220,15 @@ export function NotificationsPanel({
     setIsSubscribing(true);
     try {
       if (isSubscribed) {
-        // Turn OFF
         await unsubscribeFromPush();
         setIsSubscribed(false);
         setPushPermission(getPermissionStatus());
         toast.success('ปิดการแจ้งเตือนแล้ว');
       } else {
-        // iOS Safari (non-PWA) ไม่รองรับ Web Push
         if (isIosNonPwa()) {
           toast.info('บน iPhone/iPad ต้องติดตั้งแอปก่อน — กด Share แล้วเลือก "Add to Home Screen"', { duration: 6000 });
           return;
         }
-        // Turn ON
         const result = await subscribeToPush(currentUser.id);
         const newPerm = getPermissionStatus();
         setPushPermission(newPerm);
@@ -227,7 +237,6 @@ export function NotificationsPanel({
           setIsSubscribed(true);
           toast.success('เปิดการแจ้งเตือนเรียบร้อย — ระบบจะแจ้งเวรให้ทุกวัน');
         } else {
-          // Show specific error based on reason
           switch (result.reason) {
             case 'NOT_SUPPORTED':
               toast.error('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน Push');
@@ -262,6 +271,198 @@ export function NotificationsPanel({
     }
   }
 
+  function renderSwapItem(req: SwapRequest) {
+    const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
+    const isMyPendingRequest = req.requester_id === currentUser?.id && req.status === 'pending';
+    const isUnreadResult = req.requester_id === currentUser?.id && (req.status === 'accepted' || req.status === 'rejected') && req.requester_read === false;
+    const isProcessing = processingId === req.id;
+    const showCollisionConfirm = collisionReqId === req.id;
+    const showCancelConfirm = cancelConfirmId === req.id;
+
+    return (
+      <div
+        key={req.id}
+        className={cn(
+          'rounded-xl border p-3 space-y-2 transition-all',
+          isIncoming ? 'border-violet-200 bg-violet-50/50' :
+          isMyPendingRequest ? 'border-blue-200 bg-blue-50/40' :
+          isUnreadResult && req.status === 'accepted' ? 'border-green-200 bg-green-50/50 ring-1 ring-green-200' :
+          isUnreadResult && req.status === 'rejected' ? 'border-red-200 bg-red-50/50 ring-1 ring-red-200' :
+          'border-gray-100 bg-white'
+        )}
+      >
+        <div className="space-y-2">
+          {/* Badge row: type + status */}
+          <div className="flex items-center gap-1.5">
+            <span className={cn(
+              'text-[9px] font-semibold px-1.5 py-0.5 rounded-full',
+              req.request_type === 'swap'   ? 'bg-blue-100 text-blue-700' :
+              req.request_type === 'cover'  ? 'bg-emerald-100 text-emerald-700' :
+              'bg-violet-100 text-violet-700'
+            )}>
+              {req.request_type === 'swap' ? '🔄 แลกเวร' : req.request_type === 'cover' ? '🙋 อยู่เวรแทน' : '📌 โอนเวร'}
+            </span>
+            {statusBadge(req.status)}
+          </div>
+
+          {/* Description */}
+          <p className="text-sm text-gray-800 leading-snug">
+            {describeRequest(req, currentUser?.id)}
+          </p>
+
+          {req.message && (
+            <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
+          )}
+
+          {/* Timestamp */}
+          {req.created_at && (
+            <p className="text-[10px] text-gray-400">
+              {formatDistanceToNow(new Date(req.created_at), { addSuffix: true, locale: th })}
+            </p>
+          )}
+        </div>
+
+        {/* Collision Confirm Dialog */}
+        {showCollisionConfirm && (
+          <div className="p-2.5 rounded-lg bg-amber-50 border-2 border-amber-400 animate-fade-in space-y-2">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+              <p className="text-xs font-medium text-amber-800">
+                ⚠️ {collisionMsg} — ยืนยันรับคำขอหรือไม่?
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setCollisionReqId(null); setCollisionMsg(''); }}
+                disabled={isProcessing}
+                className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                ยกเลิก
+              </button>
+              <button
+                onClick={() => handleForceAccept(req)}
+                disabled={isProcessing}
+                className="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+                ยืนยันรับ (มีเวรซ้อน)
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Action buttons — incoming pending */}
+        {isIncoming && !showCollisionConfirm && (
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={() => handleAccept(req)}
+              disabled={isProcessing}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
+            >
+              {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} ยอมรับ
+            </button>
+            <button
+              onClick={() => handleReject(req)}
+              disabled={isProcessing}
+              className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
+            >
+              <Ban className="w-3 h-3" /> ปฏิเสธ
+            </button>
+          </div>
+        )}
+
+        {/* Cancel button — my pending */}
+        {isMyPendingRequest && !showCancelConfirm && (
+          <div className="pt-1">
+            <button
+              onClick={() => setCancelConfirmId(req.id)}
+              disabled={isProcessing}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50 text-xs font-medium transition-all disabled:opacity-50"
+            >
+              <Trash2 className="w-3 h-3" /> ยกเลิกคำขอ
+            </button>
+          </div>
+        )}
+
+        {/* Cancel confirm */}
+        {showCancelConfirm && (
+          <div className="p-2.5 rounded-lg bg-red-50 border-2 border-red-300 animate-fade-in space-y-2">
+            <p className="text-xs font-medium text-red-700">ยืนยันการยกเลิกคำขอนี้? รายการจะถูกลบออกทันที</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCancelConfirmId(null)}
+                disabled={isProcessing}
+                className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
+              >
+                ไม่ยกเลิก
+              </button>
+              <button
+                onClick={() => handleCancel(req.id)}
+                disabled={isProcessing}
+                className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
+              >
+                {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                ยืนยันยกเลิก
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function renderNotifItem(notif: AppNotification) {
+    const t = notif.title || '';
+    const cfg = notif.type === 'shift_reminder'
+      ? { emoji: '⏰', bg: 'bg-sky-50',    border: 'border-sky-200',    dot: 'bg-sky-500'    }
+      : notif.type === 'schedule_published'
+      ? { emoji: '📋', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
+      : notif.type === 'swap_request'
+      ? t.includes('🔄')
+        ? { emoji: '🔄', bg: 'bg-blue-50',   border: 'border-blue-200',   dot: 'bg-blue-500'   }
+        : { emoji: '📩', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-500' }
+      : t.includes('✅')
+      ? { emoji: '✅', bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-500'  }
+      : t.includes('❌')
+      ? { emoji: '❌', bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500'    }
+      : t.includes('⚠️')
+      ? { emoji: '⚠️', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
+      : { emoji: '🔔', bg: 'bg-gray-50',   border: 'border-gray-200',   dot: 'bg-gray-400'   };
+
+    return (
+      <div
+        key={notif.id}
+        className={cn(
+          'rounded-xl border flex gap-3 p-3 transition-all',
+          !notif.is_read ? `${cfg.bg} ${cfg.border} ring-1 ring-inset ring-white/60` : 'border-gray-100 bg-white',
+        )}
+      >
+        <div className={cn(
+          'w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 mt-0.5',
+          !notif.is_read ? cfg.bg : 'bg-gray-100',
+        )}>
+          {cfg.emoji}
+        </div>
+        <div className="flex-1 min-w-0 space-y-0.5">
+          <div className="flex items-start justify-between gap-1">
+            <p className="text-xs font-semibold text-gray-900 leading-snug">
+              {t.startsWith(cfg.emoji) ? t.slice(cfg.emoji.length).trimStart() : t}
+            </p>
+            {!notif.is_read && (
+              <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1', cfg.dot)} />
+            )}
+          </div>
+          <p className="text-[11px] text-gray-600 leading-relaxed">{notif.body}</p>
+          <p className="text-[10px] text-gray-400">
+            {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: th })}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const totalBadge = pendingCount + notifUnreadCount;
+
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-start justify-center sm:justify-end p-0 sm:p-4 sm:pt-16">
       {/* Backdrop */}
@@ -273,10 +474,15 @@ export function NotificationsPanel({
         <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
         {/* Header */}
         <div className="p-4 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="w-4 h-4 text-violet-600" />
               <h2 className="font-semibold text-gray-900 text-sm">การแจ้งเตือน</h2>
+              {totalBadge > 0 && (
+                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center leading-none px-1">
+                  {totalBadge > 99 ? '99+' : totalBadge}
+                </span>
+              )}
             </div>
             <div className="flex items-center gap-1">
               {onRefresh && (
@@ -294,214 +500,9 @@ export function NotificationsPanel({
               </button>
             </div>
           </div>
-          {/* Tabs */}
-          <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
-            <button
-              onClick={() => { setTab('swap'); setPage(0); }}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
-                tab === 'swap' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <ArrowRightLeft className="w-3 h-3" />
-              แลก/โอนเวร
-              {pendingCount > 0 && (
-                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
-                  {pendingCount > 9 ? '9+' : pendingCount}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => { setTab('system'); setPage(0); }}
-              className={cn(
-                'flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-semibold transition-all',
-                tab === 'system' ? 'bg-white text-violet-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-              )}
-            >
-              <Settings2 className="w-3 h-3" />
-              จากระบบ
-              {notifUnreadCount > 0 && tab !== 'system' && (
-                <span className="bg-red-500 text-white text-[9px] font-bold rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none">
-                  {notifUnreadCount > 9 ? '9+' : notifUnreadCount}
-                </span>
-              )}
-            </button>
-          </div>
         </div>
 
-        {/* Swap Tab Content */}
-        {tab === 'swap' && (
-        <div className="overflow-y-auto flex-1 p-3 space-y-2">
-          {swapRequests.length === 0 ? (
-            <div className="text-center py-8">
-              <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือน</p>
-            </div>
-          ) : (
-            swapRequests.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((req) => {
-              const isIncoming = req.target_user_id === currentUser?.id && req.status === 'pending';
-              const isMyPendingRequest = req.requester_id === currentUser?.id && req.status === 'pending';
-              const isUnreadResult = req.requester_id === currentUser?.id && (req.status === 'accepted' || req.status === 'rejected') && req.requester_read === false;
-              const isProcessing = processingId === req.id;
-              const showCollisionConfirm = collisionReqId === req.id;
-              const showCancelConfirm = cancelConfirmId === req.id;
-
-              return (
-                <div
-                  key={req.id}
-                  className={cn(
-                    'rounded-xl border p-3 space-y-2 transition-all',
-                    isIncoming ? 'border-violet-200 bg-violet-50/50' :
-                    isMyPendingRequest ? 'border-blue-200 bg-blue-50/40' :
-                    isUnreadResult && req.status === 'accepted' ? 'border-green-200 bg-green-50/50 ring-1 ring-green-200' :
-                    isUnreadResult && req.status === 'rejected' ? 'border-red-200 bg-red-50/50 ring-1 ring-red-200' :
-                    'border-gray-100 bg-white'
-                  )}
-                >
-                  <div className="space-y-2">
-
-                    {/* Badge row: type + status */}
-                    <div className="flex items-center gap-1.5">
-                      <span className={cn(
-                        'text-[9px] font-semibold px-1.5 py-0.5 rounded-full',
-                        req.request_type === 'swap'   ? 'bg-blue-100 text-blue-700' :
-                        req.request_type === 'cover'  ? 'bg-emerald-100 text-emerald-700' :
-                        'bg-violet-100 text-violet-700'
-                      )}>
-                        {req.request_type === 'swap' ? '🔄 แลกเวร' : req.request_type === 'cover' ? '🙋 อยู่เวรแทน' : '📌 โอนเวร'}
-                      </span>
-                      {statusBadge(req.status)}
-                    </div>
-
-                    {/* Description sentence */}
-                    <p className="text-sm text-gray-800 leading-snug">
-                      {describeRequest(req, currentUser?.id)}
-                    </p>
-
-                    {/* Optional note */}
-                    {req.message && (
-                      <p className="text-[10px] text-gray-400 italic">&ldquo;{req.message}&rdquo;</p>
-                    )}
-                  </div>
-
-                  {/* Collision Confirm Dialog */}
-                  {showCollisionConfirm && (
-                    <div className="p-2.5 rounded-lg bg-amber-50 border-2 border-amber-400 animate-fade-in space-y-2">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs font-medium text-amber-800">
-                          ⚠️ {collisionMsg} — ยืนยันรับคำขอหรือไม่?
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setCollisionReqId(null);
-                            setCollisionMsg('');
-                          }}
-                          disabled={isProcessing}
-                          className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
-                        >
-                          ยกเลิก
-                        </button>
-                        <button
-                          onClick={() => handleForceAccept(req)}
-                          disabled={isProcessing}
-                          className="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
-                        >
-                          {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                          ยืนยันรับ (มีเวรซ้อน)
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Action buttons — only for incoming, pending requests */}
-                  {isIncoming && !showCollisionConfirm && (
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={() => handleAccept(req)}
-                        disabled={isProcessing}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
-                      >
-                        {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />} ยอมรับ
-                      </button>
-                      <button
-                        onClick={() => handleReject(req)}
-                        disabled={isProcessing}
-                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50"
-                      >
-                        <Ban className="w-3 h-3" /> ปฏิเสธ
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Cancel button — only for my own pending requests */}
-                  {isMyPendingRequest && !showCancelConfirm && (
-                    <div className="pt-1">
-                      <button
-                        onClick={() => setCancelConfirmId(req.id)}
-                        disabled={isProcessing}
-                        className="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg border border-gray-300 text-gray-500 hover:border-red-300 hover:text-red-500 hover:bg-red-50 text-xs font-medium transition-all disabled:opacity-50"
-                      >
-                        <Trash2 className="w-3 h-3" /> ยกเลิกคำขอ
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Cancel confirm dialog */}
-                  {showCancelConfirm && (
-                    <div className="p-2.5 rounded-lg bg-red-50 border-2 border-red-300 animate-fade-in space-y-2">
-                      <p className="text-xs font-medium text-red-700">ยืนยันการยกเลิกคำขอนี้? รายการจะถูกลบออกทันที</p>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setCancelConfirmId(null)}
-                          disabled={isProcessing}
-                          className="flex-1 py-1.5 rounded-lg border border-gray-300 text-gray-600 text-xs font-medium hover:bg-gray-50 transition-all disabled:opacity-50"
-                        >
-                          ไม่ยกเลิก
-                        </button>
-                        <button
-                          onClick={() => handleCancel(req.id)}
-                          disabled={isProcessing}
-                          className="flex-1 py-1.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
-                        >
-                          {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                          ยืนยันยกเลิก
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-          {swapRequests.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-              <button
-                onClick={() => setPage(p => p - 1)}
-                disabled={page === 0}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                ◀ ก่อนหน้า
-              </button>
-              <span className="text-[11px] text-gray-400">
-                {page + 1} / {Math.ceil(swapRequests.length / PAGE_SIZE)}
-              </span>
-              <button
-                onClick={() => setPage(p => p + 1)}
-                disabled={(page + 1) * PAGE_SIZE >= swapRequests.length}
-                className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-              >
-                ถัดไป ▶
-              </button>
-            </div>
-          )}
-        </div>
-        )}
-
-        {/* System Tab Content */}
-        {tab === 'system' && (
+        {/* Unified List */}
         <div className="overflow-y-auto flex-1 p-3 space-y-2">
 
           {/* Push Notification Settings */}
@@ -513,7 +514,6 @@ export function NotificationsPanel({
               'border-gray-200 bg-gray-50/50'
             )}>
               <div className="flex items-center justify-between gap-3">
-                {/* Icon + label */}
                 <div className="flex items-center gap-2 min-w-0">
                   {isSubscribed
                     ? <BellRing className="w-4 h-4 text-green-600 flex-shrink-0" />
@@ -534,7 +534,6 @@ export function NotificationsPanel({
                   </div>
                 </div>
 
-                {/* Toggle switch */}
                 {pushPermission !== 'denied' && (
                   <button
                     role="switch"
@@ -559,72 +558,23 @@ export function NotificationsPanel({
                   </button>
                 )}
               </div>
-
             </div>
           ) : null}
 
-          {notifications.length === 0 ? (
+          {/* Unified items */}
+          {unifiedItems.length === 0 ? (
             <div className="text-center py-8">
-              <Settings2 className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-              <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือนจากระบบ</p>
+              <Bell className="w-8 h-8 text-gray-200 mx-auto mb-2" />
+              <p className="text-sm text-gray-400">ไม่มีการแจ้งเตือน</p>
             </div>
           ) : (
             <>
-              {notifications.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE).map((notif) => {
-                // Derive icon + color from type & title
-                const t = notif.title || '';
-                const cfg = notif.type === 'shift_reminder'
-                  ? { emoji: '⏰', bg: 'bg-sky-50',    border: 'border-sky-200',    dot: 'bg-sky-500'    }
-                  : notif.type === 'schedule_published'
-                  ? { emoji: '📋', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
-                  : notif.type === 'swap_request'
-                  ? t.includes('🔄')
-                    ? { emoji: '🔄', bg: 'bg-blue-50',   border: 'border-blue-200',   dot: 'bg-blue-500'   }
-                    : { emoji: '📩', bg: 'bg-violet-50', border: 'border-violet-200', dot: 'bg-violet-500' }
-                  : t.includes('✅')
-                  ? { emoji: '✅', bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-500'  }
-                  : t.includes('❌')
-                  ? { emoji: '❌', bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500'    }
-                  : t.includes('⚠️')
-                  ? { emoji: '⚠️', bg: 'bg-amber-50',  border: 'border-amber-200',  dot: 'bg-amber-500'  }
-                  : { emoji: '🔔', bg: 'bg-gray-50',   border: 'border-gray-200',   dot: 'bg-gray-400'   };
-
-                return (
-                <div
-                  key={notif.id}
-                  className={cn(
-                    'rounded-xl border flex gap-3 p-3 transition-all',
-                    !notif.is_read ? `${cfg.bg} ${cfg.border} ring-1 ring-inset ring-white/60` : 'border-gray-100 bg-white',
-                  )}
-                >
-                  {/* Left icon */}
-                  <div className={cn(
-                    'w-8 h-8 rounded-xl flex items-center justify-center text-base shrink-0 mt-0.5',
-                    !notif.is_read ? cfg.bg : 'bg-gray-100',
-                  )}>
-                    {cfg.emoji}
-                  </div>
-
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <div className="flex items-start justify-between gap-1">
-                      <p className="text-xs font-semibold text-gray-900 leading-snug">
-                        {/* Strip the leading emoji (first 2 chars) + space if it matches cfg emoji */}
-                        {t.startsWith(cfg.emoji) ? t.slice(cfg.emoji.length).trimStart() : t}
-                      </p>
-                      {!notif.is_read && (
-                        <span className={cn('w-2 h-2 rounded-full shrink-0 mt-1', cfg.dot)} />
-                      )}
-                    </div>
-                    <p className="text-[11px] text-gray-600 leading-relaxed">{notif.body}</p>
-                    <p className="text-[10px] text-gray-400">
-                      {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true, locale: th })}
-                    </p>
-                  </div>
-                </div>
-                );
-              })}
-              {notifications.length > PAGE_SIZE && (
+              {pageItems.map((item) =>
+                item.kind === 'swap'
+                  ? renderSwapItem(item.data)
+                  : renderNotifItem(item.data)
+              )}
+              {totalPages > 1 && (
                 <div className="flex items-center justify-between pt-1 border-t border-gray-100">
                   <button
                     onClick={() => setPage(p => p - 1)}
@@ -634,11 +584,11 @@ export function NotificationsPanel({
                     ◀ ก่อนหน้า
                   </button>
                   <span className="text-[11px] text-gray-400">
-                    {page + 1} / {Math.ceil(notifications.length / PAGE_SIZE)}
+                    {page + 1} / {totalPages}
                   </span>
                   <button
                     onClick={() => setPage(p => p + 1)}
-                    disabled={(page + 1) * PAGE_SIZE >= notifications.length}
+                    disabled={page + 1 >= totalPages}
                     className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                   >
                     ถัดไป ▶
@@ -648,7 +598,6 @@ export function NotificationsPanel({
             </>
           )}
         </div>
-        )}
 
       </div>
     </div>
