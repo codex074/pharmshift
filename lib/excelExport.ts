@@ -505,11 +505,11 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       } else {
         signRow1.getCell(2).value = 'ลงชื่อ..............................................................ผู้ตรวจสอบ';
       }
-      signRow1.getCell(30).value = 'ลงชื่อ..............................................................หัวหน้ากลุ่มงาน';
+      signRow1.getCell(isEvidence ? 29 : 30).value = 'ลงชื่อ..............................................................หัวหน้ากลุ่มงาน';
       signRow1.font = { name: 'TH SarabunPSK', size: 16 };
       signRow1.alignment = { horizontal: 'center' };
       worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
-      worksheet.mergeCells(`AD${signRow1.number}:${isEvidence ? 'AP' : 'AM'}${signRow1.number}`);
+      worksheet.mergeCells(`${isEvidence ? 'AC' : 'AD'}${signRow1.number}:${isEvidence ? 'AL' : 'AM'}${signRow1.number}`);
 
       const signRow2 = worksheet.addRow([]);
       // Name column (2)
@@ -518,11 +518,11 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       } else {
         signRow2.getCell(2).value = '(นายอภิเสก คงศิริ)';
       }
-      signRow2.getCell(30).value = '(นางมัณทนา คันทะเรศร์)';
+      signRow2.getCell(isEvidence ? 29 : 30).value = '(นางมัณทนา คันทะเรศร์)';
       signRow2.font = { name: 'TH SarabunPSK', size: 16 };
       signRow2.alignment = { horizontal: 'center' };
       worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
-      worksheet.mergeCells(`AD${signRow2.number}:${isEvidence ? 'AP' : 'AM'}${signRow2.number}`);
+      worksheet.mergeCells(`${isEvidence ? 'AC' : 'AD'}${signRow2.number}:${isEvidence ? 'AL' : 'AM'}${signRow2.number}`);
 
       if (!isEvidence) {
         worksheet.addRow([]); // empty row
