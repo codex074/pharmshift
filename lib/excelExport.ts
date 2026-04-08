@@ -184,7 +184,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     },
     {
       name: 'Chemo',
-      title: 'หลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
+      title: 'หลักฐานการจัดเจ้าหน้าที่ขึ้นปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
       getRate: (role: string) => 390,
@@ -268,7 +268,6 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     }
     columns.push({ key: 'totalValue', width: 5 });
     columns.push({ key: 'totalAmount', width: 8.5 });
-    columns.push({ key: 'signature', width: 15 });
 
     worksheet.columns = columns;
 
@@ -288,10 +287,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       if (page > 0) {
         worksheet.addRow([]); // empty row separator
         const pageNumRow = worksheet.addRow([]);
-        pageNumRow.getCell(39).value = `หน้า ${page + 1}`;
+        pageNumRow.getCell(38).value = `หน้า ${page + 1}`;
         pageNumRow.font = { name: 'TH SarabunPSK', size: 16 };
         pageNumRow.alignment = { horizontal: 'right' };
-        worksheet.mergeCells(`A${pageNumRow.number}:AM${pageNumRow.number}`);
+        worksheet.mergeCells(`A${pageNumRow.number}:AL${pageNumRow.number}`);
       }
 
       // 3. Build Headers
@@ -300,39 +299,39 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       titleRow.height = 25;
       titleRow.font = { name: 'TH SarabunPSK', size: 18, bold: true };
       titleRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      worksheet.mergeCells(`A${titleRow.number}:AM${titleRow.number}`);
+      worksheet.mergeCells(`A${titleRow.number}:AL${titleRow.number}`);
 
       // Row 2: Month/Year
       const subtitleRow = worksheet.addRow([`ประจำเดือน......${monthName}...........พ.ศ.............${bweYear}.........`]);
       subtitleRow.height = 25;
       subtitleRow.font = { name: 'TH SarabunPSK', size: 18, bold: true };
       subtitleRow.alignment = { horizontal: 'center', vertical: 'middle' };
-      worksheet.mergeCells(`A${subtitleRow.number}:AM${subtitleRow.number}`);
+      worksheet.mergeCells(`A${subtitleRow.number}:AL${subtitleRow.number}`);
 
       if (page > 0) {
         const carriedRow = worksheet.addRow([]);
         carriedRow.getCell(32).value = 'ยอดยกมา';
-        carriedRow.getCell(38).value = grandTotalValue;
-        carriedRow.getCell(39).value = grandTotalAmount;
+        carriedRow.getCell(37).value = grandTotalValue;
+        carriedRow.getCell(38).value = grandTotalAmount;
         carriedRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
         carriedRow.eachCell((cell, colNumber) => {
-          if (colNumber === 39) cell.numFmt = '#,##0.00';
-          if (colNumber === 38 || colNumber === 39 || colNumber === 32) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (colNumber === 38) cell.numFmt = '#,##0.00';
+          if (colNumber === 37 || colNumber === 38 || colNumber === 32) cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
       }
 
       // Row 3 to 5: Complex Headers
       const headerRow1 = worksheet.addRow([
-        'ลำดับ\nที่', 'เลขที่รับ\nเงินเดือน', 'ชื่อ-สกุล', 'ตำ\nแหน่ง', config.rateColLabel, 
-        'วันที่ปฏิบัติงาน', ...Array(30).fill(''), 'รวม\n\n' + (config.name === 'รุ่งอรุณ' || config.name === 'โครงการ' ? 'ชม.' : 'เวร'), 'จำนวน\n\nเงิน', 'ลงชื่อผู้รับเงิน\n\nขอรับรองว่า\nได้ปฏิบัติงานจริง'
+        'ลำดับ\nที่', 'เลขที่รับ\nเงินเดือน', 'ชื่อ-สกุล', 'ตำ\nแหน่ง', config.rateColLabel,
+        'วันที่ปฏิบัติงาน', ...Array(30).fill(''), 'รวม\n\n' + (config.name === 'รุ่งอรุณ' || config.name === 'โครงการ' ? 'ชม.' : 'เวร'), 'จำนวน\n\nเงิน'
       ]);
       headerRow1.height = 30;
       const headerRow2 = worksheet.addRow([
         '', '', '', '', '',
         ...Array.from({ length: 31 }, (_, i) => i + 1),
-        '', '', ''
+        '', ''
       ]);
-      const headerRow3 = worksheet.addRow(new Array(39).fill(''));
+      const headerRow3 = worksheet.addRow(new Array(38).fill(''));
 
       const startR = headerRow1.number;
 
@@ -351,14 +350,13 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
       worksheet.mergeCells(startR, 37, startR + 2, 37);
       worksheet.mergeCells(startR, 38, startR + 2, 38);
-      worksheet.mergeCells(startR, 39, startR + 2, 39);
 
       // Header Styles
       [headerRow1, headerRow2, headerRow3].forEach(row => {
         row.font = { name: 'TH SarabunPSK', size: 16, bold: true };
         row.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          if (colNumber <= 39) {
+          if (colNumber <= 38) {
             cell.border = {
               top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
             };
@@ -386,17 +384,16 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           rowValues.push(row.totalValue);
           rowValues.push(row.totalAmount);
-          rowValues.push('');
 
           const dRow = worksheet.addRow(rowValues);
           dRow.height = 22;
           dRow.font = { name: 'TH SarabunPSK', size: 16 };
 
           dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber <= 39) {
+            if (colNumber <= 38) {
               cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
               cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-              if (colNumber === 39) cell.numFmt = '#,##0.00';
+              if (colNumber === 38) cell.numFmt = '#,##0.00';
             }
           });
         } else {
@@ -419,17 +416,16 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           rowValues.push(row.totalValue);
           rowValues.push(row.totalAmount);
-          rowValues.push(''); // signature
 
           const dRow = worksheet.addRow(rowValues);
           dRow.height = 22;
           dRow.font = { name: 'TH SarabunPSK', size: 16 };
-          
+
           dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber <= 39) {
+            if (colNumber <= 38) {
               cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
               cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-              if (colNumber === 39) {
+              if (colNumber === 38) {
                 cell.numFmt = '#,##0.00';
               } else if (colNumber >= 6 && colNumber <= 37 && typeof cell.value === 'number') {
                 if (cell.value % 1 !== 0) {
@@ -444,24 +440,24 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       });
 
       // 5. Summary Row (Thai Baht Text)
-      const summaryValues = new Array(39).fill('');
+      const summaryValues = new Array(38).fill('');
       summaryValues[0] = toThaiBahtText(grandTotalAmount);
-      summaryValues[37] = grandTotalValue;
-      summaryValues[38] = grandTotalAmount;
-      
+      summaryValues[36] = grandTotalValue;
+      summaryValues[37] = grandTotalAmount;
+
       const summaryRow = worksheet.addRow(summaryValues);
       summaryRow.height = 25;
-      worksheet.mergeCells(`A${summaryRow.number}:AK${summaryRow.number}`);
+      worksheet.mergeCells(`A${summaryRow.number}:AJ${summaryRow.number}`);
       summaryRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
       summaryRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-        if (colNumber <= 39) {
+        if (colNumber <= 38) {
           cell.border = {
             top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' }
           };
-          if (colNumber === 1 || colNumber === 38 || colNumber === 39) {
+          if (colNumber === 1 || colNumber === 37 || colNumber === 38) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           }
-          if (colNumber === 39) cell.numFmt = '#,##0.00';
+          if (colNumber === 38) cell.numFmt = '#,##0.00';
         }
       });
 
@@ -477,16 +473,6 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
       worksheet.addRow([]); // empty row
 
-      const certRow = worksheet.addRow([]);
-      certRow.getCell(2).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
-      certRow.getCell(30).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
-      certRow.font = { name: 'TH SarabunPSK', size: 16 };
-      certRow.alignment = { horizontal: 'center' };
-      worksheet.mergeCells(`B${certRow.number}:J${certRow.number}`);
-      worksheet.mergeCells(`AD${certRow.number}:AM${certRow.number}`);
-
-      worksheet.addRow([]); // empty row
-
       const signRow1 = worksheet.addRow([]);
       // Position column (2)
       if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
@@ -498,7 +484,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       signRow1.font = { name: 'TH SarabunPSK', size: 16 };
       signRow1.alignment = { horizontal: 'center' };
       worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
-      worksheet.mergeCells(`AD${signRow1.number}:AM${signRow1.number}`);
+      worksheet.mergeCells(`AD${signRow1.number}:AL${signRow1.number}`);
       
       const signRow2 = worksheet.addRow([]);
       // Name column (2)  
@@ -511,7 +497,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       signRow2.font = { name: 'TH SarabunPSK', size: 16 };
       signRow2.alignment = { horizontal: 'center' };
       worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
-      worksheet.mergeCells(`AD${signRow2.number}:AM${signRow2.number}`);
+      worksheet.mergeCells(`AD${signRow2.number}:AL${signRow2.number}`);
 
       worksheet.addRow([]); // empty row
       worksheet.addRow([]); // empty row
