@@ -86,6 +86,7 @@ create table if not exists public.swap_requests (
   status          text not null default 'pending'
                   check (status in ('pending', 'accepted', 'rejected')),
   message         text,
+  requester_read  boolean not null default true,
   created_at      timestamptz default now(),
   updated_at      timestamptz default now()
 );
