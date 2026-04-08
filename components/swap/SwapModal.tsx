@@ -16,6 +16,7 @@ import {
 import { th } from 'date-fns/locale';
 
 const THAI_DAY_SHORT = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const DUPLICATE_TARGET_SHIFT_ID = '00000000-0000-0000-0000-000000000000';
 
 function getShiftPillStyle(shiftType: string): string {
   if (shiftType === 'เช้า')     return 'bg-[#E8F9FA] border-[#9FDCE0] text-teal-900';
@@ -36,6 +37,41 @@ function getShiftLabel(shiftType: string, deptName: string, position?: string): 
   if (deptName === 'Chemo') return 'Chem';
   if (deptName) return deptName;
   return shiftType;
+}
+
+async function hasPendingDuplicateRequest(params: {
+  shiftId: string;
+  requesterId: string;
+  targetUserId: string;
+  requestType: 'swap' | 'transfer' | 'cover';
+  targetShiftId?: string | null;
+}) {
+  let query = supabase
+    .from('swap_requests')
+    .select('id', { head: true, count: 'exact' })
+    .eq('shift_id', params.shiftId)
+    .eq('requester_id', params.requesterId)
+    .eq('target_user_id', params.targetUserId)
+    .eq('request_type', params.requestType)
+    .eq('status', 'pending');
+
+  if (params.requestType === 'swap') {
+    query = query.eq('target_shift_id', params.targetShiftId || DUPLICATE_TARGET_SHIFT_ID);
+  } else {
+    query = query.is('target_shift_id', null);
+  }
+
+  const { count, error } = await query;
+  if (error) throw error;
+  return (count || 0) > 0;
+}
+
+function normalizeSubmitError(err: any): string {
+  const raw = err?.message || 'เกิดข้อผิดพลาด';
+  if (typeof raw === 'string' && (raw.includes('duplicate') || raw.includes('swap_requests_uniq_pending_request_idx'))) {
+    return 'มีคำขอค้างอยู่แล้วสำหรับเวรนี้';
+  }
+  return raw;
 }
 
 interface SwapModalProps {
@@ -194,6 +230,18 @@ export function SwapModal({
           `${selectedUser.f_name || selectedUser.nickname} มีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?`);
         setLoading(false); return;
       }
+      const hasDuplicate = await hasPendingDuplicateRequest({
+        shiftId: shift.id,
+        requesterId: currentUser.id,
+        targetUserId: selectedUser.id,
+        requestType: 'transfer',
+      });
+      if (hasDuplicate) {
+        const duplicateMessage = 'คุณส่งคำขอโอนเวรนี้ให้คนเดิมไว้แล้ว';
+        setSubmitError(duplicateMessage);
+        toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
+        setLoading(false); return;
+      }
       const { error } = await supabase.from('swap_requests').insert({
         shift_id: shift.id, requester_id: currentUser.id,
         target_user_id: selectedUser.id, request_type: 'transfer',
@@ -215,8 +263,9 @@ export function SwapModal({
       toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
-      setSubmitError(err.message || 'เกิดข้อผิดพลาด');
-      toast.error('เกิดข้อผิดพลาด', { description: err.message });
+      const messageText = normalizeSubmitError(err);
+      setSubmitError(messageText);
+      toast.error(messageText === 'มีคำขอค้างอยู่แล้วสำหรับเวรนี้' ? 'ส่งคำขอซ้ำไม่ได้' : 'เกิดข้อผิดพลาด', { description: messageText });
     } finally { setLoading(false); }
   }
 
@@ -240,6 +289,19 @@ export function SwapModal({
         if (collidingForMe.length > 0) msgs.push('คุณมีเวรซ้อนในวันที่ต้องการรับ');
         if (collidingForTarget.length > 0) msgs.push('อีกฝ่ายมีเวรซ้อนในวันของคุณ');
         setCollisionWarning(msgs.join(' และ ') + ' คุณต้องการส่งคำขอต่อหรือไม่?');
+        setLoading(false); return;
+      }
+      const hasDuplicate = await hasPendingDuplicateRequest({
+        shiftId: shift.id,
+        requesterId: currentUser.id,
+        targetUserId: shift.user_id,
+        requestType: 'swap',
+        targetShiftId: selectedMyShift.id,
+      });
+      if (hasDuplicate) {
+        const duplicateMessage = 'คุณส่งคำขอแลกเวรนี้ไว้แล้ว';
+        setSubmitError(duplicateMessage);
+        toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
       }
       const { error } = await supabase.from('swap_requests').insert({
@@ -269,8 +331,9 @@ export function SwapModal({
       toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
-      setSubmitError(err.message || 'เกิดข้อผิดพลาด');
-      toast.error('เกิดข้อผิดพลาด', { description: err.message });
+      const messageText = normalizeSubmitError(err);
+      setSubmitError(messageText);
+      toast.error(messageText === 'มีคำขอค้างอยู่แล้วสำหรับเวรนี้' ? 'ส่งคำขอซ้ำไม่ได้' : 'เกิดข้อผิดพลาด', { description: messageText });
     } finally { setLoading(false); }
   }
 
@@ -287,6 +350,18 @@ export function SwapModal({
         shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType));
       if (colliding.length > 0 && !collisionConfirmed) {
         setCollisionWarning('คุณมีเวรในช่วงเวลาเดียวกันอยู่แล้ว คุณต้องการส่งคำขอต่อหรือไม่?');
+        setLoading(false); return;
+      }
+      const hasDuplicate = await hasPendingDuplicateRequest({
+        shiftId: shift.id,
+        requesterId: currentUser.id,
+        targetUserId: shift.user_id,
+        requestType: 'cover',
+      });
+      if (hasDuplicate) {
+        const duplicateMessage = 'คุณส่งคำขออยู่เวรแทนนี้ไว้แล้ว';
+        setSubmitError(duplicateMessage);
+        toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
       }
       const { error } = await supabase.from('swap_requests').insert({
@@ -313,8 +388,9 @@ export function SwapModal({
       toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
-      setSubmitError(err.message || 'เกิดข้อผิดพลาด');
-      toast.error('เกิดข้อผิดพลาด', { description: err.message });
+      const messageText = normalizeSubmitError(err);
+      setSubmitError(messageText);
+      toast.error(messageText === 'มีคำขอค้างอยู่แล้วสำหรับเวรนี้' ? 'ส่งคำขอซ้ำไม่ได้' : 'เกิดข้อผิดพลาด', { description: messageText });
     } finally { setLoading(false); }
   }
 

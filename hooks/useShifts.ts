@@ -39,6 +39,28 @@ function countSwapPending(items: SwapRequest[], userId?: string): number {
   return incomingPending + unreadResults;
 }
 
+function pendingSwapRequestKey(item: Pick<SwapRequest, 'status' | 'request_type' | 'shift_id' | 'requester_id' | 'target_user_id' | 'target_shift_id'>): string | null {
+  if (item.status !== 'pending') return null;
+  return [
+    item.request_type,
+    item.shift_id,
+    item.requester_id,
+    item.target_user_id,
+    item.target_shift_id || 'no-target-shift',
+  ].join(':');
+}
+
+function dedupeSwapRequests(items: SwapRequest[]): SwapRequest[] {
+  const seenPending = new Set<string>();
+  return items.filter((item) => {
+    const key = pendingSwapRequestKey(item);
+    if (!key) return true;
+    if (seenPending.has(key)) return false;
+    seenPending.add(key);
+    return true;
+  });
+}
+
 function escapeLikePattern(value: string): string {
   return value.replace(/[%_]/g, (match) => `\\${match}`);
 }
@@ -245,7 +267,7 @@ export function useSwapRequests(userId?: string) {
       .limit(50);
 
     if (data) {
-      const next = data as SwapRequest[];
+      const next = dedupeSwapRequests(data as SwapRequest[]);
       setSwapRequests(next);
       syncPendingCount(next);
     }
@@ -286,8 +308,10 @@ export function useSwapRequests(userId?: string) {
           }
 
           applySwapRequests((prev) => {
-            const next = upsertById(prev, fullSwap)
-              .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+            const next = dedupeSwapRequests(
+              upsertById(prev, fullSwap)
+                .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+            );
             return next.slice(0, 50);
           });
         }
