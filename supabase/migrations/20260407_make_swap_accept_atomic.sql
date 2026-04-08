@@ -96,22 +96,20 @@ begin
   set status = 'accepted', requester_read = false
   where id = v_req.id;
 
-  select coalesce(array_agg(id), array[]::uuid[])
-  into v_auto_rejected_ids
-  from public.swap_requests
-  where status = 'pending'
-    and id <> v_req.id
-    and (
-      shift_id = any(v_shift_ids)
-      or coalesce(target_shift_id, '00000000-0000-0000-0000-000000000000'::uuid) = any(v_shift_ids)
-    )
-  for update;
-
-  if coalesce(array_length(v_auto_rejected_ids, 1), 0) > 0 then
+  with rejected as (
     update public.swap_requests
     set status = 'rejected', requester_read = false
-    where id = any(v_auto_rejected_ids);
-  end if;
+    where status = 'pending'
+      and id <> v_req.id
+      and (
+        shift_id = any(v_shift_ids)
+        or coalesce(target_shift_id, '00000000-0000-0000-0000-000000000000'::uuid) = any(v_shift_ids)
+      )
+    returning id
+  )
+  select coalesce(array_agg(id), array[]::uuid[])
+  into v_auto_rejected_ids
+  from rejected;
 
   return query select true, null::text, v_auto_rejected_ids;
 end;
