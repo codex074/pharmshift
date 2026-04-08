@@ -184,7 +184,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     },
     {
       name: 'Chemo',
-      title: 'หลักฐานการจัดเจ้าหน้าที่ขึ้นปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
+      title: isEvidence
+        ? 'หลักฐานการจัดเจ้าหน้าที่ขึ้นปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์'
+        : 'หลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
       getRate: (role: string) => 390,
@@ -258,9 +260,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     // 2. Setup Columns: 38 cols (evidence) or 39 cols with signature (compensation)
     const totalCols = isEvidence ? 38 : 39;
     const lastColLetter = isEvidence ? 'AL' : 'AM';
-    const amountCol = isEvidence ? 38 : 39;
-    const totalValueCol = isEvidence ? 37 : 38;
-    const summaryMergeEnd = isEvidence ? 'AJ' : 'AK';
+    const amountCol = 38;
+    const totalValueCol = 37;
+    const summaryMergeEnd = 'AJ';
 
     const columns = [
       { key: 'seq', width: 4.5 },
@@ -485,9 +487,8 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       }
       noteRow.font = { name: 'TH SarabunPSK', size: 16 };
 
-      worksheet.addRow([]); // empty row
-
       if (!isEvidence) {
+        worksheet.addRow([]); // empty row
         const certRow = worksheet.addRow([]);
         certRow.getCell(2).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
         certRow.getCell(30).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
@@ -496,35 +497,32 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         worksheet.mergeCells(`B${certRow.number}:J${certRow.number}`);
         worksheet.mergeCells(`AD${certRow.number}:AM${certRow.number}`);
         worksheet.addRow([]); // empty row
-      }
+        const signRow1 = worksheet.addRow([]);
+        // Position column (2)
+        if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+          signRow1.getCell(2).value = 'ลงชื่อ..............................................................หัวหน้างาน';
+        } else {
+          signRow1.getCell(2).value = 'ลงชื่อ..............................................................ผู้ตรวจสอบ';
+        }
+        signRow1.getCell(30).value = 'ลงชื่อ..............................................................หัวหน้ากลุ่มงาน';
+        signRow1.font = { name: 'TH SarabunPSK', size: 16 };
+        signRow1.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
+        worksheet.mergeCells(`AD${signRow1.number}:AM${signRow1.number}`);
 
-      const signRow1 = worksheet.addRow([]);
-      // Position column (2)
-      if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
-        signRow1.getCell(2).value = 'ลงชื่อ..............................................................หัวหน้างาน';
-      } else {
-        signRow1.getCell(2).value = 'ลงชื่อ..............................................................ผู้ตรวจสอบ';
-      }
-      signRow1.getCell(isEvidence ? 29 : 30).value = 'ลงชื่อ..............................................................หัวหน้ากลุ่มงาน';
-      signRow1.font = { name: 'TH SarabunPSK', size: 16 };
-      signRow1.alignment = { horizontal: 'center' };
-      worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
-      worksheet.mergeCells(`${isEvidence ? 'AC' : 'AD'}${signRow1.number}:${isEvidence ? 'AL' : 'AM'}${signRow1.number}`);
+        const signRow2 = worksheet.addRow([]);
+        // Name column (2)
+        if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+          signRow2.getCell(2).value = '(นางแสงเธียร คณิตปัญญาเจริญ)';
+        } else {
+          signRow2.getCell(2).value = '(นายอภิเสก คงศิริ)';
+        }
+        signRow2.getCell(30).value = '(นางมัณทนา คันทะเรศร์)';
+        signRow2.font = { name: 'TH SarabunPSK', size: 16 };
+        signRow2.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
+        worksheet.mergeCells(`AD${signRow2.number}:AM${signRow2.number}`);
 
-      const signRow2 = worksheet.addRow([]);
-      // Name column (2)
-      if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
-        signRow2.getCell(2).value = '(นางแสงเธียร คณิตปัญญาเจริญ)';
-      } else {
-        signRow2.getCell(2).value = '(นายอภิเสก คงศิริ)';
-      }
-      signRow2.getCell(isEvidence ? 29 : 30).value = '(นางมัณทนา คันทะเรศร์)';
-      signRow2.font = { name: 'TH SarabunPSK', size: 16 };
-      signRow2.alignment = { horizontal: 'center' };
-      worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
-      worksheet.mergeCells(`${isEvidence ? 'AC' : 'AD'}${signRow2.number}:${isEvidence ? 'AL' : 'AM'}${signRow2.number}`);
-
-      if (!isEvidence) {
         worksheet.addRow([]); // empty row
         worksheet.addRow([]); // empty row
         const signRow3 = worksheet.addRow([]);
@@ -532,6 +530,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         signRow3.font = { name: 'TH SarabunPSK', size: 16 };
         signRow3.alignment = { horizontal: 'center' };
         worksheet.mergeCells(`P${signRow3.number}:AB${signRow3.number}`);
+      } else {
+        // Evidence export should stop after the note row.
+        worksheet.addRow([]);
       }
 
       // Add actual Excel page break if there's a next page
@@ -551,4 +552,3 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     : `หลักฐานค่าตอบแทน_${monthName}_${bweYear}.xlsx`;
   saveAs(blob, filename);
 }
-
