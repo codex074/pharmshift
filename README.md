@@ -40,7 +40,7 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 
 - 📅 ดูตารางเวรแบบปฏิทิน (รายเดือน) — ทุกเวร หรือ เวรของตัวเอง
 - 🔄 ขอแลกเวร / โอนเวร / อยู่เวรแทน พร้อม collision detection อัตโนมัติ
-- 🔔 แจ้งเตือน Push Notification เมื่อมีคำขอแลกเวรใหม่ และเตือนก่อนเวร
+- 🔔 แจ้งเตือน Push Notification + In-App Notification แบบ Real-time พร้อมปุ่ม refresh ในแผงแจ้งเตือน
 - 💰 ดูสรุปค่าตอบแทนรายเดือน
 - 👤 แก้ไขข้อมูลส่วนตัว (ชื่อ, ชื่อเล่น, เลขที่เงินเดือน, รหัสผ่าน)
 - 📱 รองรับ Mobile (Bottom Nav, Swipe gesture, Mobile Edit Day Modal)
@@ -204,6 +204,12 @@ shift_logs          — audit trail (swap, transfer, admin_edit, admin_delete)
 - UI อัปเดตเร็วขึ้นโดยไม่ต้อง refetch ทั้งก้อนทุกครั้ง
 - ลด read/query บน Supabase free tier
 - ยังรักษา realtime ระหว่างหลายอุปกรณ์/หลายผู้ใช้ได้
+
+### Manual Refresh
+
+นอกจาก Realtime แล้ว ยังมีปุ่ม refresh สำหรับดึงข้อมูลใหม่ด้วยมือ:
+- **ปุ่ม refresh บน Header** (สีฟ้า) — ดึงข้อมูลเวร + แจ้งเตือน + คำขอแลกเวร ทั้งหมดพร้อมกัน
+- **ปุ่ม refresh ใน NotificationsPanel** (สีม่วง) — ดึงเฉพาะแจ้งเตือน + คำขอแลกเวร
 
 ---
 

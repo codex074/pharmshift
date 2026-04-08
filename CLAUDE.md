@@ -83,7 +83,7 @@ pharmshift/
 │   │   ├── ExcelExportButton.tsx
 │   │   ├── ExportButton.tsx
 │   │   └── HelpGuideModal.tsx
-│   ├── swap/               # SwapModal, NotificationsPanel
+│   ├── swap/               # SwapModal, NotificationsPanel (has in-panel refresh button)
 │   ├── layout/             # Header, MobileBottomNav, MobileAdminMenu
 │   ├── pwa/                # PWAProvider
 │   ├── ui/                 # ripple, loading-overlay, icons3d
@@ -425,6 +425,10 @@ const supabase = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 ```
 
 Supabase Realtime subscriptions are set up per-month in `useShifts` to refresh on changes to `shifts`, `swap_requests`, and `published_months`.
+
+### Manual Refresh
+- **Header refresh button** (blue): calls `refetch()` + `fetchNotifications()` + `fetchSwaps()` in parallel — refreshes shifts, notifications, and swap requests
+- **NotificationsPanel refresh button** (purple, inside panel header): calls `fetchNotifications()` + `fetchSwaps()` — refreshes notification/swap data without reloading shifts
 
 ---
 
