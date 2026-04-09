@@ -48,6 +48,13 @@ export function Header({
     });
     if (!result.isConfirmed) return;
     setLoggingOut(true);
+    try {
+      const { unsubscribeFromPush } = await import('@/lib/pushNotifications');
+      await unsubscribeFromPush();
+    } catch {
+      // Best-effort cleanup. Logout should continue even if push cleanup fails.
+    }
+
     await fetch('/api/auth/logout', { method: 'POST' });
     toast.info('ออกจากระบบแล้ว');
     router.push('/login');

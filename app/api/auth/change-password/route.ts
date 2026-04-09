@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession, createSession } from '@/lib/session';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { isMobileUserAgent } from '@/lib/deviceDetection';
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +35,9 @@ export async function POST(request: Request) {
     }
 
     // Refresh the session with new data
-    await createSession(user);
+    await createSession(user, {
+      persistent: isMobileUserAgent(request.headers.get('user-agent')),
+    });
 
     return NextResponse.json({ success: true, user });
   } catch (error: any) {

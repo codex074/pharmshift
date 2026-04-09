@@ -7,6 +7,10 @@ const key = new TextEncoder().encode(secretKey);
 
 export const SESSION_COOKIE_NAME = 'pharmshift_session';
 
+interface CreateSessionOptions {
+  persistent?: boolean;
+}
+
 export async function encrypt(payload: any) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
@@ -24,7 +28,8 @@ export async function decrypt(input: string): Promise<any> {
   }
 }
 
-export async function createSession(user: Partial<User>) {
+export async function createSession(user: Partial<User>, options?: CreateSessionOptions) {
+  const persistent = options?.persistent ?? true;
   const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const sessionData = {
     id: user.id,
@@ -36,12 +41,16 @@ export async function createSession(user: Partial<User>) {
   const session = await encrypt(sessionData);
 
   cookies().set(SESSION_COOKIE_NAME, session, {
-    expires,
-    maxAge: 30 * 24 * 60 * 60, // seconds — fallback for browsers that prefer maxAge
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
+    ...(persistent
+      ? {
+          expires,
+          maxAge: 30 * 24 * 60 * 60, // seconds — fallback for browsers that prefer maxAge
+        }
+      : {}),
   });
 }
 
