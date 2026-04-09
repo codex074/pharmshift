@@ -92,8 +92,8 @@ export default function CalendarPage() {
   // Auto-subscribe to push notifications when user is authenticated
   useEffect(() => {
     if (!currentUser?.id || authLoading) return;
-    import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported }) => {
-      if (isPushSupported()) subscribeToPush(currentUser.id);
+    import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported, isMobilePushDevice }) => {
+      if (isPushSupported() && isMobilePushDevice()) subscribeToPush(currentUser.id);
     });
   }, [currentUser?.id, authLoading]);
 

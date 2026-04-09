@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { createSession } from '@/lib/session';
+import { isMobileUserAgent } from '@/lib/deviceDetection';
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +36,9 @@ export async function POST(request: Request) {
     }
 
     // Set the custom auth token cookie
-    await createSession(user);
+    await createSession(user, {
+      persistent: isMobileUserAgent(request.headers.get('user-agent')),
+    });
 
     return NextResponse.json({
       user: {
