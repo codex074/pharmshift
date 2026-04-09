@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { isMobileUserAgent } from '@/lib/deviceDetection';
 
 function getSupabaseAdmin() {
   return createClient(
@@ -13,9 +14,14 @@ function getSupabaseAdmin() {
 export async function POST(req: NextRequest) {
   try {
     const { userId, subscription } = await req.json();
+    const userAgent = req.headers.get('user-agent');
 
     if (!userId || !subscription?.endpoint || !subscription?.keys) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (!isMobileUserAgent(userAgent)) {
+      return NextResponse.json({ error: 'Push subscription is allowed only on mobile devices' }, { status: 400 });
     }
 
     const supabase = getSupabaseAdmin();
@@ -29,7 +35,7 @@ export async function POST(req: NextRequest) {
           endpoint: subscription.endpoint,
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
-          user_agent: req.headers.get('user-agent') || null,
+          user_agent: userAgent || null,
         },
         { onConflict: 'endpoint' }
       );

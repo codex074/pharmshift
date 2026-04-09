@@ -1,3 +1,5 @@
+import { isMobileUserAgent } from '@/lib/deviceDetection';
+
 /**
  * Client-side Web Push Notification utilities
  */
@@ -22,6 +24,12 @@ export function isPushSupported(): boolean {
     'PushManager' in window &&
     'Notification' in window
   );
+}
+
+/** Check if current browser is on a mobile device */
+export function isMobilePushDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return isMobileUserAgent(window.navigator.userAgent);
 }
 
 /** Check if the app is running as a standalone PWA */
@@ -57,6 +65,10 @@ export type SubscribeResult =
 
 /** Subscribe this device to push notifications */
 export async function subscribeToPush(userId: string): Promise<SubscribeResult> {
+  if (!isMobilePushDevice()) {
+    return { ok: false, reason: 'NOT_SUPPORTED', detail: 'Push notifications are limited to mobile devices.' };
+  }
+
   if (!isPushSupported()) {
     return { ok: false, reason: 'NOT_SUPPORTED' };
   }
