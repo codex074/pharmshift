@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isPushSupported, isIosNonPwa, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
+import { isPushSupported, isIosNonPwa, isMobilePushDevice, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
 
 /** "เช้า SURG (Cont) 23 มี.ค." */
 function shiftLabel(s: any): string {
@@ -119,6 +119,7 @@ export function NotificationsPanel({
   const [pushPermission, setPushPermission] = useState<NotificationPermission | 'unsupported'>('default');
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [isSubscribing, setIsSubscribing] = useState(false);
+  const isMobileDevice = isMobilePushDevice();
 
   useEffect(() => {
     setPushPermission(getPermissionStatus());
@@ -225,6 +226,10 @@ export function NotificationsPanel({
         setPushPermission(getPermissionStatus());
         toast.success('ปิดการแจ้งเตือนแล้ว');
       } else {
+        if (!isMobileDevice) {
+          toast.info('เปิดการแจ้งเตือน Push ได้เฉพาะบนมือถือหรือแท็บเล็ต');
+          return;
+        }
         if (isIosNonPwa()) {
           toast.info('บน iPhone/iPad ต้องติดตั้งแอปก่อน — กด Share แล้วเลือก "Add to Home Screen"', { duration: 6000 });
           return;
@@ -526,6 +531,8 @@ export function NotificationsPanel({
                         ? '⚠️ ถูกบล็อก — อนุญาตใน ⚙️ เบราว์เซอร์'
                         : isSubscribed
                           ? 'เปิดอยู่ — รับแจ้งเตือนเวรล่วงหน้า'
+                          : !isMobileDevice
+                            ? 'เฉพาะมือถือ/แท็บเล็ตเท่านั้น — browser บน PC จะไม่รับ Push'
                           : isIosNonPwa()
                             ? '📲 ต้องติดตั้งแอปก่อน (Add to Home Screen)'
                             : 'ปิดอยู่ — กดเพื่อเปิดรับแจ้งเตือนเวร'
@@ -534,7 +541,7 @@ export function NotificationsPanel({
                   </div>
                 </div>
 
-                {pushPermission !== 'denied' && (
+                {pushPermission !== 'denied' && isMobileDevice && (
                   <button
                     role="switch"
                     aria-checked={isSubscribed}

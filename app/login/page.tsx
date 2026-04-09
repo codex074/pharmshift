@@ -24,6 +24,12 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    import('@/lib/pushNotifications')
+      .then(({ unsubscribeFromPush }) => unsubscribeFromPush())
+      .catch(() => {});
+  }, []);
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -45,8 +51,8 @@ function LoginForm() {
 
       if (data.user) {
         if (!data.user.must_change_password) {
-          import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported }) => {
-            if (isPushSupported()) subscribeToPush(data.user.id).catch(() => {});
+          import('@/lib/pushNotifications').then(({ subscribeToPush, isPushSupported, isMobilePushDevice }) => {
+            if (isPushSupported() && isMobilePushDevice()) subscribeToPush(data.user.id).catch(() => {});
           });
         }
         router.push(data.user.must_change_password ? '/change-password' : '/calendar');

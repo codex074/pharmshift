@@ -3,6 +3,7 @@
  */
 import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
+import { isMobileUserAgent } from '@/lib/deviceDetection';
 
 // Configure web-push with VAPID keys
 webpush.setVapidDetails(
@@ -36,7 +37,7 @@ export async function sendPushToUser(
 
   const { data: subscriptions, error } = await supabase
     .from('push_subscriptions')
-    .select('id, endpoint, p256dh, auth')
+    .select('id, endpoint, p256dh, auth, user_agent')
     .eq('user_id', userId);
 
   if (error || !subscriptions?.length) {
@@ -49,6 +50,10 @@ export async function sendPushToUser(
 
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
+      if (!isMobileUserAgent(sub.user_agent)) {
+        return;
+      }
+
       const pushSubscription: webpush.PushSubscription = {
         endpoint: sub.endpoint,
         keys: { p256dh: sub.p256dh, auth: sub.auth },
