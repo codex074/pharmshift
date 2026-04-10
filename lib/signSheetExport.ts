@@ -143,12 +143,12 @@ interface RowGroup {
 }
 
 function getDisplayName(userInfo: UserInfo | undefined, shift: Shift): string {
-  return userInfo?.nickname
-    || shift.user?.nickname
-    || shift.user_nickname
-    || userInfo?.f_name
+  return userInfo?.f_name
     || shift.user?.f_name
     || shift.user_f_name
+    || userInfo?.nickname
+    || shift.user?.nickname
+    || shift.user_nickname
     || '-';
 }
 
@@ -206,8 +206,8 @@ function buildGroups(
 
 function applySheetColumns(ws: ExcelJS.Worksheet, hasSubtype: boolean) {
   const cols = hasSubtype
-    ? [10, 8, 15, 15, 15, 3, 15, 15, 15, 8, 15, 15, 15]
-    : [10, 15, 15, 15, 3, 15, 15, 15, 8, 15, 15, 15];
+    ? [10, 10, 14, 14, 14, 14, 14, 14, 10, 3, 10, 10, 14, 14, 14]
+    : [10, 14, 14, 14, 14, 14, 14, 10, 3, 10, 14, 14, 14];
   ws.columns = cols.map((width) => ({ width }));
 }
 
@@ -220,6 +220,17 @@ function styleHeaderRow(row: ExcelJS.Row, totalCols: number) {
   row.alignment = CENTER;
   row.eachCell({ includeEmpty: true }, (cell, c) => {
     if (c <= totalCols) cell.border = ALL_BORDERS;
+  });
+}
+
+function styleDataRow(row: ExcelJS.Row, totalCols: number, centeredCols: Set<number>) {
+  row.height = 22;
+  row.font = FONT;
+  row.eachCell({ includeEmpty: true }, (cell, c) => {
+    if (c <= totalCols) {
+      cell.alignment = centeredCols.has(c) ? CENTER : LEFT;
+      cell.border = ALL_BORDERS;
+    }
   });
 }
 
@@ -239,8 +250,8 @@ export async function exportSignSheet(
   for (const config of SHEET_CONFIGS) {
     const hasSubtype = config.layout === 'with-subtype';
     const isChemo = config.layout === 'chemo';
-    const totalCols = isChemo ? 8 : hasSubtype ? 13 : 12;
-    const lastColLetter = isChemo ? 'H' : hasSubtype ? 'M' : 'L';
+    const totalCols = isChemo ? 8 : hasSubtype ? 15 : 13;
+    const lastColLetter = isChemo ? 'H' : hasSubtype ? 'O' : 'M';
 
     const ws = workbook.addWorksheet(config.name, {
       pageSetup: {
@@ -250,6 +261,7 @@ export async function exportSignSheet(
         fitToWidth: 1,
         fitToHeight: 0,
         margins: { left: 0.3, right: 0.3, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 },
+        horizontalCentered: true,
       },
     });
     if (isChemo) applyChemoSheetColumns(ws);
@@ -295,58 +307,63 @@ export async function exportSignSheet(
       continue;
     }
 
-    // ── Header row 1 ───────────────────────────────────────────
+    // ── Split-print header layout ──────────────────────────────
+    const roleLabels = ['เภสัช', 'จพง.', 'จนท.'];
     const h1Values = new Array(totalCols).fill('');
+    const h2Values = new Array(totalCols).fill('');
     h1Values[0] = 'ว/ด/ป';
+
     if (hasSubtype) {
       h1Values[1] = config.subtypeLabel || '';
-      h1Values[2] = 'ผู้ปฏิบัติเวรเดิม (ชื่อตามตารางเวรเดิม)';
-      h1Values[6] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
-      h1Values[9] = 'ผู้อนุมัติ';
-      h1Values[10] = 'ผู้ปฏิบัติงานจริง';
-    } else {
-      h1Values[1] = 'ผู้ปฏิบัติเวรเดิม (ชื่อตามตารางเวรเดิม)';
+      h1Values[2] = 'ผู้ปฏิบัติเวรเดิม';
       h1Values[5] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
       h1Values[8] = 'ผู้อนุมัติ';
-      h1Values[9] = 'ผู้ปฏิบัติงานจริง';
+      h1Values[10] = 'ว/ด/ป';
+      h1Values[11] = config.subtypeLabel || '';
+      h1Values[12] = 'ผู้ปฏิบัติงานจริง';
+
+      h2Values[2] = roleLabels[0]; h2Values[3] = roleLabels[1]; h2Values[4] = roleLabels[2];
+      h2Values[5] = roleLabels[0]; h2Values[6] = roleLabels[1]; h2Values[7] = roleLabels[2];
+      h2Values[12] = roleLabels[0]; h2Values[13] = roleLabels[1]; h2Values[14] = roleLabels[2];
+    } else {
+      h1Values[1] = 'ผู้ปฏิบัติเวรเดิม';
+      h1Values[4] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
+      h1Values[7] = 'ผู้อนุมัติ';
+      h1Values[9] = 'ว/ด/ป';
+      h1Values[10] = 'ผู้ปฏิบัติงานจริง';
+
+      h2Values[1] = roleLabels[0]; h2Values[2] = roleLabels[1]; h2Values[3] = roleLabels[2];
+      h2Values[4] = roleLabels[0]; h2Values[5] = roleLabels[1]; h2Values[6] = roleLabels[2];
+      h2Values[10] = roleLabels[0]; h2Values[11] = roleLabels[1]; h2Values[12] = roleLabels[2];
     }
 
     const h1 = ws.addRow(h1Values);
-    h1.height = 32;
+    h1.height = 30;
     styleHeaderRow(h1, totalCols);
-
-    const r1 = h1.number;
-    if (hasSubtype) {
-      ws.mergeCells(r1, 1, r1 + 1, 1); // ว/ด/ป
-      ws.mergeCells(r1, 2, r1 + 1, 2); // subtype label
-      ws.mergeCells(r1, 3, r1, 5);     // ผู้ปฏิบัติเวรเดิม
-      ws.mergeCells(r1, 7, r1, 9);     // ผู้ขอแลกเวร
-      ws.mergeCells(r1, 10, r1 + 1, 10); // ผู้อนุมัติ
-      ws.mergeCells(r1, 11, r1, 13);   // ผู้ปฏิบัติงานจริง
-    } else {
-      ws.mergeCells(r1, 1, r1 + 1, 1); // ว/ด/ป
-      ws.mergeCells(r1, 2, r1, 4);     // ผู้ปฏิบัติเวรเดิม
-      ws.mergeCells(r1, 6, r1, 8);     // ผู้ขอแลกเวร
-      ws.mergeCells(r1, 9, r1 + 1, 9); // ผู้อนุมัติ
-      ws.mergeCells(r1, 10, r1, 12);   // ผู้ปฏิบัติงานจริง
-    }
-
-    // ── Header row 2 ───────────────────────────────────────────
-    const roleLabels = ['เภสัช', 'จพง.', 'จนท.'];
-    const h2Values = new Array(totalCols).fill('');
-    if (hasSubtype) {
-      h2Values[2] = roleLabels[0]; h2Values[3] = roleLabels[1]; h2Values[4] = roleLabels[2];
-      h2Values[6] = roleLabels[0]; h2Values[7] = roleLabels[1]; h2Values[8] = roleLabels[2];
-      h2Values[10] = roleLabels[0]; h2Values[11] = roleLabels[1]; h2Values[12] = roleLabels[2];
-    } else {
-      h2Values[1] = roleLabels[0]; h2Values[2] = roleLabels[1]; h2Values[3] = roleLabels[2];
-      h2Values[5] = roleLabels[0]; h2Values[6] = roleLabels[1]; h2Values[7] = roleLabels[2];
-      h2Values[9] = roleLabels[0]; h2Values[10] = roleLabels[1]; h2Values[11] = roleLabels[2];
-    }
 
     const h2 = ws.addRow(h2Values);
     h2.height = 22;
     styleHeaderRow(h2, totalCols);
+
+    const r1 = h1.number;
+    if (hasSubtype) {
+      ws.mergeCells(r1, 1, r1 + 1, 1);
+      ws.mergeCells(r1, 2, r1 + 1, 2);
+      ws.mergeCells(r1, 3, r1, 5);
+      ws.mergeCells(r1, 6, r1, 8);
+      ws.mergeCells(r1, 9, r1 + 1, 9);
+      ws.mergeCells(r1, 10, r1 + 1, 10);
+      ws.mergeCells(r1, 11, r1 + 1, 11);
+      ws.mergeCells(r1, 12, r1 + 1, 12);
+      ws.mergeCells(r1, 13, r1, 15);
+    } else {
+      ws.mergeCells(r1, 1, r1 + 1, 1);
+      ws.mergeCells(r1, 2, r1, 4);
+      ws.mergeCells(r1, 5, r1, 7);
+      ws.mergeCells(r1, 8, r1 + 1, 8);
+      ws.mergeCells(r1, 10, r1 + 1, 10);
+      ws.mergeCells(r1, 11, r1, 13);
+    }
 
     // ── Data rows ──────────────────────────────────────────────
     const groups = buildGroups(shifts, config, originalUserMap, usersMap);
@@ -357,37 +374,50 @@ export async function exportSignSheet(
 
       for (let i = 0; i < maxRows; i++) {
         const vals = new Array(totalCols).fill('');
-        if (i === 0) vals[0] = formatThaiDate(grp.date);
-
         if (hasSubtype) {
-          if (i === 0) vals[1] = grp.subtype || '';
+          if (i === 0) {
+            vals[0] = formatThaiDate(grp.date);
+            vals[1] = grp.subtype || '';
+            vals[10] = formatThaiDate(grp.date);
+            vals[11] = grp.subtype || '';
+          }
           vals[2] = grp.pharmacists[i] || '';
           vals[3] = grp.pharm_techs[i] || '';
           vals[4] = grp.officers[i] || '';
+          // request / actual sections remain blank for printing and handwriting
         } else {
+          if (i === 0) {
+            vals[0] = formatThaiDate(grp.date);
+            vals[9] = formatThaiDate(grp.date);
+          }
           vals[1] = grp.pharmacists[i] || '';
           vals[2] = grp.pharm_techs[i] || '';
           vals[3] = grp.officers[i] || '';
         }
 
         const dataRow = ws.addRow(vals);
-        dataRow.height = 22;
-        dataRow.font = FONT;
-        dataRow.eachCell({ includeEmpty: true }, (cell, c) => {
-          if (c <= totalCols) {
-            cell.alignment = c === 1 ? CENTER : LEFT;
-            cell.border = ALL_BORDERS;
-          }
-        });
+        styleDataRow(
+          dataRow,
+          totalCols,
+          hasSubtype ? new Set([1, 2, 9, 10, 11, 12]) : new Set([1, 8, 9, 10])
+        );
       }
 
       // Merge date column vertically if multiple rows
       if (maxRows > 1) {
         const endRow = startRow + maxRows - 1;
         ws.mergeCells(startRow, 1, endRow, 1);
-        if (hasSubtype) ws.mergeCells(startRow, 2, endRow, 2); // merge subtype for ER
+        if (hasSubtype) {
+          ws.mergeCells(startRow, 2, endRow, 2);
+          ws.mergeCells(startRow, 10, endRow, 10);
+          ws.mergeCells(startRow, 11, endRow, 11);
+        } else {
+          ws.mergeCells(startRow, 10, endRow, 10);
+        }
       }
     }
+
+    ws.views = [{ state: 'frozen', ySplit: 3 }];
   }
 
   const buffer = await workbook.xlsx.writeBuffer();
