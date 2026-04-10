@@ -58,7 +58,7 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
   );
 
   const currentYear = new Date().getFullYear();
-  const hasRoleFilter = selected === 'compensation' || selected === 'evidence';
+  const hasRoleFilter = selected === 'compensation' || selected === 'evidence' || selected === 'sign-sheet';
 
   function toggleRole(role: UserRole) {
     setSelectedRoles(prev => {
@@ -90,7 +90,7 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
       if (shiftsError) throw new Error('ไม่สามารถดึงข้อมูลเวรได้');
       if (!shiftsData?.length) throw new Error('ไม่พบข้อมูลเวรในเดือนที่ระบุ');
 
-      // กรอง role ถ้า compensation หรือ evidence
+      // กรอง role ตามที่เลือก
       const filteredShifts = hasRoleFilter
         ? shiftsData.filter((s: any) => selectedRoles.has(s.user?.role))
         : shiftsData;
