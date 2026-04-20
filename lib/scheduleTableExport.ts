@@ -1,6 +1,6 @@
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
-import { Shift, Holiday } from './types';
+import { Shift, Holiday, UserRole } from './types';
 import { THAI_MONTHS } from './utils';
 import { getPreviousMonthLastDay } from './calendarMonthGrid';
 
@@ -99,7 +99,7 @@ function withOriginalUser(shift: Shift, userLookup: Map<string, NonNullable<Shif
   };
 }
 
-function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<string>): DayShifts {
+function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<string>, role: UserRole): DayShifts {
   const dow = dateObj.getDay();
   const dateStr = fmtDate(dateObj);
   const isHoliday = dow === 0 || dow === 6 || hols.has(dateStr);
@@ -120,13 +120,24 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
 
   const smc = findAll('บ่าย', 'SMC');
   const chemo = findAll('เช้า', 'Chemo');
-  const surg = findAll('เช้า', 'SURG');
+  const surg = role === 'pharmacy_technician'
+    ? [
+        find('เช้า', 'SURG', 's1'),
+        find('เช้า', 'SURG', 's2'),
+      ].filter(Boolean)
+    : findAll('เช้า', 'SURG');
+  const medTop = role === 'pharmacy_technician'
+    ? find('เช้า', 'MED', 'm1')
+    : find('เช้า', 'MED', 'D/C');
+  const medBottom = role === 'pharmacy_technician'
+    ? find('เช้า', 'MED', 'm2')
+    : find('เช้า', 'MED', 'Cont');
 
   return {
     date: dayNum, dow, isHoliday,
     project: isHoliday ? find('เช้า', 'โครงการ') : '',
     surg1: surg[0] || '', surg2: surg[1] || '',
-    medDC: find('เช้า', 'MED', 'D/C'), medCont: find('เช้า', 'MED', 'Cont'),
+    medDC: medTop, medCont: medBottom,
     er: find('เช้า', 'ER'),
     chemo1: chemo[0] || '', chemo2: chemo[1] || '',
     baiER: find('บ่าย', 'ER'), baiMED: find('บ่าย', 'MED'),
@@ -147,6 +158,7 @@ export async function exportScheduleTable(
   month: number,
   useOriginal: boolean = false,
   prevMonthLastDayShifts: Shift[] = [],
+  role: UserRole = 'pharmacist',
 ) {
   // ถ้า useOriginal ให้แทนที่ user ด้วย original user (ถ้ามี)
   if (useOriginal) {
@@ -181,8 +193,18 @@ export async function exportScheduleTable(
   const thaiMonth = THAI_MONTHS[month - 1];
   const BY = year + 543;
   ws.mergeCells(1, 1, 1, TOTAL_COLS);
+  const roleLabel = role === 'pharmacy_technician'
+    ? 'เจ้าพนักงานเภสัชกรรม'
+    : role === 'officer'
+    ? 'เจ้าหน้าที่'
+    : 'เภสัชกร';
+  const fileLabel = role === 'pharmacy_technician'
+    ? 'จพง'
+    : role === 'officer'
+    ? 'เจ้าหน้าที่'
+    : 'เภสัชกร';
   const tc = ws.getCell(1, 1);
-  tc.value = `ตารางเวรเภสัชกรประจำเดือน ${thaiMonth} ${BY}`;
+  tc.value = `ตารางเวร${roleLabel}ประจำเดือน ${thaiMonth} ${BY}`;
   tc.font = { name: F, size: 26, bold: true, color: { argb: 'FF1E293B' } };
   tc.alignment = { horizontal: 'center', vertical: 'middle' };
   ws.getRow(1).height = 38;
@@ -219,7 +241,7 @@ export async function exportScheduleTable(
     const prevLastDow = prevLastDate.getDay();
     const prevLastDateNum = prevLastDate.getDate();
 
-    const prevDay = buildDay(prevLastDateNum, prevLastDate, prevMonthLastDayShifts, holSet);
+    const prevDay = buildDay(prevLastDateNum, prevLastDate, prevMonthLastDayShifts, holSet, role);
     prevDay.isPrevMonth = true;
 
     const prevWeek: (DayShifts | null)[] = new Array(7).fill(null);
@@ -236,14 +258,14 @@ export async function exportScheduleTable(
     const dt = new Date(year, month - 1, d);
     const dow = dt.getDay();
     if (d > 1 && dow === 0) { weeks.push(cw); cw = new Array(7).fill(null); }
-    cw[dow] = buildDay(d, dt, shifts, holSet);
+    cw[dow] = buildDay(d, dt, shifts, holSet, role);
   }
   weeks.push(cw);
 
   // ── Render each week ──
   let row = 4;
   for (const week of weeks) {
-    renderWeek(ws, row, week, F, thinB, thin, med, center, fill);
+    renderWeek(ws, row, week, F, thinB, thin, med, center, fill, role);
     row += ROWS_PER_WEEK;
   }
 
@@ -251,11 +273,17 @@ export async function exportScheduleTable(
   row += 1;
   const legendFont = { name: F, size: 15 };
   const legendBold = { ...legendFont, bold: true };
-  const legends = [
-    { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
-    { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
-    { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
-  ];
+  const legends = role === 'pharmacy_technician'
+    ? [
+        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = IPD'], color: PAL.chao.hdr },
+        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
+      ]
+    : [
+        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
+        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
+      ];
   for (const lg of legends) {
     const c1 = ws.getCell(row, 1);
     c1.value = lg.label; c1.font = legendBold; c1.fill = fill(lg.color);
@@ -275,7 +303,7 @@ export async function exportScheduleTable(
   const buf = await wb.xlsx.writeBuffer();
   const suffix = useOriginal ? '_ตารางเดิม' : '';
   saveAs(new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }),
-    `ตารางเวรเภสัชกร_${thaiMonth}_${BY}${suffix}.xlsx`);
+    `ตารางเวร${fileLabel}_${thaiMonth}_${BY}${suffix}.xlsx`);
 }
 
 // ── Week renderer ────────────────────────────────────────────────
@@ -285,6 +313,7 @@ function renderWeek(
   thinB: Partial<ExcelJS.Borders>, thin: Partial<ExcelJS.Border>, med: Partial<ExcelJS.Border>,
   center: Partial<ExcelJS.Alignment>,
   fill: (argb: string) => ExcelJS.Fill,
+  role: UserRole,
 ) {
   // Row heights
   const rh = [22, 28, 28, 22, 28, 28, 20];
@@ -382,7 +411,56 @@ function renderWeek(
     // Determine if this day is holiday (weekend or public holiday)
     const holiday = day.isHoliday;
 
-    if (holiday && isWE) {
+    if (role === 'pharmacy_technician' && holiday && isWE) {
+      // ══ Pharmacy technician weekend layout: 5 cols ══
+      const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
+
+      set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
+      set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
+
+      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      set(1, c2, day.medDC, { font: nameFont });
+      set(2, c2, day.medCont, { font: nameFont });
+      merge(1, c3, 1, c5, day.baiER, { font: nameFont });
+      merge(2, c3, 2, c5, day.baiMED, { font: nameFont });
+
+      set(3, c1, 'ER', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(3, c2, 'SURG', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(3, c3, 3, c5, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
+
+      merge(4, c1, 6, c1, day.er, { font: nameFont });
+      set(4, c2, day.surg1, { font: nameFont });
+      set(5, c2, day.surg2, { font: nameFont });
+      merge(4, c3, 6, c5, day.duek, { font: nameFont });
+
+    } else if (role === 'pharmacy_technician' && holiday) {
+      // ══ Pharmacy technician weekday holiday layout: 4 cols ══
+      const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
+
+      set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
+      set(0, c4, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
+
+      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      set(1, c2, day.medDC, { font: nameFont });
+      set(2, c2, day.medCont, { font: nameFont });
+      merge(1, c3, 1, c4, day.baiER, { font: nameFont });
+      merge(2, c3, 2, c4, day.baiMED, { font: nameFont });
+
+      set(3, c1, 'ER', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(3, c2, 'SURG', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(3, c3, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
+
+      merge(4, c1, 6, c1, day.er, { font: nameFont });
+      set(4, c2, day.surg1, { font: nameFont });
+      set(5, c2, day.surg2, { font: nameFont });
+      set(6, c2, '', { font: nameFont });
+      merge(4, c3, 6, c4, day.duek, { font: nameFont });
+
+    } else if (holiday && isWE) {
       // ══ Weekend layout: 5 cols ══
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 

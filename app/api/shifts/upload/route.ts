@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
+import { canManageRoleGroup, type UserRole } from '@/lib/types';
 import * as XLSX from 'xlsx';
 
 const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
@@ -109,6 +110,10 @@ export async function POST(req: NextRequest) {
       sheetRole = 'officer';
     } else if (a1Content.includes('เภสัช') || a1Content === 'pharmacist') {
       sheetRole = 'pharmacist';
+    }
+
+    if (!canManageRoleGroup(session, sheetRole as UserRole)) {
+      return NextResponse.json({ error: 'Forbidden. You can only upload shifts for your own role group.' }, { status: 403 });
     }
 
     // Find all users of this role to constraint the deletion/checking
@@ -319,4 +324,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Internal server error', details: error.message }, { status: 500 });
   }
 }
-

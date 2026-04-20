@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
+import { canManageRoleGroup, type UserRole } from '@/lib/types';
 
 // GET  /api/admin/shifts?month=2026-03&role=pharmacist&dept_id=5&page=0
 export async function GET(req: NextRequest) {
@@ -13,12 +14,18 @@ export async function GET(req: NextRequest) {
 
     const { searchParams } = new URL(req.url);
     const month    = searchParams.get('month');
-    const role     = searchParams.get('role');
+    const requestedRole = searchParams.get('role') as UserRole | null;
+    const role = session.role === 'admin'
+      ? requestedRole
+      : (session.role as UserRole);
     const deptId   = searchParams.get('dept_id');
     const page     = parseInt(searchParams.get('page') || '0');
     const pageSize = 25;
 
     if (!month) return NextResponse.json({ error: 'month is required' }, { status: 400 });
+    if (role && !canManageRoleGroup(session, role)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const supabase = createSupabaseServer();
 
@@ -91,6 +98,18 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
     const supabase = createSupabaseServer();
+    if (session.role !== 'admin') {
+      const { data: shiftRow } = await supabase
+        .from('shifts')
+        .select('user:users!user_id(role)')
+        .eq('id', id)
+        .single();
+      const shiftUser: any = shiftRow?.user;
+      const targetRole = (Array.isArray(shiftUser) ? shiftUser[0]?.role : shiftUser?.role) as UserRole | undefined;
+      if (!targetRole || !canManageRoleGroup(session, targetRole)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
     const { error } = await supabase
       .from('shifts')
       .update({ shift_type, department_id, position: position || null })
@@ -116,6 +135,18 @@ export async function DELETE(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
     const supabase = createSupabaseServer();
+    if (session.role !== 'admin') {
+      const { data: shiftRow } = await supabase
+        .from('shifts')
+        .select('user:users!user_id(role)')
+        .eq('id', id)
+        .single();
+      const shiftUser: any = shiftRow?.user;
+      const targetRole = (Array.isArray(shiftUser) ? shiftUser[0]?.role : shiftUser?.role) as UserRole | undefined;
+      if (!targetRole || !canManageRoleGroup(session, targetRole)) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+    }
     const { error } = await supabase.from('shifts').delete().eq('id', id);
 
     if (error) throw error;
@@ -137,6 +168,9 @@ export async function PATCH(req: NextRequest) {
 
     const { month, dept_name } = await req.json();
     if (!month) return NextResponse.json({ error: 'month is required' }, { status: 400 });
+    if (session.role !== 'admin' && !canManageRoleGroup(session, session.role as UserRole)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const supabase = createSupabaseServer();
 
@@ -157,14 +191,25 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ updated: 0, message: 'ไม่พบวันหยุดในเดือนนี้' });
     }
 
-    const { error, data: updated } = await supabase
+    let patchQuery = supabase
       .from('shifts')
       .update({ shift_type: 'เช้า' })
       .eq('department_id', deptRow.id)
       .eq('shift_type', 'บ่าย')
       .eq('month_year', month)
       .in('date', holidayDates)
-      .select('id');
+      .select('id, user:users!user_id(role)');
+
+    if (session.role !== 'admin') {
+      const { data: usersOfRole } = await supabase
+        .from('users')
+        .select('id')
+        .eq('role', session.role);
+      const roleUserIds = (usersOfRole || []).map((u: { id: string }) => u.id);
+      patchQuery = patchQuery.in('user_id', roleUserIds);
+    }
+
+    const { error, data: updated } = await patchQuery;
 
     if (error) throw error;
     return NextResponse.json({ success: true, updated: (updated || []).length });

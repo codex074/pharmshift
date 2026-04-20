@@ -36,7 +36,7 @@ import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
 import { format, endOfMonth, subMonths } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
-import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike } from '@/lib/types';
+import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike, canManageRoleGroup } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 
@@ -102,9 +102,15 @@ export default function CalendarPage() {
 
   // For admin/sub-admin: use viewRoleGroup selector; for staff: use own role
   const effectiveRoleGroup: UserRole =
-    userIsAdminLike
+    userIsAdmin
       ? viewRoleGroup
       : (currentUser?.role as UserRole) ?? 'pharmacist';
+
+  useEffect(() => {
+    if (currentUser?.is_sub_admin && currentUser.role !== 'admin' && viewRoleGroup !== currentUser.role) {
+      setViewRoleGroup(currentUser.role);
+    }
+  }, [currentUser?.is_sub_admin, currentUser?.role, viewRoleGroup]);
 
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
@@ -364,7 +370,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
             )}
-        <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={pharmacistPublished} isAdminLike={userIsAdminLike} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.f_name} />
+        <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={publishedRoles[effectiveRoleGroup] ?? false} isAdminLike={userIsAdminLike} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.f_name} roleGroup={effectiveRoleGroup} />
             {currentUser && (
               <div className="relative group">
                 <button
@@ -428,7 +434,7 @@ export default function CalendarPage() {
             <div className="flex items-center gap-1 p-1 rounded-2xl w-max min-w-full sm:w-auto shadow-lg"
               style={{ background: 'linear-gradient(135deg, #0f0a2e, #1a1145, #2d1b69)' }}
             >
-              {STAFF_ROLES.map((role) => {
+              {STAFF_ROLES.filter((role) => canManageRoleGroup(currentUser, role)).map((role) => {
                 const isActive = viewRoleGroup === role;
 
                 return (
