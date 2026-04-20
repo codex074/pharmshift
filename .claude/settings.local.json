@@ -28,7 +28,28 @@
       "Bash(git commit:*)",
       "Bash(grep -l \"published_months\\\\|published\" /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/*.sql /Users/codex074/Desktop/My-Web-App/pharmshift/supabase/migrations/*.sql)",
       "Bash(git checkout:*)",
-      "Bash(git stash:*)"
+      "Bash(git stash:*)",
+      "Read(//opt/homebrew/bin/**)",
+      "Read(//usr/local/bin/**)",
+      "Bash(export PATH=\"/usr/local/bin:$PATH\")",
+      "Read(//usr/local/lib/node_modules/npm/bin/**)",
+      "Bash(/usr/local/bin/node --version)",
+      "Bash(chmod +x /Users/codex074/Desktop/My-Web-App/pharmshift/.claude/start-dev.sh)",
+      "Bash(git branch:*)",
+      "Bash(grep -r \"export const\" /Users/codex074/Desktop/My-Web-App/pharmshift/lib/*.ts)",
+      "Bash(/usr/bin/env node:*)",
+      "Bash(git merge:*)",
+      "Bash(/usr/local/bin/node node_modules/.bin/tsc --noEmit)",
+      "Bash(python3 scripts/gen_sample_shifts.py)",
+      "Bash(python3 -c \":*)",
+      "Bash(grep -r \"TODO\\\\|FIXME\\\\|XXX\\\\|HACK\\\\|BUG\" /Users/codex074/Desktop/My-Web-App/pharmshift/app /Users/codex074/Desktop/My-Web-App/pharmshift/lib /Users/codex074/Desktop/My-Web-App/pharmshift/components --include=*.ts --include=*.tsx)",
+      "Bash(/usr/local/bin/node /usr/local/bin/tsc --noEmit)",
+      "Bash(/usr/local/bin/node ./node_modules/.bin/tsc --noEmit)",
+      "Bash(./node_modules/.bin/tsc --noEmit)",
+      "Bash(export PATH=\"/usr/local/bin:/opt/homebrew/bin:$PATH\")",
+      "Bash(node -e \"const ts = require\\(''''typescript''''\\); const prog = ts.createProgram\\([''''lib/myScheduleExport.ts''''], {noEmit: true, strict: true}\\); const d = ts.getPreEmitDiagnostics\\(prog\\); d.forEach\\(x => console.log\\(x.messageText\\)\\)\")",
+      "Bash(node -e \":*)",
+      "Bash(node_modules/.bin/next build:*)"
     ]
   }
 }

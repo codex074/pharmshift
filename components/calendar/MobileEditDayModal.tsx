@@ -108,12 +108,13 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     if (isWeekendOrHoliday) {
       return [
         { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
+          { label: 'โครงการ', shiftType: 'เช้า', department: 'โครงการ', index: 0 },
           ...rangeLabels('SURG', 2, 'เช้า', 'SURG'),
           { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
-          ...rangeLabels('MED', 3, 'เช้า', 'MED'),
+          ...rangeLabels('MED', 2, 'เช้า', 'MED'),
         ]},
         { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
-          ...rangeLabels('บ่าย MED', 2, 'บ่าย', 'MED'),
+          { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
           { label: 'บ่าย ER', shiftType: 'บ่าย', department: 'ER', index: 0 },
         ]},
         { id: 'night', title: 'ดึก', shiftType: 'ดึก', slots: [
@@ -125,8 +126,9 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     return [
       { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: rangeLabels('รุ่งอรุณ', 3, 'รุ่งอรุณ', 'รุ่งอรุณ') },
       { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
+        { label: 'โครงการ', shiftType: 'บ่าย', department: 'โครงการ', index: 0 },
         ...rangeLabels('SMC', 2, 'บ่าย', 'SMC'),
-        ...rangeLabels('บ่าย MED', 2, 'บ่าย', 'MED'),
+        { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
         { label: 'บ่าย ER', shiftType: 'บ่าย', department: 'ER', index: 0 },
       ]},
       { id: 'night', title: 'ดึก', shiftType: 'ดึก', slots: [
