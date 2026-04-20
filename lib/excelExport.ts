@@ -82,7 +82,8 @@ interface DayEntry {
 
 interface UserRowData {
   userId: string;
-  fullName: string;
+  firstName: string;
+  lastName: string;
   salaryNumber: string;
   role: string;
   phaId: number;
@@ -219,9 +220,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         const prefix = s.user?.prefix || s.user_prefix || '';
         const fName = s.user?.f_name || (s as any).user_f_name || '';
         const lName = s.user?.l_name || (s as any).user_l_name || '';
-        const generatedFullName = `${prefix}${fName} ${lName}`.trim() || s.user?.nickname || s.user_nickname || 'ไม่ทราบชื่อ';
+        const firstName = `${prefix}${fName}`.trim() || s.user?.nickname || s.user_nickname || 'ไม่ทราบชื่อ';
+        const lastName = lName;
         const salaryNumber = s.user?.salary_number || '';
-        
+
         const role = s.user?.role || 'pharmacist';
         const phaIdRaw = s.user?.pha_id ?? 0;
         const phaId = typeof phaIdRaw === 'number'
@@ -230,7 +232,8 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
         userRow = {
           userId: s.user_id,
-          fullName: generatedFullName,
+          firstName,
+          lastName,
           salaryNumber: salaryNumber,
           role,
           phaId,
@@ -257,17 +260,18 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         return a.phaId - b.phaId;
       });
 
-    // 2. Setup Columns: 38 cols (evidence) or 39 cols with signature (compensation)
-    const totalCols = isEvidence ? 38 : 39;
-    const lastColLetter = isEvidence ? 'AL' : 'AM';
-    const amountCol = 38;
-    const totalValueCol = 37;
-    const summaryMergeEnd = 'AJ';
+    // 2. Setup Columns: 39 cols (evidence) or 40 cols with signature (compensation)
+    const totalCols = isEvidence ? 39 : 40;
+    const lastColLetter = isEvidence ? 'AM' : 'AN';
+    const amountCol = 39;
+    const totalValueCol = 38;
+    const summaryMergeEnd = 'AK';
 
     const columns = [
       { key: 'seq', width: 4.5 },
       { key: 'salaryNo', width: 9 },
-      { key: 'name', width: 22 },
+      { key: 'firstName', width: 13 },
+      { key: 'lastName', width: 12 },
       { key: 'position', width: 8 },
       { key: 'rate', width: 6 },
     ];
@@ -319,19 +323,19 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
       if (page > 0) {
         const carriedRow = worksheet.addRow([]);
-        carriedRow.getCell(32).value = 'ยอดยกมา';
+        carriedRow.getCell(33).value = 'ยอดยกมา';
         carriedRow.getCell(totalValueCol).value = grandTotalValue;
         carriedRow.getCell(amountCol).value = grandTotalAmount;
         carriedRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
         carriedRow.eachCell((cell, colNumber) => {
           if (colNumber === amountCol) cell.numFmt = '#,##0.00';
-          if (colNumber === totalValueCol || colNumber === amountCol || colNumber === 32) cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          if (colNumber === totalValueCol || colNumber === amountCol || colNumber === 33) cell.alignment = { horizontal: 'center', vertical: 'middle' };
         });
       }
 
       // Row 3 to 5: Complex Headers
       const headerRow1 = worksheet.addRow([
-        'ลำดับ\nที่', 'เลขที่รับ\nเงินเดือน', 'ชื่อ-สกุล', 'ตำ\nแหน่ง', config.rateColLabel,
+        'ลำดับ\nที่', 'เลขที่รับ\nเงินเดือน', 'ชื่อ-สกุล', '', 'ตำ\nแหน่ง', config.rateColLabel,
         'วันที่ปฏิบัติงาน', ...Array(30).fill(''),
         'รวม\n\n' + (config.name === 'รุ่งอรุณ' || config.name === 'โครงการ' ? 'ชม.' : 'เวร'),
         'จำนวน\n\nเงิน',
@@ -339,7 +343,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       ]);
       headerRow1.height = 30;
       const headerRow2 = worksheet.addRow([
-        '', '', '', '', '',
+        '', '', '', '', '', '',
         ...Array.from({ length: 31 }, (_, i) => i + 1),
         '', '',
         ...(!isEvidence ? [''] : []),
@@ -351,19 +355,19 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       // Merge complex headers
       worksheet.mergeCells(startR, 1, startR + 2, 1);
       worksheet.mergeCells(startR, 2, startR + 2, 2);
-      worksheet.mergeCells(startR, 3, startR + 2, 3);
-      worksheet.mergeCells(startR, 4, startR + 2, 4);
+      worksheet.mergeCells(startR, 3, startR + 2, 4); // "ชื่อ-สกุล" spanning 2 cols across all 3 header rows
       worksheet.mergeCells(startR, 5, startR + 2, 5);
-      
-      worksheet.mergeCells(startR, 6, startR, 36); // "วันที่ปฏิบัติงาน" spanning F to AJ
+      worksheet.mergeCells(startR, 6, startR + 2, 6);
+
+      worksheet.mergeCells(startR, 7, startR, 37); // "วันที่ปฏิบัติงาน" spanning G to AK
       for (let i = 0; i < 31; i++) {
-         const colNum = 6 + i;
-         worksheet.mergeCells(startR + 1, colNum, startR + 2, colNum); 
+         const colNum = 7 + i;
+         worksheet.mergeCells(startR + 1, colNum, startR + 2, colNum);
       }
 
-      worksheet.mergeCells(startR, 37, startR + 2, 37);
       worksheet.mergeCells(startR, 38, startR + 2, 38);
-      if (!isEvidence) worksheet.mergeCells(startR, 39, startR + 2, 39);
+      worksheet.mergeCells(startR, 39, startR + 2, 39);
+      if (!isEvidence) worksheet.mergeCells(startR, 40, startR + 2, 40);
 
       // Header Styles
       [headerRow1, headerRow2, headerRow3].forEach(row => {
@@ -388,7 +392,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
           // Output 1 row — multiple shifts on the same day are joined with "/"
           const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' :
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
-          const rowValues: any[] = [runningSeq, row.salaryNumber, row.fullName, positionLabel, config.getRate(row.role)];
+          const rowValues: any[] = [runningSeq, row.salaryNumber, row.firstName, row.lastName, positionLabel, config.getRate(row.role)];
 
           for (let i = 1; i <= 31; i++) {
             const entries = row.days[i] || [];
@@ -406,19 +410,20 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
             if (colNumber <= totalCols) {
-              cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
+              cell.alignment = { horizontal: (colNumber === 3 || colNumber === 4) ? 'left' : 'center', vertical: 'middle' };
               cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
               if (colNumber === amountCol) cell.numFmt = '#,##0.00';
             }
           });
         } else {
           // Output 1 row
-          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' : 
+          const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' :
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
           const rowValues: any[] = [
             runningSeq,
             row.salaryNumber, // salaryNo
-            row.fullName,
+            row.firstName,
+            row.lastName,
             positionLabel,
             config.getRate(row.role),
           ];
@@ -439,11 +444,11 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
             if (colNumber <= totalCols) {
-              cell.alignment = { horizontal: (colNumber === 3) ? 'left' : 'center', vertical: 'middle' };
+              cell.alignment = { horizontal: (colNumber === 3 || colNumber === 4) ? 'left' : 'center', vertical: 'middle' };
               cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
               if (colNumber === amountCol) {
                 cell.numFmt = '#,##0.00';
-              } else if (colNumber >= 6 && colNumber <= 37 && typeof cell.value === 'number') {
+              } else if (colNumber >= 7 && colNumber <= 37 && typeof cell.value === 'number') {
                 if (cell.value % 1 !== 0) {
                   cell.numFmt = '0.0#'; // Forces 1.5 to not round
                 } else {
@@ -483,7 +488,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       const noteRow = worksheet.addRow([]);
       noteRow.getCell(1).value = 'หมายเหตุ';
       if ((config as any).note) {
-        noteRow.getCell(6).value = (config as any).note;
+        noteRow.getCell(7).value = (config as any).note;
       }
       noteRow.font = { name: 'TH SarabunPSK', size: 16 };
 
@@ -495,7 +500,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         certRow.font = { name: 'TH SarabunPSK', size: 16 };
         certRow.alignment = { horizontal: 'center' };
         worksheet.mergeCells(`B${certRow.number}:J${certRow.number}`);
-        worksheet.mergeCells(`AD${certRow.number}:AM${certRow.number}`);
+        worksheet.mergeCells(`AD${certRow.number}:AN${certRow.number}`);
         worksheet.addRow([]); // empty row
         const signRow1 = worksheet.addRow([]);
         // Position column (2)
@@ -508,7 +513,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         signRow1.font = { name: 'TH SarabunPSK', size: 16 };
         signRow1.alignment = { horizontal: 'center' };
         worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
-        worksheet.mergeCells(`AD${signRow1.number}:AM${signRow1.number}`);
+        worksheet.mergeCells(`AD${signRow1.number}:AN${signRow1.number}`);
 
         const signRow2 = worksheet.addRow([]);
         // Name column (2)
@@ -521,7 +526,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         signRow2.font = { name: 'TH SarabunPSK', size: 16 };
         signRow2.alignment = { horizontal: 'center' };
         worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
-        worksheet.mergeCells(`AD${signRow2.number}:AM${signRow2.number}`);
+        worksheet.mergeCells(`AD${signRow2.number}:AN${signRow2.number}`);
 
         worksheet.addRow([]); // empty row
         worksheet.addRow([]); // empty row
