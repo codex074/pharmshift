@@ -5,7 +5,7 @@ import { Loader2, X, Lock } from 'lucide-react';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { exportScheduleTable } from '@/lib/scheduleTableExport';
 import { exportMySchedule } from '@/lib/myScheduleExport';
-import type { Shift, Holiday } from '@/lib/types';
+import type { Shift, Holiday, UserRole } from '@/lib/types';
 
 interface Props {
   shifts: Shift[];
@@ -17,9 +17,10 @@ interface Props {
   prevMonthLastDayShifts?: Shift[];
   currentUserId?: string;
   currentUserName?: string;
+  roleGroup?: UserRole;
 }
 
-export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, isAdminLike, prevMonthLastDayShifts, currentUserId, currentUserName }: Props) {
+export function ScheduleTableExportButton({ shifts, holidays, year, month, isPublished, isAdminLike, prevMonthLastDayShifts, currentUserId, currentUserName, roleGroup = 'pharmacist' }: Props) {
   const [loading, setLoading] = useState(false);
   const [showModal, setShowModal] = useState(false);
 
@@ -27,7 +28,8 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
     setShowModal(false);
     setLoading(true);
     try {
-      const prevDuekPharmacist = (prevMonthLastDayShifts || []).filter(s => (s.user as any)?.role === 'pharmacist');
+      const roleShifts = shifts.filter(s => (s.user as any)?.role === roleGroup);
+      const prevDuekByRole = (prevMonthLastDayShifts || []).filter(s => (s.user as any)?.role === roleGroup);
 
       if (myShiftsOnly && currentUserId) {
         const myShifts = shifts.filter(s => s.user_id === currentUserId);
@@ -38,9 +40,8 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
         return;
       }
 
-      const pharmacistShifts = shifts.filter(s => (s.user as any)?.role === 'pharmacist');
-      if (!pharmacistShifts.length) throw new Error('ไม่พบข้อมูลเวรเภสัชกรในเดือนนี้');
-      await exportScheduleTable(pharmacistShifts, holidays, year, month, useOriginal, prevDuekPharmacist);
+      if (!roleShifts.length) throw new Error('ไม่พบข้อมูลเวรของ role นี้ในเดือนนี้');
+      await exportScheduleTable(roleShifts, holidays, year, month, useOriginal, prevDuekByRole, roleGroup);
       toastSuccess(useOriginal ? 'ส่งออกตารางเวร (ตารางเดิม) สำเร็จ' : 'ส่งออกตารางเวรสำเร็จ');
     } catch (err: any) {
       toastError(err.message || 'เกิดข้อผิดพลาดในการสร้างไฟล์');

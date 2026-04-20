@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Send, Loader2, CheckCircle2, AlertCircle, Check, AlertTriangle, Eye, EyeOff } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { X, Send, Loader2, CheckCircle2, AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -29,7 +29,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
   const [errorDesc, setErrorDesc] = useState('');
   const [month, setMonth] = useState<number>(initialMonth);
   const [year, setYear] = useState<number>(initialYear);
-  // All checkboxes start empty — user selects manually
+  // Full admin selects roles manually; sub-admin is locked to own role.
   const [selectedRoles, setSelectedRoles] = useState<Set<UserRole>>(new Set());
   // Password confirmation
   const [password, setPassword] = useState('');
@@ -39,14 +39,15 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
   const isSubAdmin = !isFullAdmin && currentUser?.is_sub_admin === true;
   const myRole: UserRole | null = (isSubAdmin && STAFF_ROLES.includes(currentUser?.role)) ? currentUser.role : null;
 
-  // Roles that are "not mine" when sub-admin selects them
-  const otherRolesSelected: UserRole[] = isSubAdmin && myRole
-    ? Array.from(selectedRoles).filter(r => r !== myRole)
-    : [];
+  const deployRoles = useMemo(
+    () => (isSubAdmin && myRole ? new Set<UserRole>([myRole]) : selectedRoles),
+    [isSubAdmin, myRole, selectedRoles]
+  );
 
   const currentYear = new Date().getFullYear();
 
   const toggleRole = (role: UserRole) => {
+    if (isSubAdmin) return;
     setSelectedRoles(prev => {
       const next = new Set(prev);
       if (next.has(role)) next.delete(role);
@@ -57,6 +58,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
 
   const allSelected = STAFF_ROLES.every(r => selectedRoles.has(r));
   const toggleAll = () => {
+    if (isSubAdmin) return;
     setSelectedRoles(allSelected ? new Set() : new Set(STAFF_ROLES));
   };
 
@@ -65,7 +67,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       toast.error('ไม่มีสิทธิ์ดำเนินการ');
       return;
     }
-    if (selectedRoles.size === 0) {
+    if (deployRoles.size === 0) {
       toast.error('กรุณาเลือกอย่างน้อย 1 ตำแหน่ง');
       return;
     }
@@ -97,9 +99,9 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
         published_at: new Date().toISOString(),
         published_by: currentUser.id,
         // Preserve existing, then apply newly selected roles
-        pharmacist_published:          existingData?.pharmacist_published          || selectedRoles.has('pharmacist'),
-        pharmacy_technician_published: existingData?.pharmacy_technician_published || selectedRoles.has('pharmacy_technician'),
-        officer_published:             existingData?.officer_published             || selectedRoles.has('officer'),
+        pharmacist_published:          existingData?.pharmacist_published          || deployRoles.has('pharmacist'),
+        pharmacy_technician_published: existingData?.pharmacy_technician_published || deployRoles.has('pharmacy_technician'),
+        officer_published:             existingData?.officer_published             || deployRoles.has('officer'),
       };
 
       // Global flag: true only when all 3 roles are published
@@ -116,7 +118,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
 
       // Notifications + stamp original_user_id
       try {
-        const rolesToNotify = Array.from(selectedRoles);
+        const rolesToNotify = Array.from(deployRoles);
         const { data: staffUsers } = await supabase
           .from('users')
           .select('id')
@@ -234,88 +236,76 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
           </div>
 
           {/* Role checkboxes */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-gray-700">
-                ตำแหน่งที่ต้องการประกาศ
-              </label>
-              <button
-                type="button"
-                onClick={toggleAll}
-                className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
-              >
-                {allSelected ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
-              </button>
-            </div>
-
+          {isSubAdmin && myRole ? (
             <div className="space-y-2">
-              {STAFF_ROLES.map(role => {
-                const isChecked = selectedRoles.has(role);
-                const isMyOwnRole = myRole === role;
-                const isOtherRole = isSubAdmin && !isMyOwnRole;
-
-                return (
-                  <button
-                    key={role}
-                    type="button"
-                    onClick={() => toggleRole(role)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left cursor-pointer ${
-                      isChecked
-                        ? isOtherRole
-                          ? 'border-amber-400 bg-amber-50'
-                          : 'border-green-400 bg-green-50'
-                        : 'border-gray-200 bg-white hover:border-gray-300'
-                    }`}
-                  >
-                    {/* Checkbox */}
-                    <div className={`w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border-2 transition-all ${
-                      isChecked
-                        ? isOtherRole
-                          ? 'bg-amber-500 border-amber-500'
-                          : 'bg-green-500 border-green-500'
-                        : 'bg-white border-gray-300'
-                    }`}>
-                      {isChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                    </div>
-
-                    <span className="text-lg">{ROLE_ICONS[role]}</span>
-
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm font-medium ${
-                        isChecked
-                          ? isOtherRole ? 'text-amber-800' : 'text-green-800'
-                          : 'text-gray-700'
-                      }`}>
-                        {ROLE_LABELS[role]}
-                      </p>
-                    </div>
-
-                    {/* Badge for sub-admin */}
-                    {isMyOwnRole && (
-                      <span className="text-[10px] font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                        role ของคุณ
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {selectedRoles.size === 0 && (
-              <p className="text-xs text-red-500 mt-1">กรุณาเลือกอย่างน้อย 1 ตำแหน่ง</p>
-            )}
-          </div>
-
-          {/* Warning: sub-admin selecting other roles */}
-          {isSubAdmin && otherRolesSelected.length > 0 && (
-            <div className="flex items-start gap-2.5 p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-sm">
-              <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5 text-amber-500" />
-              <div>
-                <p className="font-semibold text-xs">คุณกำลังประกาศตำแหน่งที่ไม่ใช่ของคุณ</p>
-                <p className="text-xs mt-0.5 text-amber-700">
-                  {otherRolesSelected.map(r => ROLE_LABELS[r]).join(', ')} — กรุณาตรวจสอบให้แน่ใจก่อนยืนยัน
-                </p>
+              <label className="block text-sm font-medium text-gray-700">ตำแหน่งที่ประกาศ</label>
+              <div className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 border-green-400 bg-green-50">
+                <div className="w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border-2 bg-green-500 border-green-500">
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                </div>
+                <span className="text-lg">{ROLE_ICONS[myRole]}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-green-800">{ROLE_LABELS[myRole]}</p>
+                </div>
+                <span className="text-[10px] font-medium text-green-600 bg-green-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                  role ของคุณ
+                </span>
               </div>
+              <p className="text-xs text-gray-500">sub-admin สามารถประกาศได้เฉพาะตำแหน่งของตัวเอง</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="block text-sm font-medium text-gray-700">
+                  ตำแหน่งที่ต้องการประกาศ
+                </label>
+                <button
+                  type="button"
+                  onClick={toggleAll}
+                  className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors"
+                >
+                  {allSelected ? 'ยกเลิกทั้งหมด' : 'เลือกทั้งหมด'}
+                </button>
+              </div>
+
+              <div className="space-y-2">
+                {STAFF_ROLES.map(role => {
+                  const isChecked = selectedRoles.has(role);
+
+                  return (
+                    <button
+                      key={role}
+                      type="button"
+                      onClick={() => toggleRole(role)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left cursor-pointer ${
+                        isChecked
+                          ? 'border-green-400 bg-green-50'
+                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border-2 transition-all ${
+                        isChecked
+                          ? 'bg-green-500 border-green-500'
+                          : 'bg-white border-gray-300'
+                      }`}>
+                        {isChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                      </div>
+
+                      <span className="text-lg">{ROLE_ICONS[role]}</span>
+
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${isChecked ? 'text-green-800' : 'text-gray-700'}`}>
+                          {ROLE_LABELS[role]}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {selectedRoles.size === 0 && (
+                <p className="text-xs text-red-500 mt-1">กรุณาเลือกอย่างน้อย 1 ตำแหน่ง</p>
+              )}
             </div>
           )}
 
@@ -327,7 +317,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
                 type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={e => setPassword(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && !loading && selectedRoles.size > 0 && handleDeploy()}
+                onKeyDown={e => e.key === 'Enter' && !loading && deployRoles.size > 0 && handleDeploy()}
                 placeholder="ป้อนรหัสผ่านเพื่อยืนยัน"
                 className="w-full border border-gray-300 rounded-xl text-sm px-4 py-2.5 pr-10 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-green-500/50 focus:border-green-500 outline-none transition-all"
               />
@@ -360,7 +350,7 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
           {/* Submit */}
           <button
             onClick={handleDeploy}
-            disabled={loading || selectedRoles.size === 0 || !password}
+            disabled={loading || deployRoles.size === 0 || !password}
             className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-300 disabled:cursor-not-allowed text-white font-semibold py-3 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
             {loading ? (
@@ -372,9 +362,9 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
               <>
                 <Send className="w-4 h-4" />
                 ยืนยันประกาศตารางเวร
-                {selectedRoles.size > 0 && (
+                {deployRoles.size > 0 && (
                   <span className="bg-white/20 text-xs px-2 py-0.5 rounded-full">
-                    {selectedRoles.size} ตำแหน่ง
+                    {deployRoles.size} ตำแหน่ง
                   </span>
                 )}
               </>
