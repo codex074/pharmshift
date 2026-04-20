@@ -47,6 +47,22 @@ function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
   return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
 }
 
+function headerWithDate(
+  title: string,
+  palette: keyof typeof SHIFT_HDR,
+  dayNum: string,
+  dateClass: string,
+) {
+  return (
+    <div className={cn(hdr(palette), 'relative h-full justify-center pr-14')}>
+      {title}
+      <span className={cn(hdr('neutral'), 'absolute inset-y-0 right-0 w-12 border-l text-[20px] font-black', dateClass)}>
+        {dayNum}
+      </span>
+    </div>
+  );
+}
+
 interface CalendarGridProps {
   year: number;
   month: number;
@@ -384,65 +400,42 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const dateStr = format(day.date, 'yyyy-MM-dd');
   const dow = day.date.getDay();
   const isSundayOrHoliday = dow === 0 || day.isHoliday;
-
-  const [surgSlot0, surgSlot1] = buildTwoSlots(day, ctx, 'เช้า', 'SURG');
-  const [medSlot0, medSlot1]   = buildTwoSlots(day, ctx, 'เช้า', 'MED');
-
   const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
 
   return (
-    <div className={cn("grid grid-cols-5 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
+    <div className="grid h-full grid-cols-4" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }} onClick={() => onDayClick(day)}>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>MED</div>
+      <div className="h-full" style={{ gridArea: '1 / 3 / 2 / 5' }}>
+        {headerWithDate('บ่าย', 'bai', dayNum, isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700')}
+      </div>
 
-      {/* ROW 1 — section labels + date number */}
-      <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>ER</div>
-      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
-      <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
-      <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), dateBg, 'text-[20px] font-black')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
-
-      {/* ROW 2-7 col 1 — เช้า ER (spans full left column after moving โครงการ out) */}
-      <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
-
-      {/* ROW 2 & 3 — morning SURG / MED + afternoon cells */}
-      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 3' }}>
-        {/* SURG slot 1 */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
-          {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
-          {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
-          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+      <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-yellow-100" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+        <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm1', dateStr)}
         </div>
-        {/* SURG slot 2 */}
-        <div className={cn(nameCell('chao'), 'flex-col')}>
-          {surgSlot1?.type === 'real'    && renderPersonalShift(surgSlot1.shift, ctx)}
-          {surgSlot1?.type === 'pending' && renderPendingAddBadge(surgSlot1.add, surgSlot1.globalIdx, ctx)}
-          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+        <div className="flex min-h-0 items-center justify-center px-1">
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm2', dateStr)}
         </div>
       </div>
-      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 3 / 4 / 4' }}>
-        {/* MED slot 1 (plain — no D/C) */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
-          {medSlot0?.type === 'real'    && renderPersonalShift(medSlot0.shift, ctx)}
-          {medSlot0?.type === 'pending' && renderPendingAddBadge(medSlot0.add, medSlot0.globalIdx, ctx)}
-          {!medSlot0                    && renderAddButton(dateStr, 'เช้า', 'MED', ctx)}
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+
+      <div className={hdr('chao')} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
+      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>SURG</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 5' }}>ดึก</div>
+
+      <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
+      <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-[#E8F9FA]" style={{ gridArea: '5 / 2 / 8 / 3' }}>
+        <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
+          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's1', dateStr)}
         </div>
-        {/* MED slot 2 */}
-        <div className={cn(nameCell('chao'), 'flex-col')}>
-          {medSlot1?.type === 'real'    && renderPersonalShift(medSlot1.shift, ctx)}
-          {medSlot1?.type === 'pending' && renderPendingAddBadge(medSlot1.add, medSlot1.globalIdx, ctx)}
-          {!medSlot1                    && renderAddButton(dateStr, 'เช้า', 'MED', ctx)}
+        <div className="flex min-h-0 items-center justify-center px-1">
+          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's2', dateStr)}
         </div>
       </div>
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
-
-      {/* ROW 4 — โครงการ (replaces Chemo) / ดึก labels */}
-      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>โครงการ</div>
-      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 6' }}>ดึก</div>
-
-      {/* ROW 5-7 — โครงการ (1 slot) / ดึก ER */}
-      <div className={nameCell('chao')} style={{ gridArea: '5 / 2 / 8 / 3' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
-
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
     </div>
   );
 }
@@ -453,39 +446,34 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
   const [smcSlot0, smcSlot1] = buildTwoSlots(day, ctx, 'บ่าย', 'SMC');
 
   return (
-    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
-
-      {/* ROW 1 */}
-      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
-      <div className={hdr('bai')}     style={{ gridArea: '1 / 3 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
-
-      {/* ROW 2 & 3 */}
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      {/* SMC slot 1 */}
-      <div className={cn(nameCell('bai'), 'flex-col border-b border-gray-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
-        {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
-        {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
-        {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+    <div className="grid h-full grid-cols-4" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }} onClick={() => onDayClick(day)}>
+      <div className={hdr('bai')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('bai')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
+      <div className="h-full" style={{ gridArea: '1 / 3 / 2 / 5' }}>
+        {headerWithDate('บ่าย', 'bai', dayNum, 'bg-gray-100 text-gray-600')}
       </div>
-      {/* SMC slot 2 */}
-      <div className={cn(nameCell('bai'), 'flex-col')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
-        {smcSlot1?.type === 'real'    && renderPersonalShift(smcSlot1.shift, ctx)}
-        {smcSlot1?.type === 'pending' && renderPendingAddBadge(smcSlot1.add, smcSlot1.globalIdx, ctx)}
-        {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className="grid grid-rows-2" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+        <div className={cn(nameCell('bai'), 'border-b border-gray-200')}>
+          {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
+          {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
+          {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+        </div>
+        <div className={nameCell('bai')}>
+          {smcSlot1?.type === 'real'    && renderPersonalShift(smcSlot1.shift, ctx)}
+          {smcSlot1?.type === 'pending' && renderPendingAddBadge(smcSlot1.add, smcSlot1.globalIdx, ctx)}
+          {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+        </div>
       </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
-      {/* ROW 4 */}
       <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
       <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
-      {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
       <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
-
     </div>
   );
 }
@@ -494,26 +482,21 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
   const dayNum = format(day.date, 'd');
   const dateStr = format(day.date, 'yyyy-MM-dd');
   return (
-    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
+    <div className="grid h-full grid-cols-4" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }} onClick={() => onDayClick(day)}>
+      <div className={hdr('bai')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className="h-full" style={{ gridArea: '1 / 2 / 2 / 5' }}>
+        {headerWithDate('บ่าย', 'bai', dayNum, 'bg-gray-100 text-gray-600')}
+      </div>
 
-      {/* ROW 1 */}
-      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 4' }}>บ่าย</div>
-      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
-
-      {/* ROW 2 & 3 */}
       <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
-      {/* ROW 4 */}
       <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
       <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
-      {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
       <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
-
     </div>
   );
 }

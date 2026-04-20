@@ -528,6 +528,14 @@ export default function CalendarPage() {
           {effectiveRoleGroup === 'pharmacy_technician' && (
             <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm max-w-2xl text-xs sm:text-sm font-medium">
               <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
+                <span className="text-amber-900">Med รายชื่อ 1 = D/C, รายชื่อ 2 = IPD</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
+                <span className="text-orange-900">บ่าย ชื่อ 1 = บ่าย ER, ชื่อ 2 = บ่าย MED</span>
+              </div>
+              <div className="flex items-start gap-2">
                 <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-rose-400" />
                 <span className="text-rose-800">รุ่งอรุณ ชื่อ 1 = รุ่ง OPD, ชื่อ 2 = รุ่ง ER, ชื่อ 3 = รุ่ง HIV</span>
               </div>
