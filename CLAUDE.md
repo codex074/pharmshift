@@ -3,29 +3,80 @@
 ระบบจัดตารางเวรเภสัชกรโรงพยาบาลอุตรดิตถ์
 Full-stack Next.js 14 · TypeScript · Supabase · Tailwind CSS · Radix UI
 
----
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+Tradeoff: These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+1. Think Before Coding
+   Don't assume. Don't hide confusion. Surface tradeoffs.
+
+Before implementing:
+
+State your assumptions explicitly. If uncertain, ask.
+If multiple interpretations exist, present them - don't pick silently.
+If a simpler approach exists, say so. Push back when warranted.
+If something is unclear, stop. Name what's confusing. Ask. 2. Simplicity First
+Minimum code that solves the problem. Nothing speculative.
+
+No features beyond what was asked.
+No abstractions for single-use code.
+No "flexibility" or "configurability" that wasn't requested.
+No error handling for impossible scenarios.
+If you write 200 lines and it could be 50, rewrite it.
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+3. Surgical Changes
+   Touch only what you must. Clean up only your own mess.
+
+When editing existing code:
+
+Don't "improve" adjacent code, comments, or formatting.
+Don't refactor things that aren't broken.
+Match existing style, even if you'd do it differently.
+If you notice unrelated dead code, mention it - don't delete it.
+When your changes create orphans:
+
+Remove imports/variables/functions that YOUR changes made unused.
+Don't remove pre-existing dead code unless asked.
+The test: Every changed line should trace directly to the user's request.
+
+4. Goal-Driven Execution
+   Define success criteria. Loop until verified.
+
+Transform tasks into verifiable goals:
+
+"Add validation" → "Write tests for invalid inputs, then make them pass"
+"Fix the bug" → "Write a test that reproduces it, then make it pass"
+"Refactor X" → "Ensure tests pass before and after"
+For multi-step tasks, state a brief plan:
+
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+   Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
+
+## These guidelines are working if: fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|-------|-----------|---------|
-| Framework | Next.js (App Router) | 14.2.5 |
-| Language | TypeScript (strict) | 5 |
-| Styling | Tailwind CSS + Radix UI | 3.4.1 |
-| Database | Supabase (PostgreSQL) | Latest |
-| Auth | Custom JWT (jose) — NOT Supabase Auth | 6.1.3 |
-| Real-time | Supabase Realtime (postgres_changes) | Built-in |
-| Push | Web Push API + web-push | 3.6.7 |
-| PWA | Manifest + Service Worker (manual) | — |
-| Excel Export | ExcelJS | 4.4.0 |
-| Excel Import | XLSX | 0.18.5 |
-| File Save | file-saver | 2.0.5 |
-| Icons | Lucide React | 0.395.0 |
-| Toast | Sonner | 1.5.0 |
-| Alerts | SweetAlert2 | 11.26.20 |
-| Dates | date-fns (Thai locale) | 3.6.0 |
-| Deploy | Vercel + GitHub Actions (cron) | — |
-| Testing | Playwright (installed, not configured) | 1.58.2 |
+| Layer        | Technology                             | Version  |
+| ------------ | -------------------------------------- | -------- |
+| Framework    | Next.js (App Router)                   | 14.2.5   |
+| Language     | TypeScript (strict)                    | 5        |
+| Styling      | Tailwind CSS + Radix UI                | 3.4.1    |
+| Database     | Supabase (PostgreSQL)                  | Latest   |
+| Auth         | Custom JWT (jose) — NOT Supabase Auth  | 6.1.3    |
+| Real-time    | Supabase Realtime (postgres_changes)   | Built-in |
+| Push         | Web Push API + web-push                | 3.6.7    |
+| PWA          | Manifest + Service Worker (manual)     | —        |
+| Excel Export | ExcelJS                                | 4.4.0    |
+| Excel Import | XLSX                                   | 0.18.5   |
+| File Save    | file-saver                             | 2.0.5    |
+| Icons        | Lucide React                           | 0.395.0  |
+| Toast        | Sonner                                 | 1.5.0    |
+| Alerts       | SweetAlert2                            | 11.26.20 |
+| Dates        | date-fns (Thai locale)                 | 3.6.0    |
+| Deploy       | Vercel + GitHub Actions (cron)         | —        |
+| Testing      | Playwright (installed, not configured) | 1.58.2   |
 
 ---
 
@@ -134,88 +185,99 @@ pharmshift/
 - Read-only accounts (`is_readonly=true`) can view but not be assigned/swap
 
 ### Session helpers (`lib/session.ts`)
+
 ```ts
-createSession(user)   // encrypt → set cookie
-getSession()          // read cookie → decrypt payload
-clearSession()        // delete cookie
-decrypt(token)        // verify JWT → payload | null
+createSession(user); // encrypt → set cookie
+getSession(); // read cookie → decrypt payload
+clearSession(); // delete cookie
+decrypt(token); // verify JWT → payload | null
 ```
 
 ---
 
 ## Database Schema
 
-| Table | Key Columns |
-|-------|------------|
-| `users` | id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, is_readonly, password, must_change_password, salary_number, profile_image |
-| `departments` | id, name |
-| `shifts` | id, date, user_id, **original_user_id** (immutable), department_id, shift_type, position, month_year |
-| `swap_requests` | id, shift_id, requester_id, target_user_id, request_type, target_shift_id, status, message, requester_read |
-| `holidays` | id, date (UNIQUE), name |
-| `published_months` | month_year (PK), pharmacist_published, pharmacy_technician_published, officer_published |
-| `push_subscriptions` | user_id, endpoint (UNIQUE), p256dh, auth |
-| `notifications` | user_id, type, title, body, is_read, url |
-| `shift_logs` | shift_id, action, old_user_id, new_user_id, performed_by, details, created_at |
+| Table                | Key Columns                                                                                                                                            |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `users`              | id, pha_id, prefix, f_name, l_name, nickname, role, is_sub_admin, is_active, is_readonly, password, must_change_password, salary_number, profile_image |
+| `departments`        | id, name                                                                                                                                               |
+| `shifts`             | id, date, user_id, **original_user_id** (immutable), department_id, shift_type, position, month_year                                                   |
+| `swap_requests`      | id, shift_id, requester_id, target_user_id, request_type, target_shift_id, status, message, requester_read                                             |
+| `holidays`           | id, date (UNIQUE), name                                                                                                                                |
+| `published_months`   | month_year (PK), pharmacist_published, pharmacy_technician_published, officer_published                                                                |
+| `push_subscriptions` | user_id, endpoint (UNIQUE), p256dh, auth                                                                                                               |
+| `notifications`      | user_id, type, title, body, is_read, url                                                                                                               |
+| `shift_logs`         | shift_id, action, old_user_id, new_user_id, performed_by, details, created_at                                                                          |
 
 ### Key field: `original_user_id`
+
 Set immutably when shift first assigned. Survives swaps. Used for evidence/compensation reporting.
 
 ### `profile_image` field
+
 Type: `'male' | 'female'` — avatar type selector (not actual image upload).
 
 ### `shift_logs` audit actions
-| Action | Trigger |
-|--------|---------|
-| `swap` | Shift exchanged via swap request |
-| `transfer` | Shift transferred to another user |
-| `admin_edit` | Admin changed shift details |
-| `admin_delete` | Admin deleted a shift |
+
+| Action         | Trigger                           |
+| -------------- | --------------------------------- |
+| `swap`         | Shift exchanged via swap request  |
+| `transfer`     | Shift transferred to another user |
+| `admin_edit`   | Admin changed shift details       |
+| `admin_delete` | Admin deleted a shift             |
 
 ---
 
 ## Domain Concepts
 
 ### Roles
+
 ```ts
-type UserRole = 'admin' | 'pharmacist' | 'pharmacy_technician' | 'officer'
+type UserRole = "admin" | "pharmacist" | "pharmacy_technician" | "officer";
 ```
+
 - `is_sub_admin`: non-admin who can manage shifts for their own role group only
 - `is_readonly`: can log in and view schedule but cannot be assigned shifts or participate in swaps
 - `canManageRoleGroup(user, roleGroup)` — returns true for admin OR matching sub-admin
 
 ### Shift Types (5 kinds)
-| Type | Time | Notes |
-|------|------|-------|
-| `เช้า` | 08:30–16:30 | Weekdays + holidays |
-| `บ่าย` | 16:30–23:59 | All days |
-| `ดึก` | 00:00–08:30 | Modeled as 1440–1950 min (next-day logic) |
-| `รุ่งอรุณ` | 07:00–08:30 | Weekdays only |
-| `smc` | 16:30–20:30 | Mon–Thu only |
+
+| Type       | Time        | Notes                                     |
+| ---------- | ----------- | ----------------------------------------- |
+| `เช้า`     | 08:30–16:30 | Weekdays + holidays                       |
+| `บ่าย`     | 16:30–23:59 | All days                                  |
+| `ดึก`      | 00:00–08:30 | Modeled as 1440–1950 min (next-day logic) |
+| `รุ่งอรุณ` | 07:00–08:30 | Weekdays only                             |
+| `smc`      | 16:30–20:30 | Mon–Thu only                              |
 
 ### Shift Colors (UI)
-| Type | Color |
-|------|-------|
-| เช้า | `bg-[#E8F9FA] border-[#9FDCE0] text-teal-900` |
-| บ่าย | `bg-[#F3EDF8] border-[#9E76B4] text-purple-900` |
-| ดึก | `bg-[#EEF0FF] border-[#99ABFF] text-indigo-900` |
-| รุ่งอรุณ | `bg-[#FEF3DC] border-[#FFCA72] text-amber-900` |
-| smc | `bg-violet-100 border-violet-300 text-violet-800` |
+
+| Type     | Color                                             |
+| -------- | ------------------------------------------------- |
+| เช้า     | `bg-[#E8F9FA] border-[#9FDCE0] text-teal-900`     |
+| บ่าย     | `bg-[#F3EDF8] border-[#9E76B4] text-purple-900`   |
+| ดึก      | `bg-[#EEF0FF] border-[#99ABFF] text-indigo-900`   |
+| รุ่งอรุณ | `bg-[#FEF3DC] border-[#FFCA72] text-amber-900`    |
+| smc      | `bg-violet-100 border-violet-300 text-violet-800` |
 
 ### Overlap Detection
+
 ```ts
 // lib/utils.ts
 const SHIFT_MINUTES = {
   เช้า: { start: 510, end: 990 },
   บ่าย: { start: 990, end: 1439 },
-  ดึก:  { start: 1440, end: 1950 },   // next-day span
+  ดึก: { start: 1440, end: 1950 }, // next-day span
   รุ่งอรุณ: { start: 420, end: 510 },
-}
-shiftsOverlap(a, b)               // true if time ranges collide
-findConflictingShifts(existing, newType, excludeId)
+};
+shiftsOverlap(a, b); // true if time ranges collide
+findConflictingShifts(existing, newType, excludeId);
 ```
+
 Also validates: no `ดึก → เช้า` consecutive, no `บ่าย → ดึก` consecutive.
 
 ### Shift Badge Labels
+
 ```ts
 // Determined by (shift_type, deptName, position)
 'เช้า' + 'MED' + position → `MED ${position}`   // e.g. "MED D/C"
@@ -228,15 +290,16 @@ deptName fallback         → deptName
 ```
 
 ### Notification Types
-| Type | When sent |
-|------|-----------|
-| `shift_assigned` | New shift assigned to user |
-| `shift_changed` | Shift details modified |
-| `shift_removed` | Shift deleted |
-| `schedule_published` | Monthly schedule published |
-| `shift_reminder` | Cron job morning/evening reminder |
-| `swap_request` | Incoming swap/transfer/cover request |
-| `swap_result` | Swap/transfer/cover accepted or rejected |
+
+| Type                 | When sent                                |
+| -------------------- | ---------------------------------------- |
+| `shift_assigned`     | New shift assigned to user               |
+| `shift_changed`      | Shift details modified                   |
+| `shift_removed`      | Shift deleted                            |
+| `schedule_published` | Monthly schedule published               |
+| `shift_reminder`     | Cron job morning/evening reminder        |
+| `swap_request`       | Incoming swap/transfer/cover request     |
+| `swap_result`        | Swap/transfer/cover accepted or rejected |
 
 ---
 
@@ -246,6 +309,7 @@ All under `app/api/`. Returns `NextResponse.json(data)` or `NextResponse.json({ 
 All routes use `export const dynamic = 'force-dynamic'`.
 
 ### Routes
+
 ```
 POST   /api/auth/login
 GET    /api/auth/me
@@ -288,6 +352,7 @@ GET    /api/cron/cleanup          # secured by CRON_SECRET
 ```
 
 ### Authorization
+
 - Admin routes: require `session.role === 'admin'` or `session.is_sub_admin === true`
 - Sub-admin routes: operations scoped to their own role group
 - Cron routes: `Authorization: Bearer ${CRON_SECRET}` header required
@@ -299,16 +364,18 @@ GET    /api/cron/cleanup          # secured by CRON_SECRET
 No Redux/Zustand. React hooks + Supabase Realtime.
 
 ### Hooks (all in `hooks/useShifts.ts`)
-| Hook | Returns |
-|------|---------|
-| `useShifts(year, month)` | shifts, holidays, isPublished, publishedRoles, loading, refetch |
-| `useSwapRequests(userId?)` | swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead |
-| `useNotifications(userId?)` | notifications, unreadCount, fetchNotifications, markAllRead |
-| `useCurrentUser()` | user, loading |
-| `useIsMobile(breakpoint?)` | boolean (≤767px default) — in `hooks/useIsMobile.ts` |
-| `useSwipeGesture<T>(config)` | ref — in `hooks/useSwipeGesture.ts` |
+
+| Hook                         | Returns                                                                                       |
+| ---------------------------- | --------------------------------------------------------------------------------------------- |
+| `useShifts(year, month)`     | shifts, holidays, isPublished, publishedRoles, loading, refetch                               |
+| `useSwapRequests(userId?)`   | swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead |
+| `useNotifications(userId?)`  | notifications, unreadCount, fetchNotifications, markAllRead                                   |
+| `useCurrentUser()`           | user, loading                                                                                 |
+| `useIsMobile(breakpoint?)`   | boolean (≤767px default) — in `hooks/useIsMobile.ts`                                          |
+| `useSwipeGesture<T>(config)` | ref — in `hooks/useSwipeGesture.ts`                                                           |
 
 ### Calendar page state (app/calendar/page.tsx)
+
 ```ts
 // Temporal
 year, month
@@ -339,20 +406,23 @@ viewRoleGroup: UserRole
 ## Excel Features
 
 ### Import (`POST /api/shifts/upload`)
+
 - Role-specific shift code mapping via regex (pharmacist, pharmacy_technician, officer)
 - Overwrite mode: delete existing month → re-insert (requires admin password confirmation)
 - Deduplicates on `(user_id, date, shift_type, position)`
 - Returns success count + error list
 
 ### Export (4 types)
-| File | Function | Description |
-|------|----------|-------------|
-| `excelExport.ts` | `exportEvidenceExcel` | 5 sheets, uses `original_user_id`, Thai Baht text |
-| `excelExport.ts` | `exportCompensationExcel` | Per-role rate tables, 39 columns, TH SarabunPSK font |
-| `scheduleTableExport.ts` | `exportScheduleTable` | Week-grid calendar, colored cells, landscape |
-| `signSheetExport.ts` | `exportSignSheet` | 7 shift configs, 3-party sign-off columns |
+
+| File                     | Function                  | Description                                          |
+| ------------------------ | ------------------------- | ---------------------------------------------------- |
+| `excelExport.ts`         | `exportEvidenceExcel`     | 5 sheets, uses `original_user_id`, Thai Baht text    |
+| `excelExport.ts`         | `exportCompensationExcel` | Per-role rate tables, 39 columns, TH SarabunPSK font |
+| `scheduleTableExport.ts` | `exportScheduleTable`     | Week-grid calendar, colored cells, landscape         |
+| `signSheetExport.ts`     | `exportSignSheet`         | 7 shift configs, 3-party sign-off columns            |
 
 ### Export Access Control
+
 - **ตารางเวร Excel** (`ScheduleTableExportButton`): Admin and Sub-Admin can export even before publishing. Regular staff must wait for the schedule to be published.
 - **ใบเบิกค่าตอบแทน / ใบหลักฐาน**: Requires the month to be published for the user's role.
 
@@ -381,11 +451,13 @@ viewRoleGroup: UserRole
 ## PWA & Push Notifications
 
 ### Service Worker (`public/sw.js`)
+
 - Handles `push` event → show notification
 - Handles `notificationclick` → focus/open app
 - No offline caching
 
 ### Push flow
+
 ```ts
 // Client
 subscribeToPush(userId)           // lib/pushNotifications.ts
@@ -397,11 +469,12 @@ sendPushToUsers(ids[], payload)
 ```
 
 ### Cron Jobs (`.github/workflows/cron.yml`)
-| Schedule (UTC) | Bangkok | Job |
-|----------------|---------|-----|
-| 23:00 | 06:00 | Morning reminders — today's shifts (ยกเว้นรุ่งอรุณ) |
-| 09:00 | 16:00 | Evening reminders — tomorrow's all shifts |
-| 21:00 | 04:00 | Cleanup — old swap_requests (>28 days), notifications, chain-hops |
+
+| Schedule (UTC) | Bangkok | Job                                                               |
+| -------------- | ------- | ----------------------------------------------------------------- |
+| 23:00          | 06:00   | Morning reminders — today's shifts (ยกเว้นรุ่งอรุณ)               |
+| 09:00          | 16:00   | Evening reminders — tomorrow's all shifts                         |
+| 21:00          | 04:00   | Cleanup — old swap_requests (>28 days), notifications, chain-hops |
 
 Cron jobs call `GET /api/cron/...` with `Authorization: Bearer CRON_SECRET`.
 Bangkok timezone is handled via `Intl.DateTimeFormat` with `'Asia/Bangkok'` zone.
@@ -412,21 +485,25 @@ Bangkok timezone is handled via `Intl.DateTimeFormat` with `'Asia/Bangkok'` zone
 
 ```ts
 // Client-side (browser)
-import { supabase } from '@/lib/supabase'
-supabase.from('shifts').select('*, department:departments(name)').eq('user_id', id)
+import { supabase } from "@/lib/supabase";
+supabase
+  .from("shifts")
+  .select("*, department:departments(name)")
+  .eq("user_id", id);
 
 // Server-side (API routes)
-import { createSupabaseServer } from '@/lib/supabaseServer'
-const supabase = createSupabaseServer()
+import { createSupabaseServer } from "@/lib/supabaseServer";
+const supabase = createSupabaseServer();
 
 // Service role (bypass RLS)
-import { createClient } from '@supabase/supabase-js'
-const supabase = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+import { createClient } from "@supabase/supabase-js";
+const supabase = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 ```
 
 Supabase Realtime subscriptions are set up per-month in `useShifts` to refresh on changes to `shifts`, `swap_requests`, and `published_months`.
 
 ### Manual Refresh
+
 - **Header refresh button** (blue): calls `refetch()` + `fetchNotifications()` + `fetchSwaps()` in parallel — refreshes shifts, notifications, and swap requests
 - **NotificationsPanel refresh button** (purple, inside panel header): calls `fetchNotifications()` + `fetchSwaps()` — refreshes notification/swap data without reloading shifts
 
@@ -435,33 +512,37 @@ Supabase Realtime subscriptions are set up per-month in `useShifts` to refresh o
 ## Coding Conventions
 
 ### Naming
+
 - `camelCase` — functions, variables, props
 - `PascalCase` — components, interfaces, types
 - `CONSTANT_CASE` — maps/labels (`DEPT_COLORS`, `ROLE_LABELS`, `SHIFT_MINUTES`)
 - Thai text for all UI-facing strings
 
 ### Component conventions
+
 - Default export, PascalCase filename
 - Types defined in `lib/types.ts`, not colocated
 - API routes: `app/api/.../route.ts` (Next.js App Router)
 
 ### Error handling
+
 ```ts
 // API
-return NextResponse.json({ error: 'message' }, { status: 400 })
+return NextResponse.json({ error: "message" }, { status: 400 });
 
 // Client
-toast.error()          // transient errors (sonner)
-Swal.fire()            // confirmations (sweetalert2)
+toast.error(); // transient errors (sonner)
+Swal.fire(); // confirmations (sweetalert2)
 ```
 
 ### Dates
+
 ```ts
-import { format } from 'date-fns'
-import { th } from 'date-fns/locale'
-format(date, 'd MMMM yyyy', { locale: th })  // "15 เมษายน 2569"
+import { format } from "date-fns";
+import { th } from "date-fns/locale";
+format(date, "d MMMM yyyy", { locale: th }); // "15 เมษายน 2569"
 // Thai Buddhist era: พ.ศ. = ค.ศ. + 543
-formatThaiMonth(year, month)  // "เมษายน 2569"
+formatThaiMonth(year, month); // "เมษายน 2569"
 ```
 
 ---
@@ -499,20 +580,20 @@ npm run lint   # ESLint
 
 ## Key Files Quick Reference
 
-| File | Purpose |
-|------|---------|
-| `lib/types.ts` | All types, constants, role helpers, shift config, colors |
-| `lib/utils.ts` | Calendar grid, overlap detection, `cn()`, Thai date helpers |
-| `lib/session.ts` | JWT sign/verify, cookie management |
-| `middleware.ts` | Route protection + rolling JWT refresh |
-| `app/calendar/page.tsx` | Main page — all state, modal orchestration |
-| `hooks/useShifts.ts` | All 4 core hooks (useShifts, useSwapRequests, useNotifications, useCurrentUser) + Realtime |
-| `app/api/swap/accept/route.ts` | Swap logic: collision check + notify + exchange |
-| `app/api/shifts/upload/route.ts` | Excel parse + shift code mapping + upsert |
-| `app/api/cron/shift-reminders/route.ts` | Scheduled push notification logic |
-| `lib/excelExport.ts` | Evidence + compensation exports (5 sheets each) |
-| `lib/scheduleTableExport.ts` | Schedule table Excel (week-grid) |
-| `lib/signSheetExport.ts` | Swap sign-off sheets (7 configs) |
-| `components/calendar/MyCalendarGrid.tsx` | "เวรของฉัน" calendar — pill badge rendering |
-| `components/swap/SwapModal.tsx` | Swap/transfer/cover modal with mini calendar |
-| `components/calendar/AdminBackupModal.tsx` | Data backup/restore operations |
+| File                                       | Purpose                                                                                    |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `lib/types.ts`                             | All types, constants, role helpers, shift config, colors                                   |
+| `lib/utils.ts`                             | Calendar grid, overlap detection, `cn()`, Thai date helpers                                |
+| `lib/session.ts`                           | JWT sign/verify, cookie management                                                         |
+| `middleware.ts`                            | Route protection + rolling JWT refresh                                                     |
+| `app/calendar/page.tsx`                    | Main page — all state, modal orchestration                                                 |
+| `hooks/useShifts.ts`                       | All 4 core hooks (useShifts, useSwapRequests, useNotifications, useCurrentUser) + Realtime |
+| `app/api/swap/accept/route.ts`             | Swap logic: collision check + notify + exchange                                            |
+| `app/api/shifts/upload/route.ts`           | Excel parse + shift code mapping + upsert                                                  |
+| `app/api/cron/shift-reminders/route.ts`    | Scheduled push notification logic                                                          |
+| `lib/excelExport.ts`                       | Evidence + compensation exports (5 sheets each)                                            |
+| `lib/scheduleTableExport.ts`               | Schedule table Excel (week-grid)                                                           |
+| `lib/signSheetExport.ts`                   | Swap sign-off sheets (7 configs)                                                           |
+| `components/calendar/MyCalendarGrid.tsx`   | "เวรของฉัน" calendar — pill badge rendering                                                |
+| `components/swap/SwapModal.tsx`            | Swap/transfer/cover modal with mini calendar                                               |
+| `components/calendar/AdminBackupModal.tsx` | Data backup/restore operations                                                             |

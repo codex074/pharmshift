@@ -33,14 +33,15 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
     switch (c) {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
+      case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
+      case 'ext': return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: '' };
       case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
       case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
       case 'รh':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
       case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
-    if (/^m[1-3]$/.test(c))   return { dept: 'MED',  type: 'เช้า',  position: c };
+    if (/^m[1-2]$/.test(c))   return { dept: 'MED',  type: 'เช้า',  position: c };
     if (/^s[1-2]$/.test(c))   return { dept: 'SURG', type: 'เช้า',  position: c };
-    if (/^บm[1-2]$/.test(c))  return { dept: 'MED',  type: 'บ่าย', position: c };
     if (/^smc[1-2]$/.test(c)) return { dept: 'SMC',  type: 'บ่าย', position: c };
   }
 

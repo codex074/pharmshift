@@ -7,11 +7,12 @@ import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
+// ── Shared border / layout helpers ─────────────────────────────────────────
 const BORDER = 'border-gray-200';
-const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
 const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+const DAY_GRID_ROWS = 'grid-rows-[repeat(7,_2.75rem)]';
 
-// ── Shift-time colour palettes (shared with CalendarGrid) ───────────
+// ── Shift-time colour palettes ─────────────────────────────────
 const SHIFT_HDR = {
   rung:    'bg-[#FFCA72] text-amber-900  border-[#FFCA72]',
   chao:    'bg-[#9FDCE0] text-teal-900   border-[#9FDCE0]',
@@ -28,7 +29,6 @@ const CELL_BG = {
   plain: 'bg-white',
 } as const;
 
-// Per-weekday header colours (Sun=0 … Sat=6)
 const DOW_HDR: Record<number, string> = {
   0: 'bg-[#F3828A] text-red-900',
   1: 'bg-[#FEE66A] text-yellow-900',
@@ -39,11 +39,13 @@ const DOW_HDR: Record<number, string> = {
   6: 'bg-[#D0AEEF] text-purple-900',
 };
 
-function hdrPt(palette: keyof typeof SHIFT_HDR, extra = '') {
+function hdr(palette: keyof typeof SHIFT_HDR, extra = '') {
   return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
 }
 
-const nameCellStyle = "bg-white cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight flex flex-wrap content-center items-center justify-center h-full w-full p-0 [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0";
+function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
+  return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
+}
 
 interface CalendarGridProps {
   year: number;
@@ -66,24 +68,28 @@ interface CalendarGridProps {
 }
 
 export function PharmacyTechCalendarGrid({
-  year, month, shifts, holidays, prevMonthLastDayShifts, currentUser, onDayClick, onShiftClick, viewMode,
+  year, month, shifts, holidays, prevMonthLastDayShifts, currentUser, onDayClick, onShiftClick,
   isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift,
   pendingAdds, onAddShift, onRemovePendingAdd
 }: CalendarGridProps) {
   const weeks = buildCalendarWeeks(year, month, shifts, holidays, prevMonthLastDayShifts);
 
-  const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd, roleFilter: 'pharmacy_technician' };
+  const ctx: RenderContext = {
+    currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift,
+    onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd,
+    roleFilter: 'pharmacy_technician',
+  };
 
   return (
     <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-lg bg-white">
-      <div className="min-w-[1240px] select-none">
+      <div className="min-w-[1000px] select-none">
 
-        {/* Header Row */}
+        {/* Header Row — day names */}
         <div className="grid grid-cols-7">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
               'py-2.5 text-center text-sm font-bold tracking-wide',
-              i < 6 && 'border-r border-white/20',
+              i < 6 ? 'border-r border-white/20' : '',
               DOW_HDR[i],
               i === 0 && 'rounded-tl-2xl',
               i === 6 && 'rounded-tr-2xl',
@@ -101,17 +107,23 @@ export function PharmacyTechCalendarGrid({
                 if (day.shifts.length === 0) {
                   return <div key={di} className={cn('bg-gray-50/50', di < 6 && 'border-r border-slate-400')} />;
                 }
+                const dow = day.date.getDay();
+                const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
                 const prevCtx: RenderContext = { ...ctx, isEditMode: false, pendingDeletes: undefined, pendingEdits: undefined, pendingAdds: undefined };
                 return (
                   <div key={di} className={cn(
                     di < 6 && 'border-r border-slate-400',
                     'relative opacity-40 pointer-events-none',
                   )}>
-                    <DayGrid day={day} onDayClick={() => {}} ctx={prevCtx} />
+                    { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={() => {}} ctx={prevCtx} /> :
+                      (dow === 5) ? <FridayGrid day={day} onDayClick={() => {}} ctx={prevCtx} /> :
+                      <MonThuGrid day={day} onDayClick={() => {}} ctx={prevCtx} />
+                    }
                   </div>
                 );
               }
               const dow = day.date.getDay();
+              const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
 
               return (
                 <div key={di} className={cn(
@@ -120,7 +132,10 @@ export function PharmacyTechCalendarGrid({
                   day.isToday && 'bg-violet-50/40 z-10'
                 )}>
                   {day.isToday && <div className="absolute inset-0 border-2 border-violet-500 z-50 pointer-events-none rounded-sm shadow-[inset_0_0_12px_rgba(124,58,237,.12)] [.exporting-pdf_&]:hidden" />}
-                  <DayGrid day={day} onDayClick={onDayClick} ctx={ctx} />
+                  { (isWeekendOrHoliday) ? <WeekendGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
+                    (dow === 5) ? <FridayGrid day={day} onDayClick={onDayClick} ctx={ctx} /> :
+                    <MonThuGrid day={day} onDayClick={onDayClick} ctx={ctx} />
+                  }
                 </div>
               );
             })}
@@ -130,16 +145,6 @@ export function PharmacyTechCalendarGrid({
       </div>
     </div>
   );
-}
-
-// ─── UTILS ──────────────────────────────────────────────────────────
-
-function getUserName(shift: Shift): string {
-  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.f_name || (shift as any).user_f_name || '';
-}
-
-function getDeptName(shift: Shift): string {
-  return (shift as any).department_name || shift.department?.name || '';
 }
 
 interface RenderContext {
@@ -156,6 +161,14 @@ interface RenderContext {
   roleFilter?: string;
 }
 
+function getUserName(shift: Shift): string {
+  return (shift as any).user_nickname || shift.user?.nickname || shift.user?.f_name || (shift as any).user_f_name || '';
+}
+
+function getDeptName(shift: Shift): string {
+  return (shift as any).department_name || shift.department?.name || '';
+}
+
 function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
   const isPendingDelete = ctx.pendingDeletes?.has(s.id);
@@ -165,20 +178,20 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
 
   if (ctx.isEditMode) {
     return (
-      <div 
-        key={s.id} 
+      <div
+        key={s.id}
         className={cn(
-          "flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5",
+          "flex items-center justify-between w-[90%] px-1 py-0.5 rounded border mb-0.5",
           isPendingDelete ? "bg-red-50 border-red-200" : pendingSub ? "bg-indigo-50 border-indigo-200" : "bg-gray-50 border-gray-200 hover:border-gray-300 pointer-events-auto"
         )}
         onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
       >
-        <span className={cn("text-[10px] truncate flex-1 leading-tight", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+        <span className={cn("text-[10px] truncate max-w-[70%]", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
           {displayName}
         </span>
-        <button 
-          onClick={(e) => { e.stopPropagation(); if (ctx.onToggleDelete) ctx.onToggleDelete(s.id); }}
-          className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center border border-gray-300 bg-white"
+        <button
+          onClick={(e) => { e.stopPropagation(); if (ctx.onToggleDelete) ctx.onToggleDelete(s.id) }}
+          className="w-3 h-3 rounded flex items-center justify-center border border-gray-300 bg-white"
         >
           {isPendingDelete && <div className="w-1.5 h-1.5 bg-red-500 rounded-sm" />}
         </button>
@@ -193,8 +206,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         className="block text-center w-full leading-[1.1] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
         onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
       >
-        <span
-          className="inline-flex items-center gap-0.5 text-white font-bold text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all hover:shadow-lg ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none"
+        <span className="inline-flex items-center gap-0.5 text-white font-bold text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all hover:shadow-lg ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none"
           style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
         >
           {displayName}
@@ -203,7 +215,6 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     );
   }
 
-  /* Other people's shifts — clickable for swap */
   return (
     <span
       key={s.id}
@@ -215,79 +226,115 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   );
 }
 
-function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string | undefined, ctx: RenderContext) {
-  const matching = shifts.filter(s => 
-    s.shift_type === shiftType && 
-    (!deptName || getDeptName(s) === deptName)
+function renderPendingAddBadge(add: PendingAdd, globalIndex: number, ctx: RenderContext) {
+  return (
+    <div
+      key={`pending-add-${globalIndex}`}
+      className="flex items-center justify-between w-[90%] px-1 py-0.5 rounded border mb-0.5 bg-green-50 border-green-300 pointer-events-auto"
+    >
+      <span className="text-[10px] truncate max-w-[70%] text-green-800 font-bold">
+        {add.user.nickname || add.user.f_name}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(globalIndex); }}
+        className="w-3 h-3 rounded flex items-center justify-center text-red-500 hover:text-red-700 font-bold text-[10px] leading-none"
+      >
+        ×
+      </button>
+    </div>
   );
-  
-    if (matching.length === 0) return null;
-
-  return matching.map((s) => renderShiftBadge(s, ctx));
 }
 
-function SlotContainer({ shifts, shiftType, deptName, count, ctx, bgColor, hoverColor, hideInnerBorders, dateStr }: { shifts: Shift[], shiftType: ShiftType, count: number, deptName?: string, ctx: RenderContext, bgColor: string, hoverColor: string, hideInnerBorders?: boolean, dateStr?: string }) {
-  const matching = shifts.filter(s => 
-    s.shift_type === shiftType && 
-    (!deptName || getDeptName(s) === deptName)
-  );
-  
-  if (shiftType === 'รุ่งอรุณ') {
-    const order: Record<string, number> = { 'OPD': 1, 'ER': 2, 'HIV': 3 };
-    matching.sort((a, b) => (order[a.position || ''] || 99) - (order[b.position || ''] || 99));
-  } else {
-    matching.sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
-  }
-  
-  // Get pending adds for this cell (filtered by role to prevent cross-grid contamination)
-  const cellPendingAdds = dateStr && ctx.pendingAdds ? ctx.pendingAdds.filter(
-    (add) => add.date === dateStr && add.shift_type === shiftType && (!deptName || add.department === deptName) && (!ctx.roleFilter || add.user.role === ctx.roleFilter)
-  ) : [];
-
-  const slots = Array.from({ length: Math.max(count, matching.length + cellPendingAdds.length) });
-  // Only show add button if there are empty slots remaining
-  const totalOccupied = matching.length + cellPendingAdds.length;
+function renderAddButton(dateStr: string, shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string) {
+  if (!ctx.isEditMode || !ctx.onAddShift) return null;
+  const label = position ? `+${position}` : '+';
   return (
-    <div className="flex flex-col h-full w-full">
-      {slots.map((_, i) => {
-        const s = matching[i];
-        // Check if this slot should show a pending add
-        const pendingIdx = i - matching.length;
-        const pendingAdd = pendingIdx >= 0 && pendingIdx < cellPendingAdds.length ? cellPendingAdds[pendingIdx] : null;
-        const globalPendingIdx = pendingAdd && ctx.pendingAdds ? ctx.pendingAdds.indexOf(pendingAdd) : -1;
-        
+    <button
+      onClick={(e) => {
+        e.stopPropagation();
+        ctx.onAddShift!({ date: dateStr, shift_type: shiftType, department: deptName, position: position || '' });
+      }}
+      className={cn(
+        "bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-900 flex items-center justify-center font-bold transition-all mt-0.5 pointer-events-auto border border-green-300 shadow-[0_2px_0_0_rgba(34,197,94,1)] active:shadow-[0_0_0_0_rgba(34,197,94,1)] active:translate-y-[2px] -translate-y-[1px]",
+        position ? "px-1.5 h-6 rounded-lg text-[9px]" : "w-6 h-6 rounded-full text-base"
+      )}
+      title={`เพิ่มเวร${position ? ` (${position})` : ''}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function renderPendingAddsForCell(dateStr: string, shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string) {
+  if (!ctx.pendingAdds) return null;
+  return ctx.pendingAdds.map((add, idx) => {
+    if (
+      add.date === dateStr &&
+      add.shift_type === shiftType &&
+      add.department === deptName &&
+      (add.position || '') === (position || '') &&
+      (!ctx.roleFilter || add.user.role === ctx.roleFilter)
+    ) {
+      return renderPendingAddBadge(add, idx, ctx);
+    }
+    return null;
+  });
+}
+
+function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string, dateStr?: string) {
+  const matching = shifts.filter(s =>
+    s.shift_type === shiftType &&
+    getDeptName(s) === deptName &&
+    (!position || (s as any).position === position)
+  );
+
+  matching.sort((a, b) => ((a as any).position || '').localeCompare((b as any).position || '', 'th', { numeric: true }));
+
+  const badges = matching.map((s) => renderShiftBadge(s, ctx));
+  const pendingBadges = dateStr ? renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, position) : null;
+  const hasPendingAdds = pendingBadges?.some(Boolean);
+
+  let addBtn: React.ReactNode = null;
+  if (dateStr && matching.length === 0 && !hasPendingAdds) {
+    addBtn = renderAddButton(dateStr, shiftType, deptName, ctx, position);
+  }
+
+  if (badges.length === 0 && !hasPendingAdds && !addBtn) return null;
+
+  return (
+    <>
+      {badges}
+      {pendingBadges}
+      {addBtn}
+    </>
+  );
+}
+
+function renderPersonalShift(s: Shift | undefined, ctx: RenderContext) {
+  if (!s) return null;
+  return renderShiftBadge(s, ctx);
+}
+
+function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext, gridArea = '5 / 1 / 8 / 2') {
+  const dateStr = format(day.date, 'yyyy-MM-dd');
+  const positions = ['OPD', 'ER', 'HIV'];
+
+  return (
+    <div className="flex flex-col overflow-hidden [.exporting-pdf_&]:overflow-visible relative" style={{ gridArea }}>
+      {positions.map((pos, idx) => {
+        const realShift = day.shifts.find(s => s.shift_type === 'รุ่งอรุณ' && getDeptName(s) === 'รุ่งอรุณ' && (s as any).position === pos);
+        const pendingEntry = (ctx.pendingAdds || [])
+          .map((add, globalIdx) => ({ add, globalIdx }))
+          .find(({ add: a }) =>
+            a.date === dateStr && a.shift_type === 'รุ่งอรุณ' && a.department === 'รุ่งอรุณ' && (a.position || '') === pos &&
+            (!ctx.roleFilter || a.user.role === ctx.roleFilter)
+          );
+        const isFilled = !!realShift || !!pendingEntry;
         return (
-          <div key={i} className={cn(
-            "flex-1 border-b border-gray-200 flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 overflow-hidden [.exporting-pdf_&]:overflow-visible min-h-[1.5rem]",
-            bgColor, `hover:${hoverColor}`,
-            (hideInnerBorders || i === slots.length - 1) ? "border-b-0" : ""
-          )}>
-            {s && renderShiftBadge(s, ctx)}
-            {pendingAdd && (
-              <div className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto">
-                <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
-                  {pendingAdd.user.nickname || pendingAdd.user.f_name}
-                </span>
-                <button
-                  onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(globalPendingIdx); }}
-                  className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center text-red-500 hover:text-red-700 font-bold text-[10px] leading-none"
-                >
-                  ×
-                </button>
-              </div>
-            )}
-            {!s && !pendingAdd && ctx.isEditMode && ctx.onAddShift && dateStr && deptName && i < count && totalOccupied < count && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  ctx.onAddShift!({ date: dateStr, shift_type: shiftType, department: deptName, position: '' });
-                }}
-                className="w-6 h-6 rounded-full bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-900 flex items-center justify-center text-base font-bold transition-all pointer-events-auto border border-green-300 shadow-[0_2px_0_0_rgba(34,197,94,1)] active:shadow-[0_0_0_0_rgba(34,197,94,1)] active:translate-y-[2px] -translate-y-[1px]"
-                title="เพิ่มเวร"
-              >
-                +
-              </button>
-            )}
+          <div key={idx} className={cn(nameCell('rung'), 'flex-col')}>
+            {realShift && renderPersonalShift(realShift, ctx)}
+            {pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIdx, ctx)}
+            {!isFilled && renderAddButton(dateStr, 'รุ่งอรุณ', 'รุ่งอรุณ', ctx, pos)}
           </div>
         );
       })}
@@ -295,146 +342,178 @@ function SlotContainer({ shifts, shiftType, deptName, count, ctx, bgColor, hover
   );
 }
 
+// Build ordered 2-slot list for a single (shiftType, dept) combo so empty slots show '+'.
+type Slot =
+  | { type: 'real'; shift: Shift }
+  | { type: 'pending'; add: PendingAdd; globalIdx: number }
+  | null;
+
+function buildTwoSlots(day: CalendarDay, ctx: RenderContext, shiftType: ShiftType, deptName: string): [Slot, Slot] {
+  const dateStr = format(day.date, 'yyyy-MM-dd');
+  const matching = day.shifts.filter(s => s.shift_type === shiftType && getDeptName(s) === deptName);
+  matching.sort((a, b) => ((a as any).position || '').localeCompare((b as any).position || '', 'th', { numeric: true }));
+
+  const pendingItems = (ctx.pendingAdds || [])
+    .map((add, globalIdx) => ({ add, globalIdx }))
+    .filter(({ add: a }) =>
+      a.date === dateStr && a.shift_type === shiftType && a.department === deptName && (a.position || '') === '' &&
+      (!ctx.roleFilter || a.user.role === ctx.roleFilter)
+    );
+
+  const slot0: Slot = matching[0]
+    ? { type: 'real', shift: matching[0] }
+    : pendingItems[0]
+    ? { type: 'pending', ...pendingItems[0] }
+    : null;
+
+  const pendingConsumed = matching[0] ? 0 : pendingItems[0] ? 1 : 0;
+
+  const slot1: Slot = matching[1]
+    ? { type: 'real', shift: matching[1] }
+    : pendingItems[pendingConsumed]
+    ? { type: 'pending', ...pendingItems[pendingConsumed] }
+    : null;
+
+  return [slot0, slot1];
+}
+
 // ─── TEMPLATES ──────────────────────────────────────────────────────
 
-function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
+function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dateStr = format(day.date, 'yyyy-MM-dd');
   const dow = day.date.getDay();
-  const isWeekendOrHoliday = dow === 0 || dow === 6 || day.isHoliday;
+  const isSundayOrHoliday = dow === 0 || day.isHoliday;
 
-  // Render internal borders manually in the flex layout
-  if (isWeekendOrHoliday) {
-    const isSunOrHoliday = dow === 0 || day.isHoliday;
-    return (
-      <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
-        {/* Row 1: Date Header */}
-        <div className={cn("flex border-b border-slate-400 h-9 font-bold text-[21px] items-center justify-center",
-          isSunOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700')}>
-          {dayNum}
-        </div>
+  const [surgSlot0, surgSlot1] = buildTwoSlots(day, ctx, 'เช้า', 'SURG');
+  const [medSlot0, medSlot1]   = buildTwoSlots(day, ctx, 'เช้า', 'MED');
 
-        {/* Column Headers + Body Wrapper */}
-        <div className="flex flex-1 flex-row relative min-h-[200px]">
-          {/* LEFT SECTION (w-50%) */}
-          <div className="w-[50%] flex flex-row border-r border-slate-400">
-            {/* Surg + ER Column (w-50%) */}
-            <div className="w-[50%] flex flex-col border-r border-gray-200">
-              {/* Surg (2 slots, h-60%) */}
-              <div className="h-[60%] flex flex-col border-b border-gray-200">
-                <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>Surg</div>
-                <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" count={2} deptName="SURG" ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
-                </div>
-              </div>
-              {/* ER (1 slot, h-40%) */}
-              <div className="h-[40%] flex flex-col">
-                <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>ER</div>
-                <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="เช้า" deptName="ER" count={1} ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" dateStr={dateStr} />
-                </div>
-              </div>
-            </div>
-            {/* MED Column (3 slots, w-50%) */}
-            <div className="w-[50%] flex flex-col">
-              <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.chao)}>MED</div>
-              <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="เช้า" count={3} deptName="MED" ctx={ctx} bgColor={CELL_BG.chao} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT SECTION (w-50%) */}
-          <div className="w-[50%] flex flex-col">
-            {/* Top part: บ่าย (h-60%) */}
-            <div className="h-[60%] flex flex-row border-b border-gray-200">
-              {/* บ่ายMED (2 slots) */}
-              <div className="w-[50%] flex flex-col border-r border-gray-200">
-                <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายMED</div>
-                <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
-                </div>
-              </div>
-              {/* บ่ายER (1 slot) */}
-              <div className="w-[50%] flex flex-col">
-                <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายER</div>
-                <div className="flex-1">
-                  <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
-                </div>
-              </div>
-            </div>
-            {/* Bottom part: ดึก (h-40%) */}
-            <div className="h-[40%] flex flex-col">
-              <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.duek)}>ดึก</div>
-              <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.duek} hoverColor="" dateStr={dateStr} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    );
-  }
-
-  // Monday - Friday layout
-  const rungAroonSlots = 3;
+  const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
 
   return (
-    <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
-      {/* Row 1: Date Header */}
-      <div className="flex border-b border-slate-400 h-9 bg-slate-100 items-center justify-center font-bold text-[21px] text-slate-700">
-        {dayNum}
-      </div>
+    <div className={cn("grid grid-cols-5 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
 
-      {/* Column Headers + Body Wrapper min height to establish proportion */}
-      <div className="flex flex-1 flex-row min-h-[200px]">
-        {/* LEFT SECTION (w-33.333%) */}
-        <div className="w-[33.333%] flex flex-col border-r border-slate-400">
-          {/* รุ่งอรุณ (h-60%) */}
-          <div className="h-[60%] flex flex-col border-b border-gray-200">
-            <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.rung)}>รุ่งอรุณ</div>
-            <div className="flex-1">
-              <SlotContainer shifts={day.shifts} shiftType="รุ่งอรุณ" deptName="รุ่งอรุณ" count={rungAroonSlots} ctx={ctx} bgColor={CELL_BG.rung} hoverColor="" dateStr={dateStr} />
-            </div>
-          </div>
-          {/* smc - 2 slots (h-40%) */}
-          <div className="h-[40%] flex flex-col">
-            <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>SMC</div>
-            <div className="flex-1">
-               <SlotContainer shifts={day.shifts} shiftType="บ่าย" deptName="SMC" count={2} ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
-            </div>
-          </div>
+      {/* ROW 1 — section labels + date number */}
+      <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>ER</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
+      <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), dateBg, 'text-[20px] font-black')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
+
+      {/* ROW 2-7 col 1 — เช้า ER (spans full left column after moving โครงการ out) */}
+      <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
+
+      {/* ROW 2 & 3 — morning SURG / MED + afternoon cells */}
+      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+        {/* SURG slot 1 */}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
+          {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
+          {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
+          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
-
-        {/* RIGHT SECTION (w-66.666%) */}
-        <div className="w-[66.666%] flex flex-col">
-          {/* Top part: บ่าย (h-60%) */}
-          <div className="h-[60%] flex flex-row border-b border-gray-200">
-            {/* บ่ายMED */}
-            <div className="w-[50%] flex flex-col border-r border-gray-200">
-              <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายMED</div>
-              <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={2} deptName="MED" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" hideInnerBorders={true} dateStr={dateStr} />
-              </div>
-            </div>
-            {/* บ่ายER */}
-            <div className="w-[50%] flex flex-col">
-              <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.bai)}>บ่ายER</div>
-              <div className="flex-1">
-                <SlotContainer shifts={day.shifts} shiftType="บ่าย" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.bai} hoverColor="" dateStr={dateStr} />
-              </div>
-            </div>
-          </div>
-          {/* Bottom part: ดึก (h-40%) */}
-          <div className="h-[40%] flex flex-col">
-            <div className={cn("h-6 border-b border-gray-200 font-bold text-[11px] xl:text-xs flex items-center justify-center", SHIFT_HDR.duek)}>ดึก</div>
-            <div className="flex-1">
-              <SlotContainer shifts={day.shifts} shiftType="ดึก" count={1} deptName="ER" ctx={ctx} bgColor={CELL_BG.duek} hoverColor="" dateStr={dateStr} />
-            </div>
-          </div>
+        {/* SURG slot 2 */}
+        <div className={cn(nameCell('chao'), 'flex-col')}>
+          {surgSlot1?.type === 'real'    && renderPersonalShift(surgSlot1.shift, ctx)}
+          {surgSlot1?.type === 'pending' && renderPendingAddBadge(surgSlot1.add, surgSlot1.globalIdx, ctx)}
+          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
         </div>
       </div>
+      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 3 / 4 / 4' }}>
+        {/* MED slot 1 (plain — no D/C) */}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
+          {medSlot0?.type === 'real'    && renderPersonalShift(medSlot0.shift, ctx)}
+          {medSlot0?.type === 'pending' && renderPendingAddBadge(medSlot0.add, medSlot0.globalIdx, ctx)}
+          {!medSlot0                    && renderAddButton(dateStr, 'เช้า', 'MED', ctx)}
+        </div>
+        {/* MED slot 2 */}
+        <div className={cn(nameCell('chao'), 'flex-col')}>
+          {medSlot1?.type === 'real'    && renderPersonalShift(medSlot1.shift, ctx)}
+          {medSlot1?.type === 'pending' && renderPendingAddBadge(medSlot1.add, medSlot1.globalIdx, ctx)}
+          {!medSlot1                    && renderAddButton(dateStr, 'เช้า', 'MED', ctx)}
+        </div>
+      </div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 4 / 4 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+
+      {/* ROW 4 — โครงการ (replaces Chemo) / ดึก labels */}
+      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>โครงการ</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 6' }}>ดึก</div>
+
+      {/* ROW 5-7 — โครงการ (1 slot) / ดึก ER */}
+      <div className={nameCell('chao')} style={{ gridArea: '5 / 2 / 8 / 3' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+
+    </div>
+  );
+}
+
+function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
+  const dayNum = format(day.date, 'd');
+  const dateStr = format(day.date, 'yyyy-MM-dd');
+  const [smcSlot0, smcSlot1] = buildTwoSlots(day, ctx, 'บ่าย', 'SMC');
+
+  return (
+    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
+
+      {/* ROW 1 */}
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 3' }}>SMC</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 3 / 2 / 4' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+
+      {/* ROW 2 & 3 */}
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      {/* SMC slot 1 */}
+      <div className={cn(nameCell('bai'), 'flex-col border-b border-gray-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
+        {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
+        {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
+        {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+      </div>
+      {/* SMC slot 2 */}
+      <div className={cn(nameCell('bai'), 'flex-col')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
+        {smcSlot1?.type === 'real'    && renderPersonalShift(smcSlot1.shift, ctx)}
+        {smcSlot1?.type === 'pending' && renderPendingAddBadge(smcSlot1.add, smcSlot1.globalIdx, ctx)}
+        {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+      </div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+
+      {/* ROW 4 */}
+      <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
+
+      {/* ROW 5-7 */}
+      {renderRungAroonBlocks(day, ctx)}
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+
+    </div>
+  );
+}
+
+function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
+  const dayNum = format(day.date, 'd');
+  const dateStr = format(day.date, 'yyyy-MM-dd');
+  return (
+    <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
+
+      {/* ROW 1 */}
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
+      <div className={hdr('bai')}     style={{ gridArea: '1 / 2 / 2 / 4' }}>บ่าย</div>
+      <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
+
+      {/* ROW 2 & 3 */}
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+
+      {/* ROW 4 */}
+      <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
+
+      {/* ROW 5-7 */}
+      {renderRungAroonBlocks(day, ctx)}
+      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+
     </div>
   );
 }
