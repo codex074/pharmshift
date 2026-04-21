@@ -417,7 +417,7 @@ function renderWeek(
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
+      merge(0, c3, 0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
 
       merge(1, c1, 2, c1, day.project, { font: nameFont });
