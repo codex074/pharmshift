@@ -47,6 +47,7 @@ interface SheetConfig {
   layout: Layout;
   getSubtype?: (s: Shift) => string;
   subtypeLabel?: string;
+  advanceDukDate?: boolean; // default true — set false to keep ดึก at original date
 }
 
 const SHEET_CONFIGS: SheetConfig[] = [
@@ -75,6 +76,7 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'with-subtype',
     getSubtype: (s) => s.shift_type,
     subtypeLabel: 'เวร',
+    advanceDukDate: false,
   },
   {
     name: 'โครงการ',
@@ -169,9 +171,8 @@ function buildGroups(
     const displayName = getDisplayName(userInfo, s);
     const role = userInfo?.role || s.user?.role || 'officer';
 
-    // เวรดึก ปฏิบัติงานถึง 08.30 ของวันถัดไป → แสดงวันที่ถัดไปในตาราง
     let effectiveDate = s.date;
-    if (s.shift_type === 'ดึก') {
+    if (s.shift_type === 'ดึก' && config.advanceDukDate !== false) {
       const d = new Date(s.date);
       d.setDate(d.getDate() + 1);
       effectiveDate = d.toISOString().slice(0, 10);
