@@ -349,10 +349,14 @@ export async function exportSignSheet(
       ws.mergeCells(r1, 12, r1 + 1, 12); // ตำแหน่ง2
       ws.mergeCells(r1, 13, r1, 15);     // ผู้ปฏิบัติงานจริง
 
+      const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+
       const groups = buildGroups(shifts, config, originalUserMap, usersMap);
       for (const grp of groups) {
         const startRow = ws.lastRow!.number + 1;
-        // Always exactly 2 rows per date: D/C then Cont
+        // Row 1: D/C  → เภสัช D/C + จพง. m1
+        // Row 2: Cont → เภสัช Cont + จพง. m2
+        // Row 3: จนท. → ชื่อ cell ทาสีดำ ไม่มีข้อความ
         const pairs: Array<[string, string, string]> = [
           ['D/C',  grp.pharm_dc[0]   || '', grp.pharm_techs[0] || ''],
           ['Cont', grp.pharm_cont[0] || '', grp.pharm_techs[1] || ''],
@@ -371,9 +375,17 @@ export async function exportSignSheet(
           styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
         });
 
-        // Merge date cols across the 2 rows
-        ws.mergeCells(startRow, 1, startRow + 1, 1);
-        ws.mergeCells(startRow, 10, startRow + 1, 10);
+        // Officer row — ตำแหน่ง cell เป็นสีดำ, ชื่อจนท. อยู่คอลัมน์ จนท.
+        const offVals = new Array(15).fill('');
+        offVals[4] = grp.officers[0] || '';
+        const offRow = ws.addRow(offVals);
+        styleDataRow(offRow, 15, new Set([1, 2, 9, 10, 11, 12]));
+        offRow.getCell(2).fill = blackFill;
+        offRow.getCell(12).fill = blackFill;
+
+        // Merge date cols across 3 rows
+        ws.mergeCells(startRow, 1, startRow + 2, 1);
+        ws.mergeCells(startRow, 10, startRow + 2, 10);
       }
 
       ws.views = [{ state: 'frozen', ySplit: 3 }];
