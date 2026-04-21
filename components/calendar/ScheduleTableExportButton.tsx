@@ -7,6 +7,12 @@ import { exportScheduleTable } from '@/lib/scheduleTableExport';
 import { exportMySchedule } from '@/lib/myScheduleExport';
 import type { Shift, Holiday, UserRole } from '@/lib/types';
 
+const ROLE_SHORT_LABEL: Partial<Record<UserRole, string>> = {
+  pharmacist: 'เภสัชกร',
+  pharmacy_technician: 'จพง',
+  officer: 'เจ้าหน้าที่',
+};
+
 interface Props {
   shifts: Shift[];
   holidays: Holiday[];
@@ -59,7 +65,7 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
         >
           <Lock className="w-3.5 h-3.5" />
           <span className="sm:hidden">ตารางเวร</span>
-          <span className="hidden sm:inline">ตารางเวร Excel</span>
+          <span className="hidden sm:inline">ตารางเวร {ROLE_SHORT_LABEL[roleGroup]} Excel</span>
         </button>
         {/* Tooltip */}
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50 pointer-events-none">
@@ -82,7 +88,7 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
       >
         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <span>📅</span>}
         <span className="sm:hidden">ตารางเวร</span>
-        <span className="hidden sm:inline">ตารางเวร Excel</span>
+        <span className="hidden sm:inline">ตารางเวร {ROLE_SHORT_LABEL[roleGroup]} Excel</span>
       </button>
 
       {/* Modal */}
@@ -99,7 +105,7 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
             <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-xl">📅</span>
-                <h3 className="text-base font-bold text-gray-900">Export ตารางเวร Excel</h3>
+                <h3 className="text-base font-bold text-gray-900">Export ตารางเวร {ROLE_SHORT_LABEL[roleGroup]} Excel</h3>
               </div>
               <button
                 onClick={() => setShowModal(false)}
