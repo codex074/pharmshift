@@ -12,7 +12,7 @@ import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 const BORDER = 'border-gray-200';
 const BORDER2 = 'border-gray-300';
 const cellStyle = `border-r border-b ${BORDER} flex items-center justify-center p-0.5 text-[11px] xl:text-xs sm:text-[11px] font-medium`;
-const nameTextStyle = "block text-center text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-[11px] font-medium w-full px-0.5 leading-[1.15] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+const nameTextStyle = "block text-center text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-[11px] font-medium w-full px-0.5 py-[2px] sm:py-[3px] leading-[1.28] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
 const DAY_GRID_ROWS = 'grid-rows-[repeat(7,_2.75rem)]';
 
 // ── Shift-time colour palettes ─────────────────────────────────
@@ -52,7 +52,7 @@ function hdr(palette: keyof typeof SHIFT_HDR, extra = '') {
 }
 
 function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
-  return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full p-1 min-h-[1.95rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
+  return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full px-1 py-1.5 min-h-[2.15rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
 }
 
 interface CalendarGridProps {
@@ -209,7 +209,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     return (
       <span
         key={s.id}
-        className="block text-center w-full leading-[1.1] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
+        className="block text-center w-full py-[2px] sm:py-[3px] leading-[1.28] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
         onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
       >
         <span className="inline-flex items-center gap-0.5 text-white font-bold text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all hover:shadow-lg ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none"
