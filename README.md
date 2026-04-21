@@ -52,11 +52,12 @@ PharmShift เป็น Progressive Web App (PWA) สำหรับจัดก
 - 📢 ประกาศตารางเวรรายเดือน (per-role publish flags)
 - 🗓 จัดการวันหยุดนักขัตฤกษ์
 - 👥 จัดการผู้ใช้งาน (เพิ่ม / แก้ไข / reset รหัสผ่าน / ตั้งค่า is_readonly, is_sub_admin)
-- 📊 ส่งออก Excel 4 รูปแบบ:
+- 📊 ส่งออก Excel 5 รูปแบบ:
   - ตารางเวรแบบปฏิทิน (schedule table) — ดาวน์โหลดได้ก่อนประกาศตาราง
-  - ใบหลักฐานค่าตอบแทน (evidence — ใช้ original_user_id)
-  - ใบเบิกค่าตอบแทน (compensation — 5 sheets, Thai Baht text)
-  - ใบลงชื่อแลกเวร (sign sheet — 7 configs)
+  - เวรของฉัน (personal schedule) — ปฏิทินเวรส่วนตัว สีตามวันในสัปดาห์
+  - ใบหลักฐานค่าตอบแทน (evidence — ใช้ original_user_id, แยกชื่อ-นามสกุล)
+  - ใบเบิกค่าตอบแทน (compensation — 5 sheets, Thai Baht text, แยกชื่อ-นามสกุล)
+  - ใบลงชื่อแลกเวร (sign sheet — รวม Chemo)
 - 💾 Backup / Restore ข้อมูล (AdminBackupModal)
 - 🧹 ส่ง push reminders แบบ manual (test cron endpoint)
 
@@ -264,7 +265,8 @@ app/
   api/              — API routes (REST, dynamic)
   calendar/         — หน้าหลัก (state + modal orchestration ~830 LOC)
 components/
-  calendar/         — 28 components (grids, modals, export buttons)
+  calendar/         — 26 components (grids, modals, export buttons)
+  ExcelExportButton.tsx, ExportButton.tsx, HelpGuideModal.tsx, UserProfileModal.tsx
   swap/             — SwapModal, NotificationsPanel
   layout/           — Header, Mobile nav
 hooks/
@@ -273,12 +275,14 @@ hooks/
   useIsMobile.ts    — viewport breakpoint
   useSwipeGesture.ts — touch swipe for month navigation
 lib/
-  types.ts          — Types + constants + role helpers
-  utils.ts          — Calendar grid, overlap detection, Thai dates
-  session.ts        — JWT helpers
-  excelExport.ts    — Compensation Excel (evidence + payment)
+  types.ts              — Types + constants + role helpers
+  utils.ts              — Calendar grid, overlap detection, Thai dates
+  session.ts            — JWT helpers
+  excelExport.ts        — Evidence + compensation Excel (split name columns)
   scheduleTableExport.ts — Schedule calendar Excel
-  signSheetExport.ts     — Sign-off sheets Excel (7 configs)
+  myScheduleExport.ts   — Personal schedule Excel (เวรของฉัน, สีตามวันในสัปดาห์)
+  signSheetExport.ts    — Sign-off sheets Excel (รวม Chemo)
+  deviceDetection.ts    — Server-side mobile user agent detection
 middleware.ts       — JWT auth + rolling refresh
 public/sw.js        — Service Worker (push notifications)
 supabase/migrations/— SQL schema
