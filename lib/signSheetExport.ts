@@ -38,7 +38,7 @@ function sortByRole(a: Shift, b: Shift) {
   return pa - pb;
 }
 
-type Layout = 'simple' | 'with-subtype' | 'chemo';
+type Layout = 'simple' | 'with-subtype' | 'chemo' | 'med-morning';
 
 interface SheetConfig {
   name: string;
@@ -60,9 +60,7 @@ const SHEET_CONFIGS: SheetConfig[] = [
     name: 'เช้า MED',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยาอายุรกรรม(Med)เช้า เดือน ${m} ${y}`,
     filter: (s) => s.shift_type === 'เช้า' && getDeptName(s) === 'MED',
-    layout: 'with-subtype',
-    getSubtype: (s) => s.position || '',
-    subtypeLabel: 'ตำแหน่ง',
+    layout: 'med-morning',
   },
   {
     name: 'เช้า SURG',
@@ -137,6 +135,8 @@ interface RowGroup {
   date: string;
   subtype?: string;
   pharmacists: string[];
+  pharm_dc: string[];
+  pharm_cont: string[];
   pharm_techs: string[];
   officers: string[];
   chemoNames: string[];
@@ -180,14 +180,19 @@ function buildGroups(
     const subtype = config.getSubtype ? config.getSubtype(s) : '';
     const key = config.layout === 'with-subtype'
       ? `${effectiveDate}__${subtype}`
-      : effectiveDate;
+      : effectiveDate; // med-morning and simple both group by date only
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_techs: [], officers: [], chemoNames: [] });
+      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_techs: [], officers: [], chemoNames: [] });
     }
     const grp = groupMap.get(key)!;
     if (config.layout === 'chemo') grp.chemoNames.push(displayName);
-    else if (role === 'pharmacist') grp.pharmacists.push(displayName);
+    else if (config.layout === 'med-morning' && role === 'pharmacist') {
+      const pos = s.position || '';
+      if (pos === 'D/C') grp.pharm_dc.push(displayName);
+      else if (pos === 'Cont') grp.pharm_cont.push(displayName);
+      else grp.pharmacists.push(displayName);
+    } else if (role === 'pharmacist') grp.pharmacists.push(displayName);
     else if (role === 'pharmacy_technician') grp.pharm_techs.push(displayName);
     else grp.officers.push(displayName);
   }
@@ -213,6 +218,12 @@ function applySheetColumns(ws: ExcelJS.Worksheet, hasSubtype: boolean) {
 
 function applyChemoSheetColumns(ws: ExcelJS.Worksheet) {
   ws.columns = [13, 13, 13, 13, 13, 13, 10, 10].map((width) => ({ width }));
+}
+
+// med-morning: 13 cols
+// 1=date, 2=D/C, 3=Cont, 4=จพง., 5=sign_DC, 6=sign_Cont, 7=sign_PT, 8=approve, 9=gap, 10=date2, 11=D/C, 12=Cont, 13=จพง.
+function applyMedMorningSheetColumns(ws: ExcelJS.Worksheet) {
+  ws.columns = [10, 14, 14, 14, 10, 10, 10, 10, 3, 10, 14, 14, 14].map((width) => ({ width }));
 }
 
 function styleHeaderRow(row: ExcelJS.Row, totalCols: number) {
@@ -250,7 +261,8 @@ export async function exportSignSheet(
   for (const config of SHEET_CONFIGS) {
     const hasSubtype = config.layout === 'with-subtype';
     const isChemo = config.layout === 'chemo';
-    const totalCols = isChemo ? 8 : hasSubtype ? 15 : 13;
+    const isMedMorning = config.layout === 'med-morning';
+    const totalCols = isChemo ? 8 : hasSubtype ? 15 : 13; // med-morning also 13
     const lastColLetter = isChemo ? 'H' : hasSubtype ? 'O' : 'M';
 
     const ws = workbook.addWorksheet(config.name, {
@@ -265,6 +277,7 @@ export async function exportSignSheet(
       },
     });
     if (isChemo) applyChemoSheetColumns(ws);
+    else if (isMedMorning) applyMedMorningSheetColumns(ws);
     else applySheetColumns(ws, hasSubtype);
 
     // ── Title row ──────────────────────────────────────────────
@@ -304,6 +317,66 @@ export async function exportSignSheet(
         });
       }
 
+      continue;
+    }
+
+    if (isMedMorning) {
+      // ── med-morning: D/C and Cont pharmacists in same row ─────
+      // cols: 1=date, 2=D/C, 3=Cont, 4=จพง., 5=sign_DC, 6=sign_Cont, 7=sign_PT, 8=approve, 9=gap, 10=date2, 11=D/C, 12=Cont, 13=จพง.
+      const h1v = new Array(13).fill('');
+      const h2v = new Array(13).fill('');
+      h1v[0] = 'ว/ด/ป';
+      h1v[1] = 'ผู้ปฏิบัติเวรเดิม';
+      h1v[4] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
+      h1v[7] = 'ผู้อนุมัติ';
+      h1v[9] = 'ว/ด/ป';
+      h1v[10] = 'ผู้ปฏิบัติงานจริง';
+      h2v[1] = 'D/C'; h2v[2] = 'Cont'; h2v[3] = 'จพง.';
+      h2v[4] = 'D/C'; h2v[5] = 'Cont'; h2v[6] = 'จพง.';
+      h2v[10] = 'D/C'; h2v[11] = 'Cont'; h2v[12] = 'จพง.';
+
+      const h1 = ws.addRow(h1v);
+      h1.height = 30;
+      styleHeaderRow(h1, 13);
+      const h2 = ws.addRow(h2v);
+      h2.height = 22;
+      styleHeaderRow(h2, 13);
+
+      const r1 = h1.number;
+      ws.mergeCells(r1, 1, r1 + 1, 1);   // date
+      ws.mergeCells(r1, 2, r1, 4);        // ผู้ปฏิบัติเวรเดิม
+      ws.mergeCells(r1, 5, r1, 7);        // ผู้ขอแลกเวร
+      ws.mergeCells(r1, 8, r1 + 1, 8);   // ผู้อนุมัติ
+      ws.mergeCells(r1, 9, r1 + 1, 9);   // gap
+      ws.mergeCells(r1, 10, r1 + 1, 10); // date2
+      ws.mergeCells(r1, 11, r1, 13);     // ผู้ปฏิบัติงานจริง
+
+      const groups = buildGroups(shifts, config, originalUserMap, usersMap);
+      for (const grp of groups) {
+        const maxRows = Math.max(grp.pharm_dc.length, grp.pharm_cont.length, grp.pharm_techs.length, 1);
+        const startRow = ws.lastRow!.number + 1;
+
+        for (let i = 0; i < maxRows; i++) {
+          const vals = new Array(13).fill('');
+          if (i === 0) {
+            vals[0] = formatThaiDate(grp.date);
+            vals[9] = formatThaiDate(grp.date);
+          }
+          vals[1] = grp.pharm_dc[i] || '';
+          vals[2] = grp.pharm_cont[i] || '';
+          vals[3] = grp.pharm_techs[i] || '';
+          const dataRow = ws.addRow(vals);
+          styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
+        }
+
+        if (maxRows > 1) {
+          const endRow = startRow + maxRows - 1;
+          ws.mergeCells(startRow, 1, endRow, 1);
+          ws.mergeCells(startRow, 10, endRow, 10);
+        }
+      }
+
+      ws.views = [{ state: 'frozen', ySplit: 3 }];
       continue;
     }
 
