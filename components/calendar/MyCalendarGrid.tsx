@@ -192,8 +192,8 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                               isPending && 'ring-2 ring-red-400 ring-offset-1',
                             )}
                           >
-                            <span className="font-semibold leading-tight text-[9px] truncate sm:hidden">{mobileLabel}</span>
-                            <span className="font-semibold leading-tight text-xs truncate hidden sm:block">{shiftLabel}</span>
+                            <span className="font-semibold leading-tight text-[10px] truncate sm:hidden">{mobileLabel}</span>
+                            <span className="font-semibold leading-tight text-[13px] truncate hidden sm:block">{shiftLabel}</span>
                             {/* Pending dot */}
                             {isPending && (
                               <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-red-500 rounded-full shadow-sm [.exporting-pdf_&]:hidden" />
