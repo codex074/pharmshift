@@ -114,7 +114,38 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           .in('id', Array.from(userIds));
 
         if (selected === 'sign-sheet') {
-          await exportSignSheet(filteredShifts as any, usersData || [], year, month);
+          // ดึงเวรดึกวันสุดท้ายของเดือนก่อนหน้า
+          // เพื่อให้แสดงในวันที่ 1 ของเดือนปัจจุบัน (ดึก advance date +1 วัน)
+          const prevMonth = month === 1 ? 12 : month - 1;
+          const prevYear = month === 1 ? year - 1 : year;
+          const lastDayOfPrevMonth = new Date(year, month - 1, 0).getDate();
+          const lastDayStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
+
+          const { data: prevDukData } = await supabase
+            .from('shifts')
+            .select(`
+              id, date, shift_type, position, user_id, original_user_id, month_year,
+              department:departments(id, name),
+              user:users!user_id(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
+            `)
+            .eq('date', lastDayStr)
+            .eq('shift_type', 'ดึก');
+
+          const prevDukShifts = (prevDukData || []) as any[];
+          const allSignSheetShifts = [...(filteredShifts as any[]), ...prevDukShifts];
+
+          // รวม userIds จากเวรเดือนก่อนด้วย
+          prevDukShifts.forEach((s: any) => {
+            if (s.user_id) userIds.add(s.user_id);
+            if (s.original_user_id) userIds.add(s.original_user_id);
+          });
+
+          const { data: allUsersData } = await supabase
+            .from('users')
+            .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
+            .in('id', Array.from(userIds));
+
+          await exportSignSheet(allSignSheetShifts, allUsersData || [], year, month);
         } else {
           await exportEvidenceExcel(filteredShifts as any, usersData || [], year, month);
         }
