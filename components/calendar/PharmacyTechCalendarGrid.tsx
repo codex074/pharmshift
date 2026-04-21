@@ -9,7 +9,7 @@ import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 // ── Shared border / layout helpers ─────────────────────────────────────────
 const BORDER = 'border-gray-200';
-const nameTextStyle = "block text-center text-[11px] xl:text-xs w-full px-0.5 leading-[1.1] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
+const nameTextStyle = "block text-center text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-[11px] font-medium w-full px-0.5 leading-[1.15] [.exporting-pdf_&]:leading-[1.05] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]";
 const DAY_GRID_ROWS = 'grid-rows-[repeat(7,_2.75rem)]';
 
 // ── Shift-time colour palettes ─────────────────────────────────
