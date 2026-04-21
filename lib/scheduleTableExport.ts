@@ -80,6 +80,26 @@ function buildUserLookup(...shiftGroups: Shift[][]): Map<string, NonNullable<Shi
 }
 
 function withOriginalUser(shift: Shift, userLookup: Map<string, NonNullable<Shift['user']>>): Shift {
+  // Prefer user_snapshot — historical data captured at publish time
+  if (shift.user_snapshot) {
+    const snap = shift.user_snapshot;
+    return {
+      ...shift,
+      user: {
+        id: shift.original_user_id || shift.user_id,
+        prefix: snap.prefix,
+        f_name: snap.f_name,
+        l_name: snap.l_name,
+        nickname: snap.nickname,
+        role: snap.role as any,
+      } as any,
+      user_prefix: snap.prefix,
+      user_f_name: snap.f_name,
+      user_l_name: snap.l_name,
+      user_nickname: snap.nickname,
+    };
+  }
+
   if (!shift.original_user_id || shift.original_user_id === shift.user_id) {
     return shift;
   }
