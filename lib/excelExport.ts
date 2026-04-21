@@ -254,9 +254,12 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       userRow.totalAmount += val * config.getRate(userRow.role);
     }
 
+    const roleOrder: Record<string, number> = { pharmacist: 0, pharmacy_technician: 1, officer: 2 };
     const rowsData = Array.from(userMap.values())
       .filter(u => u.totalValue > 0)
       .sort((a, b) => {
+        const roleDiff = (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3);
+        if (roleDiff !== 0) return roleDiff;
         return a.phaId - b.phaId;
       });
 
