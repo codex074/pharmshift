@@ -438,13 +438,14 @@ export async function exportSignSheet(
           }
           vals[1] = grp.pharmacists[i] || '';
           vals[2] = grp.pharm_techs[i] || '';
+          vals[3] = grp.officers[i] || '';
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
         }
 
         // Officer row — col 2 (เภสัช) and col 11 (เภสัช actual) painted black
         const offVals = new Array(13).fill('');
-        offVals[3] = grp.officers[0] || '';
+        offVals[3] = grp.officers[maxPharmPT] || '';
         const offRow = ws.addRow(offVals);
         styleDataRow(offRow, 13, new Set([1, 8, 9, 10]));
         offRow.getCell(2).fill = surgBlackFill;
