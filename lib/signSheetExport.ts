@@ -76,7 +76,6 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'with-subtype',
     getSubtype: (s) => s.shift_type,
     subtypeLabel: 'เวร',
-    advanceDukDate: false,
   },
   {
     name: 'โครงการ',
