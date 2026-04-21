@@ -220,12 +220,6 @@ function applyChemoSheetColumns(ws: ExcelJS.Worksheet) {
   ws.columns = [13, 13, 13, 13, 13, 13, 10, 10].map((width) => ({ width }));
 }
 
-// med-morning: 13 cols
-// 1=date, 2=D/C, 3=Cont, 4=จพง., 5=sign_DC, 6=sign_Cont, 7=sign_PT, 8=approve, 9=gap, 10=date2, 11=D/C, 12=Cont, 13=จพง.
-function applyMedMorningSheetColumns(ws: ExcelJS.Worksheet) {
-  ws.columns = [10, 14, 14, 14, 10, 10, 10, 10, 3, 10, 14, 14, 14].map((width) => ({ width }));
-}
-
 function styleHeaderRow(row: ExcelJS.Row, totalCols: number) {
   row.font = FONT_BOLD;
   row.alignment = CENTER;
@@ -262,8 +256,8 @@ export async function exportSignSheet(
     const hasSubtype = config.layout === 'with-subtype';
     const isChemo = config.layout === 'chemo';
     const isMedMorning = config.layout === 'med-morning';
-    const totalCols = isChemo ? 8 : hasSubtype ? 15 : 13; // med-morning also 13
-    const lastColLetter = isChemo ? 'H' : hasSubtype ? 'O' : 'M';
+    const totalCols = isChemo ? 8 : (hasSubtype || isMedMorning) ? 15 : 13;
+    const lastColLetter = isChemo ? 'H' : (hasSubtype || isMedMorning) ? 'O' : 'M';
 
     const ws = workbook.addWorksheet(config.name, {
       pageSetup: {
@@ -277,8 +271,7 @@ export async function exportSignSheet(
       },
     });
     if (isChemo) applyChemoSheetColumns(ws);
-    else if (isMedMorning) applyMedMorningSheetColumns(ws);
-    else applySheetColumns(ws, hasSubtype);
+    else applySheetColumns(ws, hasSubtype || isMedMorning);
 
     // ── Title row ──────────────────────────────────────────────
     const titleRow = ws.addRow([config.title(monthName, bweYear)]);
@@ -321,59 +314,66 @@ export async function exportSignSheet(
     }
 
     if (isMedMorning) {
-      // ── med-morning: D/C and Cont pharmacists in same row ─────
-      // cols: 1=date, 2=D/C, 3=Cont, 4=จพง., 5=sign_DC, 6=sign_Cont, 7=sign_PT, 8=approve, 9=gap, 10=date2, 11=D/C, 12=Cont, 13=จพง.
-      const h1v = new Array(13).fill('');
-      const h2v = new Array(13).fill('');
+      // ── med-morning: same 15-col structure as with-subtype ─────
+      // Row D/C  → ตำแหน่ง=D/C,   เภสัช=pharm_dc[0],   จพง.=pharm_techs[0]
+      // Row Cont → ตำแหน่ง=Cont,  เภสัช=pharm_cont[0], จพง.=pharm_techs[1]
+      const h1v = new Array(15).fill('');
+      const h2v = new Array(15).fill('');
       h1v[0] = 'ว/ด/ป';
-      h1v[1] = 'ผู้ปฏิบัติเวรเดิม';
-      h1v[4] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
-      h1v[7] = 'ผู้อนุมัติ';
-      h1v[9] = 'ว/ด/ป';
-      h1v[10] = 'ผู้ปฏิบัติงานจริง';
-      h2v[1] = 'D/C'; h2v[2] = 'Cont'; h2v[3] = 'จพง.';
-      h2v[4] = 'D/C'; h2v[5] = 'Cont'; h2v[6] = 'จพง.';
-      h2v[10] = 'D/C'; h2v[11] = 'Cont'; h2v[12] = 'จพง.';
+      h1v[1] = 'ตำแหน่ง';
+      h1v[2] = 'ผู้ปฏิบัติเวรเดิม';
+      h1v[5] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
+      h1v[8] = 'ผู้อนุมัติ';
+      h1v[10] = 'ว/ด/ป';
+      h1v[11] = 'ตำแหน่ง';
+      h1v[12] = 'ผู้ปฏิบัติงานจริง';
+      h2v[2] = 'เภสัช'; h2v[3] = 'จพง.'; h2v[4] = 'จนท.';
+      h2v[5] = 'เภสัช'; h2v[6] = 'จพง.'; h2v[7] = 'จนท.';
+      h2v[12] = 'เภสัช'; h2v[13] = 'จพง.'; h2v[14] = 'จนท.';
 
       const h1 = ws.addRow(h1v);
       h1.height = 30;
-      styleHeaderRow(h1, 13);
+      styleHeaderRow(h1, 15);
       const h2 = ws.addRow(h2v);
       h2.height = 22;
-      styleHeaderRow(h2, 13);
+      styleHeaderRow(h2, 15);
 
       const r1 = h1.number;
       ws.mergeCells(r1, 1, r1 + 1, 1);   // date
-      ws.mergeCells(r1, 2, r1, 4);        // ผู้ปฏิบัติเวรเดิม
-      ws.mergeCells(r1, 5, r1, 7);        // ผู้ขอแลกเวร
-      ws.mergeCells(r1, 8, r1 + 1, 8);   // ผู้อนุมัติ
-      ws.mergeCells(r1, 9, r1 + 1, 9);   // gap
-      ws.mergeCells(r1, 10, r1 + 1, 10); // date2
-      ws.mergeCells(r1, 11, r1, 13);     // ผู้ปฏิบัติงานจริง
+      ws.mergeCells(r1, 2, r1 + 1, 2);   // ตำแหน่ง
+      ws.mergeCells(r1, 3, r1, 5);        // ผู้ปฏิบัติเวรเดิม
+      ws.mergeCells(r1, 6, r1, 8);        // ผู้ขอแลกเวร
+      ws.mergeCells(r1, 9, r1 + 1, 9);   // ผู้อนุมัติ
+      ws.mergeCells(r1, 10, r1 + 1, 10); // gap
+      ws.mergeCells(r1, 11, r1 + 1, 11); // date2
+      ws.mergeCells(r1, 12, r1 + 1, 12); // ตำแหน่ง2
+      ws.mergeCells(r1, 13, r1, 15);     // ผู้ปฏิบัติงานจริง
 
       const groups = buildGroups(shifts, config, originalUserMap, usersMap);
       for (const grp of groups) {
-        const maxRows = Math.max(grp.pharm_dc.length, grp.pharm_cont.length, grp.pharm_techs.length, 1);
         const startRow = ws.lastRow!.number + 1;
-
-        for (let i = 0; i < maxRows; i++) {
-          const vals = new Array(13).fill('');
+        // Always exactly 2 rows per date: D/C then Cont
+        const pairs: Array<[string, string, string]> = [
+          ['D/C',  grp.pharm_dc[0]   || '', grp.pharm_techs[0] || ''],
+          ['Cont', grp.pharm_cont[0] || '', grp.pharm_techs[1] || ''],
+        ];
+        pairs.forEach(([label, pharm, pt], i) => {
+          const vals = new Array(15).fill('');
           if (i === 0) {
             vals[0] = formatThaiDate(grp.date);
-            vals[9] = formatThaiDate(grp.date);
+            vals[10] = formatThaiDate(grp.date);
           }
-          vals[1] = grp.pharm_dc[i] || '';
-          vals[2] = grp.pharm_cont[i] || '';
-          vals[3] = grp.pharm_techs[i] || '';
+          vals[1] = label;
+          vals[2] = pharm;
+          vals[3] = pt;
+          vals[11] = label;
           const dataRow = ws.addRow(vals);
-          styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
-        }
+          styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
+        });
 
-        if (maxRows > 1) {
-          const endRow = startRow + maxRows - 1;
-          ws.mergeCells(startRow, 1, endRow, 1);
-          ws.mergeCells(startRow, 10, endRow, 10);
-        }
+        // Merge date cols across the 2 rows
+        ws.mergeCells(startRow, 1, startRow + 1, 1);
+        ws.mergeCells(startRow, 10, startRow + 1, 10);
       }
 
       ws.views = [{ state: 'frozen', ySplit: 3 }];
