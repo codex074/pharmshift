@@ -38,7 +38,7 @@ function sortByRole(a: Shift, b: Shift) {
   return pa - pb;
 }
 
-type Layout = 'simple' | 'with-subtype' | 'chemo' | 'med-morning';
+type Layout = 'simple' | 'with-subtype' | 'chemo' | 'med-morning' | 'surg';
 
 interface SheetConfig {
   name: string;
@@ -66,7 +66,7 @@ const SHEET_CONFIGS: SheetConfig[] = [
     name: 'เช้า SURG',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยา Surg. เดือน ${m} ${y}`,
     filter: (s) => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG',
-    layout: 'simple',
+    layout: 'surg',
   },
   {
     name: 'ER',
@@ -256,6 +256,7 @@ export async function exportSignSheet(
     const hasSubtype = config.layout === 'with-subtype';
     const isChemo = config.layout === 'chemo';
     const isMedMorning = config.layout === 'med-morning';
+    const isSurg = config.layout === 'surg';
     const totalCols = isChemo ? 8 : (hasSubtype || isMedMorning) ? 15 : 13;
     const lastColLetter = isChemo ? 'H' : (hasSubtype || isMedMorning) ? 'O' : 'M';
 
@@ -386,6 +387,72 @@ export async function exportSignSheet(
         // Merge date cols across 3 rows
         ws.mergeCells(startRow, 1, startRow + 2, 1);
         ws.mergeCells(startRow, 10, startRow + 2, 10);
+      }
+
+      ws.views = [{ state: 'frozen', ySplit: 3 }];
+      continue;
+    }
+
+    if (isSurg) {
+      // ── surg: 13-col simple, officer separated to row 3 with black label cell ─
+      // Row 1..n: เภสัช[i] + จพง.[i]
+      // Row 3:    black col2 + officer name in col4 (จนท.)
+      const surgBlackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+      const h1v = new Array(13).fill('');
+      const h2v = new Array(13).fill('');
+      h1v[0] = 'ว/ด/ป';
+      h1v[1] = 'ผู้ปฏิบัติเวรเดิม';
+      h1v[4] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
+      h1v[7] = 'ผู้อนุมัติ';
+      h1v[9] = 'ว/ด/ป';
+      h1v[10] = 'ผู้ปฏิบัติงานจริง';
+      h2v[1] = 'เภสัช'; h2v[2] = 'จพง.'; h2v[3] = 'จนท.';
+      h2v[4] = 'เภสัช'; h2v[5] = 'จพง.'; h2v[6] = 'จนท.';
+      h2v[10] = 'เภสัช'; h2v[11] = 'จพง.'; h2v[12] = 'จนท.';
+
+      const h1 = ws.addRow(h1v);
+      h1.height = 30;
+      styleHeaderRow(h1, 13);
+      const h2 = ws.addRow(h2v);
+      h2.height = 22;
+      styleHeaderRow(h2, 13);
+
+      const r1 = h1.number;
+      ws.mergeCells(r1, 1, r1 + 1, 1);
+      ws.mergeCells(r1, 2, r1, 4);
+      ws.mergeCells(r1, 5, r1, 7);
+      ws.mergeCells(r1, 8, r1 + 1, 8);
+      ws.mergeCells(r1, 10, r1 + 1, 10);
+      ws.mergeCells(r1, 11, r1, 13);
+
+      const surgGroups = buildGroups(shifts, config, originalUserMap, usersMap);
+      for (const grp of surgGroups) {
+        const maxPharmPT = Math.max(grp.pharmacists.length, grp.pharm_techs.length, 1);
+        const startRow = ws.lastRow!.number + 1;
+
+        for (let i = 0; i < maxPharmPT; i++) {
+          const vals = new Array(13).fill('');
+          if (i === 0) {
+            vals[0] = formatThaiDate(grp.date);
+            vals[9] = formatThaiDate(grp.date);
+          }
+          vals[1] = grp.pharmacists[i] || '';
+          vals[2] = grp.pharm_techs[i] || '';
+          const dataRow = ws.addRow(vals);
+          styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
+        }
+
+        // Officer row — col 2 (เภสัช) and col 11 (เภสัช actual) painted black
+        const offVals = new Array(13).fill('');
+        offVals[3] = grp.officers[0] || '';
+        const offRow = ws.addRow(offVals);
+        styleDataRow(offRow, 13, new Set([1, 8, 9, 10]));
+        offRow.getCell(2).fill = surgBlackFill;
+        offRow.getCell(11).fill = surgBlackFill;
+
+        // Merge date cols across all rows (maxPharmPT + 1 officer row)
+        ws.mergeCells(startRow, 1, startRow + maxPharmPT, 1);
+        ws.mergeCells(startRow, 10, startRow + maxPharmPT, 10);
       }
 
       ws.views = [{ state: 'frozen', ySplit: 3 }];
