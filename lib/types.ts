@@ -87,6 +87,15 @@ export interface Shift {
   user_l_name?: string;
   original_user_id?: string;   // original assignee when first created; never changes on swap
   original_user?: User;
+  user_snapshot?: {            // snapshot of original user's info at publish time
+    prefix: string;
+    f_name: string;
+    l_name: string;
+    role: string;
+    pha_id: number | string;
+    salary_number: string;
+    nickname: string;
+  } | null;
   month_year?: string;
   created_at?: string;
 }

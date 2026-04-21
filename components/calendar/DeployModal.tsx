@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { X, Send, Loader2, CheckCircle2, AlertCircle, Check, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
@@ -34,6 +34,31 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
   // Password confirmation
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Track which roles are already published for the selected month/year
+  const [alreadyPublished, setAlreadyPublished] = useState<Set<UserRole>>(new Set());
+
+  // Load published status whenever month/year changes
+  useEffect(() => {
+    const monthYear = format(new Date(year, month - 1), 'yyyy-MM');
+    supabase
+      .from('published_months')
+      .select('pharmacist_published, pharmacy_technician_published, officer_published')
+      .eq('month_year', monthYear)
+      .maybeSingle()
+      .then(({ data }) => {
+        const published = new Set<UserRole>();
+        if (data?.pharmacist_published)          published.add('pharmacist');
+        if (data?.pharmacy_technician_published) published.add('pharmacy_technician');
+        if (data?.officer_published)             published.add('officer');
+        setAlreadyPublished(published);
+        // Deselect any role that is already published
+        setSelectedRoles(prev => {
+          const next = new Set(prev);
+          published.forEach(r => next.delete(r));
+          return next;
+        });
+      });
+  }, [month, year]);
 
   const isFullAdmin = isAdmin(currentUser);
   const isSubAdmin = !isFullAdmin && currentUser?.is_sub_admin === true;
@@ -67,8 +92,10 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       toast.error('ไม่มีสิทธิ์ดำเนินการ');
       return;
     }
-    if (deployRoles.size === 0) {
-      toast.error('กรุณาเลือกอย่างน้อย 1 ตำแหน่ง');
+    // Filter out already-published roles
+    const newRoles = new Set(Array.from(deployRoles).filter(r => !alreadyPublished.has(r)));
+    if (newRoles.size === 0) {
+      toast.error('ตำแหน่งที่เลือกประกาศไปแล้วทั้งหมด');
       return;
     }
     if (!password) {
@@ -87,24 +114,14 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
     try {
       const monthYear = format(new Date(year, month - 1), 'yyyy-MM');
 
-      // Fetch existing row to merge
-      const { data: existingData } = await supabase
-        .from('published_months')
-        .select('*')
-        .eq('month_year', monthYear)
-        .maybeSingle();
-
       const updatePayload: any = {
         month_year: monthYear,
         published_at: new Date().toISOString(),
         published_by: currentUser.id,
-        // Preserve existing, then apply newly selected roles
-        pharmacist_published:          existingData?.pharmacist_published          || deployRoles.has('pharmacist'),
-        pharmacy_technician_published: existingData?.pharmacy_technician_published || deployRoles.has('pharmacy_technician'),
-        officer_published:             existingData?.officer_published             || deployRoles.has('officer'),
+        pharmacist_published:          alreadyPublished.has('pharmacist')          || newRoles.has('pharmacist'),
+        pharmacy_technician_published: alreadyPublished.has('pharmacy_technician') || newRoles.has('pharmacy_technician'),
+        officer_published:             alreadyPublished.has('officer')             || newRoles.has('officer'),
       };
-
-      // Global flag: true only when all 3 roles are published
       updatePayload.is_published =
         updatePayload.pharmacist_published &&
         updatePayload.pharmacy_technician_published &&
@@ -116,18 +133,19 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       setSuccessMsg('ประกาศตารางเวรสำเร็จแล้ว!');
       toast.success('ประกาศตารางเวรสำเร็จแล้ว!');
 
-      // Notifications + stamp original_user_id
+      // Stamp original_user_id + snapshot user data
       try {
-        const rolesToNotify = Array.from(deployRoles);
+        const rolesToProcess = Array.from(newRoles);
         const { data: staffUsers } = await supabase
           .from('users')
-          .select('id')
-          .in('role', rolesToNotify);
+          .select('id, prefix, f_name, l_name, role, pha_id, salary_number, nickname')
+          .in('role', rolesToProcess);
 
         if (staffUsers?.length) {
-          // Stamp original_user_id = user_id for all shifts in this publish batch
-          // that haven't been stamped yet (first time published)
           const publishedUserIds = staffUsers.map(u => u.id);
+          const staffMap = new Map(staffUsers.map(u => [u.id, u]));
+
+          // 1. Stamp original_user_id for un-stamped shifts
           const { data: shiftsToStamp } = await supabase
             .from('shifts')
             .select('id, user_id')
@@ -149,6 +167,60 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
             );
           }
 
+          // 2. Snapshot user info for all un-snapshotted shifts in this month/roles
+          const { data: allMonthShifts } = await supabase
+            .from('shifts')
+            .select('id, user_id, original_user_id')
+            .eq('month_year', monthYear)
+            .is('user_snapshot', null);
+
+          // Only snapshot shifts whose original owner belongs to the published roles
+          const shiftsToSnapshot = (allMonthShifts || []).filter(s => {
+            const origUid = s.original_user_id || s.user_id;
+            return publishedUserIds.includes(origUid);
+          });
+
+          if (shiftsToSnapshot.length) {
+            // Collect any extra user IDs not in staffUsers (e.g. swapped-in users from other roles)
+            const extraIds = Array.from(new Set(
+              shiftsToSnapshot
+                .map(s => s.original_user_id || s.user_id)
+                .filter(uid => !staffMap.has(uid))
+            ));
+            if (extraIds.length) {
+              const { data: extraUsers } = await supabase
+                .from('users')
+                .select('id, prefix, f_name, l_name, role, pha_id, salary_number, nickname')
+                .in('id', extraIds);
+              extraUsers?.forEach(u => staffMap.set(u.id, u));
+            }
+
+            const byOrigUser = new Map<string, string[]>();
+            for (const s of shiftsToSnapshot) {
+              const uid = s.original_user_id || s.user_id;
+              const ids = byOrigUser.get(uid) || [];
+              ids.push(s.id);
+              byOrigUser.set(uid, ids);
+            }
+            await Promise.all(
+              Array.from(byOrigUser.entries()).map(([uid, ids]) => {
+                const u = staffMap.get(uid);
+                if (!u) return Promise.resolve();
+                const snapshot = {
+                  prefix: u.prefix,
+                  f_name: u.f_name,
+                  l_name: u.l_name,
+                  role: u.role,
+                  pha_id: u.pha_id,
+                  salary_number: u.salary_number,
+                  nickname: u.nickname,
+                };
+                return supabase.from('shifts').update({ user_snapshot: snapshot }).in('id', ids);
+              })
+            );
+          }
+
+          const rolesToNotify = rolesToProcess;
           const now = new Date();
           const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
           const roleNames = rolesToNotify.map(r => ROLE_LABELS[r as UserRole]).join(', ');
@@ -158,18 +230,18 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
           fetch('/api/push/send', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userIds: staffUsers.map(u => u.id), title: notifTitle, body: notifBody, url: '/calendar', tag: `publish-${monthYear}` }),
+            body: JSON.stringify({ userIds: publishedUserIds, title: notifTitle, body: notifBody, url: '/calendar', tag: `publish-${monthYear}` }),
           }).catch(() => {});
 
-          insertNotifications(staffUsers.map(u => u.id), 'schedule_published', notifTitle, notifBody);
+          insertNotifications(publishedUserIds, 'schedule_published', notifTitle, notifBody);
 
-          if (currentUser?.id && !staffUsers.some(u => u.id === currentUser.id)) {
+          if (currentUser?.id && !publishedUserIds.includes(currentUser.id)) {
             const ts2 = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
             insertNotifications(
               [currentUser.id],
               'schedule_published',
               '📋 คุณประกาศตารางเวรแล้ว',
-              `คุณประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} (${roleNames}) ส่งถึงพนักงาน ${staffUsers.length} คน — ${ts2}`,
+              `คุณประกาศตารางเวรเดือน ${format(new Date(year, month - 1), 'MMMM', { locale: th })} ${(year + 543).toString().slice(-2)} (${roleNames}) ส่งถึงพนักงาน ${publishedUserIds.length} คน — ${ts2}`,
             );
           }
         }
@@ -271,33 +343,45 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
               <div className="space-y-2">
                 {STAFF_ROLES.map(role => {
                   const isChecked = selectedRoles.has(role);
+                  const isDone = alreadyPublished.has(role);
 
                   return (
                     <button
                       key={role}
                       type="button"
-                      onClick={() => toggleRole(role)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left cursor-pointer ${
-                        isChecked
-                          ? 'border-green-400 bg-green-50'
-                          : 'border-gray-200 bg-white hover:border-gray-300'
+                      onClick={() => !isDone && toggleRole(role)}
+                      disabled={isDone}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border-2 transition-all text-left ${
+                        isDone
+                          ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-60'
+                          : isChecked
+                          ? 'border-green-400 bg-green-50 cursor-pointer'
+                          : 'border-gray-200 bg-white hover:border-gray-300 cursor-pointer'
                       }`}
                     >
                       <div className={`w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border-2 transition-all ${
-                        isChecked
+                        isDone
+                          ? 'bg-gray-300 border-gray-300'
+                          : isChecked
                           ? 'bg-green-500 border-green-500'
                           : 'bg-white border-gray-300'
                       }`}>
-                        {isChecked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                        {(isChecked || isDone) && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
                       </div>
 
                       <span className="text-lg">{ROLE_ICONS[role]}</span>
 
                       <div className="flex-1 min-w-0">
-                        <p className={`text-sm font-medium ${isChecked ? 'text-green-800' : 'text-gray-700'}`}>
+                        <p className={`text-sm font-medium ${isDone ? 'text-gray-400' : isChecked ? 'text-green-800' : 'text-gray-700'}`}>
                           {ROLE_LABELS[role]}
                         </p>
                       </div>
+
+                      {isDone && (
+                        <span className="text-[10px] font-medium text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
+                          ประกาศแล้ว
+                        </span>
+                      )}
                     </button>
                   );
                 })}

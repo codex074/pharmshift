@@ -101,8 +101,26 @@ export async function exportEvidenceExcel(
   // Build usersMap for quick lookup
   const usersMap = new Map(users.map((u) => [u.id, u]));
 
-  // Resolve original user using original_user_id stored on each shift
+  // Resolve original user: prefer user_snapshot (historical), fallback to usersMap
   const resolvedShifts: Shift[] = shifts.map((s) => {
+    const snap = s.user_snapshot;
+    if (snap) {
+      const origUserId = s.original_user_id || s.user_id;
+      return {
+        ...s,
+        user_id: origUserId,
+        user: {
+          id: origUserId,
+          f_name: snap.f_name,
+          l_name: snap.l_name,
+          prefix: snap.prefix,
+          role: snap.role,
+          pha_id: snap.pha_id,
+          salary_number: snap.salary_number,
+          nickname: snap.nickname,
+        } as any,
+      };
+    }
     const origUserId = s.original_user_id;
     if (!origUserId || origUserId === s.user_id) return s;
     const origUser = usersMap.get(origUserId);
