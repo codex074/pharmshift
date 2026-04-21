@@ -144,11 +144,12 @@ interface RowGroup {
 }
 
 function getDisplayName(userInfo: UserInfo | undefined, shift: Shift): string {
+  const orig = shift.original_user || shift.user;
   return userInfo?.f_name
-    || shift.user?.f_name
+    || orig?.f_name
     || shift.user_f_name
     || userInfo?.nickname
-    || shift.user?.nickname
+    || orig?.nickname
     || shift.user_nickname
     || '-';
 }
@@ -168,7 +169,7 @@ function buildGroups(
     const origId = originalUserMap.get(s.id) || s.user_id!;
     const userInfo = usersMap.get(origId);
     const displayName = getDisplayName(userInfo, s);
-    const role = userInfo?.role || s.user?.role || 'officer';
+    const role = userInfo?.role || s.original_user?.role || s.user?.role || 'officer';
 
     let effectiveDate = s.date;
     if (s.shift_type === 'ดึก' && config.advanceDukDate !== false) {
