@@ -17,26 +17,26 @@ export async function GET(request: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
 
-  // ── 1) Delete swap_requests older than 4 weeks ─────────────────────────
-  const cutoff4w = new Date();
-  cutoff4w.setDate(cutoff4w.getDate() - 28);
+  // ── 1) Delete swap_requests older than 3 months ────────────────────────
+  const cutoff3mSwap = new Date();
+  cutoff3mSwap.setMonth(cutoff3mSwap.getMonth() - 3);
 
   const { error: err4w, count: count4w } = await supabase
     .from('swap_requests')
     .delete({ count: 'exact' })
-    .lt('created_at', cutoff4w.toISOString());
+    .lt('created_at', cutoff3mSwap.toISOString());
 
-  if (err4w) console.error('[cron/cleanup] swap_requests 4-week delete error:', err4w);
+  if (err4w) console.error('[cron/cleanup] swap_requests 3-month delete error:', err4w);
 
-  // ── 2) Delete rejected swap_requests older than 48 hours ───────────────
-  const cutoff48h = new Date();
-  cutoff48h.setHours(cutoff48h.getHours() - 48);
+  // ── 2) Delete rejected swap_requests older than 3 months ───────────────
+  const cutoff3mRejected = new Date();
+  cutoff3mRejected.setMonth(cutoff3mRejected.getMonth() - 3);
 
   const { error: err48h, count: count48h } = await supabase
     .from('swap_requests')
     .delete({ count: 'exact' })
     .eq('status', 'rejected')
-    .lt('updated_at', cutoff48h.toISOString());
+    .lt('updated_at', cutoff3mRejected.toISOString());
 
   if (err48h) console.error('[cron/cleanup] swap_requests rejected 48h delete error:', err48h);
 
@@ -120,9 +120,9 @@ export async function GET(request: Request) {
 
   if (errLogs) console.error('[cron/cleanup] shift_logs 3-month delete error:', errLogs);
 
-  // ── 7) Delete push_subscriptions inactive for 60 days ──────────────────
+  // ── 7) Delete push_subscriptions inactive for 3 months ─────────────────
   const cutoff60d = new Date();
-  cutoff60d.setDate(cutoff60d.getDate() - 60);
+  cutoff60d.setMonth(cutoff60d.getMonth() - 3);
 
   const { error: errPush, count: countPush } = await supabase
     .from('push_subscriptions')
@@ -132,10 +132,10 @@ export async function GET(request: Request) {
   if (errPush) console.error('[cron/cleanup] push_subscriptions 60-day delete error:', errPush);
 
   console.log([
-    `[cron/cleanup] swap_requests: ${count4w ?? 0} old(>4w) | ${count48h ?? 0} rejected(>48h) | ${countChain} chain-hops`,
+    `[cron/cleanup] swap_requests: ${count4w ?? 0} old(>3mo) | ${count48h ?? 0} rejected(>3mo) | ${countChain} chain-hops`,
     `[cron/cleanup] notifications: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} others(>3d)`,
     `[cron/cleanup] shift_logs: ${countLogs ?? 0} old(>3mo)`,
-    `[cron/cleanup] push_subscriptions: ${countPush ?? 0} inactive(>60d)`,
+    `[cron/cleanup] push_subscriptions: ${countPush ?? 0} inactive(>3mo)`,
   ].join('\n'));
 
   return NextResponse.json({
