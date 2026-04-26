@@ -131,7 +131,10 @@ export async function POST(request: NextRequest) {
   }
 
   // 3) Pre-acceptance collision check
-  let collisionMsg = '';
+  //    Level 1 (overlap)  → hard block, ไม่ว่า force จะส่งมาหรือไม่
+  //    Level 2 (sequence) → soft warn, recipient กดยืนยัน (force=true) ได้
+  let overlapMsg = '';
+  let seqMsg = '';
 
   if (req.request_type === 'swap' && req.target_shift && req.shift) {
     const [r1, r2] = await Promise.all([
@@ -145,52 +148,59 @@ export async function POST(request: NextRequest) {
         .neq('id', req.shift.id),
     ]);
     if ((r1.data || []).some((s: any) => shiftsOverlap(s.shift_type, req.shift.shift_type))) {
-      collisionMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+      overlapMsg = 'ผู้ขอมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
     }
     if ((r2.data || []).some((s: any) => shiftsOverlap(s.shift_type, req.target_shift.shift_type))) {
-      collisionMsg = collisionMsg ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน' : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+      overlapMsg = overlapMsg ? 'ทั้งสองฝ่ายมีเวรที่ทับซ้อนกัน' : 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
     }
-    // Check บ่าย→ดึก and ดึก→เช้า sequences for swap
-    if (!collisionMsg) {
-      const [seqBDR, seqBDT, seqDCR, seqDCT] = await Promise.all([
-        hasBaiDuekSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
-        hasBaiDuekSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
-        hasDuekChaoSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
-        hasDuekChaoSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
-      ]);
-      const msgs: string[] = [];
-      if (seqBDR && seqBDT) msgs.push('ทั้งสองฝ่ายมีเวรบ่าย-ดึกต่อเนื่องกัน');
-      else if (seqBDR) msgs.push('ผู้ขอมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
-      else if (seqBDT) msgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
-      if (seqDCR && seqDCT) msgs.push('ทั้งสองฝ่ายมีเวรดึก-เช้าต่อเนื่องกัน');
-      else if (seqDCR) msgs.push('ผู้ขอมีเวรดึก-เช้าต่อเนื่องกัน');
-      else if (seqDCT) msgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
-      if (msgs.length > 0) collisionMsg = msgs.join(' และ ');
-    }
+    // Sequence check (Level 2) — บ่าย→ดึก, ดึก→เช้า
+    const [seqBDR, seqBDT, seqDCR, seqDCT] = await Promise.all([
+      hasBaiDuekSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
+      hasBaiDuekSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
+      hasDuekChaoSeq(supa, req.requester_id, req.shift.shift_type, req.shift.date, req.target_shift_id || undefined),
+      hasDuekChaoSeq(supa, req.target_user_id, req.target_shift.shift_type, req.target_shift.date, req.shift.id),
+    ]);
+    const seqMsgs: string[] = [];
+    if (seqBDR && seqBDT) seqMsgs.push('ทั้งสองฝ่ายมีเวรบ่าย-ดึกต่อเนื่องกัน');
+    else if (seqBDR) seqMsgs.push('ผู้ขอมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+    else if (seqBDT) seqMsgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+    if (seqDCR && seqDCT) seqMsgs.push('ทั้งสองฝ่ายมีเวรดึก-เช้าต่อเนื่องกัน');
+    else if (seqDCR) seqMsgs.push('ผู้ขอมีเวรดึก-เช้าต่อเนื่องกัน');
+    else if (seqDCT) seqMsgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
+    if (seqMsgs.length > 0) seqMsg = seqMsgs.join(' และ ');
   } else if (req.shift) {
     const currentOwnerId = req.shift.user_id;
     const newUserId = currentOwnerId === req.requester_id ? req.target_user_id : req.requester_id;
     const { data: newUserShifts } = await supa.from('shifts').select('id, shift_type')
       .eq('user_id', newUserId).eq('date', req.shift.date);
     if ((newUserShifts || []).some((s: any) => shiftsOverlap(s.shift_type, req.shift.shift_type))) {
-      collisionMsg = 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
+      overlapMsg = 'ผู้รับเวรมีเวรที่ทับซ้อนกันในวันดังกล่าวอยู่แล้ว';
     }
-    // Check บ่าย→ดึก and ดึก→เช้า sequences for transfer/cover
-    if (!collisionMsg) {
-      const [hasBD, hasDC] = await Promise.all([
-        hasBaiDuekSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
-        hasDuekChaoSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
-      ]);
-      const msgs: string[] = [];
-      if (hasBD) msgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
-      if (hasDC) msgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
-      if (msgs.length > 0) collisionMsg = msgs.join(' และ ');
-    }
+    // Sequence check (Level 2)
+    const [hasBD, hasDC] = await Promise.all([
+      hasBaiDuekSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
+      hasDuekChaoSeq(supa, newUserId, req.shift.shift_type, req.shift.date),
+    ]);
+    const seqMsgs: string[] = [];
+    if (hasBD) seqMsgs.push('ผู้รับเวรมีเวรบ่าย-ดึกต่อเนื่องกันในวันดังกล่าว');
+    if (hasDC) seqMsgs.push('ผู้รับเวรมีเวรดึก-เช้าต่อเนื่องกัน');
+    if (seqMsgs.length > 0) seqMsg = seqMsgs.join(' และ ');
   }
 
-  if (collisionMsg && !force) {
-    return NextResponse.json({ collision: collisionMsg });
+  // Level 1 — hard block (force ไม่สามารถข้ามได้)
+  if (overlapMsg) {
+    return NextResponse.json(
+      { error: `ไม่สามารถรับคำขอนี้ได้ — ${overlapMsg}` },
+      { status: 409 },
+    );
   }
+
+  // Level 2 — warn, ให้ recipient กดยืนยันได้
+  if (seqMsg && !force) {
+    return NextResponse.json({ collision: seqMsg });
+  }
+
+  const collisionMsg = seqMsg;
 
   // 4) Accept atomically in the database to prevent double-accept races
   const { data: acceptRows, error: acceptErr } = await supa.rpc('accept_swap_request_atomic', {
