@@ -431,12 +431,15 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
           let count1 = 0;
           let count2 = 0;
 
+          // แถวบน = ดึก + เช้า, แถวล่าง = บ่าย
           for (let i = 1; i <= 31; i++) {
             const entries = (row.days[i] || []).slice().sort((a, b) => getEntryOrder(a) - getEntryOrder(b));
-            slot1.push(entries[0]?.code || '');
-            slot2.push(entries[1]?.code || '');
-            if (entries[0]?.code) count1++;
-            if (entries[1]?.code) count2++;
+            const morning = entries.find(e => getEntryOrder(e) <= 1); // ด หรือ ช
+            const afternoon = entries.find(e => getEntryOrder(e) === 2); // บ
+            slot1.push(morning?.code || '');
+            slot2.push(afternoon?.code || '');
+            if (morning?.code) count1++;
+            if (afternoon?.code) count2++;
           }
 
           const total1 = count1 * rate;
