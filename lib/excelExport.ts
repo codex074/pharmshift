@@ -309,8 +309,18 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     worksheet.getColumn('salaryNo').font = { name: 'TH SarabunPSK', size: 16 };
     
     const isRegularShift = config.name === 'เช้า-บ่าย-ดึก';
-    const rowsPerPage = 15;
+    const rowsPerPage = isRegularShift ? 10 : 15;
     const totalPages = Math.ceil(rowsData.length / rowsPerPage) || 1;
+
+    // For "เช้า-บ่าย-ดึก" sheet: order shifts within a day by start time
+    // (ดึก เร็วสุดของวันที่นับ → เช้า → บ่าย)
+    const getEntryOrder = (e: DayEntry): number => {
+      const code = e.code || '';
+      if (code === 'ด') return 0;
+      if (code.startsWith('ช')) return 1;
+      if (code.startsWith('บ')) return 2;
+      return 3;
+    };
 
     let grandTotalValue = 0;
     let grandTotalAmount = 0;
@@ -410,32 +420,62 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         grandTotalAmount += row.totalAmount;
 
         if (isRegularShift) {
-          // Output 1 row — multiple shifts on the same day are joined with "/"
+          // Split each user into 2 rows. Per day, sort shifts by start time
+          // (ด → ช → บ). First (earliest) goes to row 1, next to row 2.
           const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' :
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
-          const rowValues: any[] = [runningSeq, row.salaryNumber, row.firstName, row.lastName, positionLabel, config.getRate(row.role)];
+          const rate = config.getRate(row.role);
+
+          const slot1: (string | '')[] = [];
+          const slot2: (string | '')[] = [];
+          let count1 = 0;
+          let count2 = 0;
 
           for (let i = 1; i <= 31; i++) {
-            const entries = row.days[i] || [];
-            const codes = entries.map(e => e.code || '').filter(Boolean);
-            rowValues.push(codes.length ? codes.join('/') : '');
+            const entries = (row.days[i] || []).slice().sort((a, b) => getEntryOrder(a) - getEntryOrder(b));
+            slot1.push(entries[0]?.code || '');
+            slot2.push(entries[1]?.code || '');
+            if (entries[0]?.code) count1++;
+            if (entries[1]?.code) count2++;
           }
 
-          rowValues.push(row.totalValue);
-          rowValues.push(row.totalAmount);
-          if (!isEvidence) rowValues.push('');
+          const total1 = count1 * rate;
+          const total2 = count2 * rate;
 
-          const dRow = worksheet.addRow(rowValues);
-          dRow.height = 22;
-          dRow.font = { name: 'TH SarabunPSK', size: 16 };
+          const buildRow = (slotVals: (string | '')[], cnt: number, total: number, isFirst: boolean) => {
+            const rowValues: any[] = [
+              isFirst ? runningSeq : '',
+              isFirst ? row.salaryNumber : '',
+              isFirst ? row.firstName : '',
+              isFirst ? row.lastName : '',
+              isFirst ? positionLabel : '',
+              rate,
+            ];
+            for (const v of slotVals) rowValues.push(v);
+            rowValues.push(cnt > 0 ? cnt : '');
+            rowValues.push(total > 0 ? total : '');
+            if (!isEvidence) rowValues.push('');
 
-          dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-            if (colNumber <= totalCols) {
-              cell.alignment = { horizontal: (colNumber === 3 || colNumber === 4) ? 'left' : 'center', vertical: 'middle' };
-              cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-              if (colNumber === amountCol) cell.numFmt = '#,##0.00';
-            }
-          });
+            const dRow = worksheet.addRow(rowValues);
+            dRow.height = 22;
+            dRow.font = { name: 'TH SarabunPSK', size: 16 };
+            dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+              if (colNumber <= totalCols) {
+                cell.alignment = { horizontal: (colNumber === 3 || colNumber === 4) ? 'left' : 'center', vertical: 'middle' };
+                cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
+                if (colNumber === amountCol) cell.numFmt = '#,##0.00';
+              }
+            });
+            return dRow;
+          };
+
+          const r1 = buildRow(slot1, count1, total1, true);
+          const r2 = buildRow(slot2, count2, total2, false);
+
+          // Merge seq, salaryNo, firstName, lastName, position across the 2 rows
+          for (const col of [1, 2, 3, 4, 5]) {
+            worksheet.mergeCells(r1.number, col, r2.number, col);
+          }
         } else {
           // Output 1 row
           const positionLabel = row.role === 'pharmacist' ? 'เภสัชกร' :
