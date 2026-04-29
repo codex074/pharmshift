@@ -199,6 +199,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       getRate: (role: string) => role === 'officer' ? 375 : role === 'pharmacy_technician' ? 600 : 900,
       filter: (s: Shift) => getDeptName(s) === 'SMC',
       getValue: () => 1, // 1 shift
+      getCode: () => 'บ',
       note: 'ปฏิบัติงานตึกผู้ป่วยนอก (OPD) บ = 16.30 น. - 20.30 น.',
     },
     {
@@ -495,8 +496,13 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           for (let i = 1; i <= 31; i++) {
             const entries = row.days[i] || [];
-            const sumVal = entries.reduce((acc, curr) => acc + curr.val, 0);
-            rowValues.push(sumVal > 0 ? sumVal : '');
+            if (config.getCode) {
+              const codes = entries.map(e => e.code || '').filter(Boolean).join('/');
+              rowValues.push(codes || '');
+            } else {
+              const sumVal = entries.reduce((acc, curr) => acc + curr.val, 0);
+              rowValues.push(sumVal > 0 ? sumVal : '');
+            }
           }
 
           rowValues.push(row.totalValue);
