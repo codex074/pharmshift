@@ -11,6 +11,7 @@ interface DayDetailModalProps {
   day: CalendarDay;
   currentUser: User | null;
   roleGroup?: string;
+  canRequestAction?: boolean;
   onClose: () => void;
   onSwapClick: (shift: Shift) => void;
 }
@@ -30,10 +31,12 @@ const TIMELINE_ORDER: ShiftType[] = ['รุ่งอรุณ', 'เช้า',
 function TimelineView({
   day,
   currentUser,
+  canRequestAction,
   onSwapClick,
 }: {
   day: CalendarDay;
   currentUser: User | null;
+  canRequestAction: boolean;
   onSwapClick: (s: Shift) => void;
 }) {
   const groups = TIMELINE_ORDER
@@ -125,12 +128,17 @@ function TimelineView({
                       return (
                         <button
                           key={s.id}
-                          onClick={() => onSwapClick(s)}
+                          onClick={() => {
+                            if (canRequestAction) onSwapClick(s);
+                          }}
+                          disabled={!canRequestAction}
                           className={cn(
                             'text-[11px] px-2.5 py-1 rounded-full transition-all font-medium',
                             isMe
                               ? 'bg-violet-600 text-white shadow-sm ring-2 ring-violet-300'
-                              : 'bg-gray-100 text-gray-700 hover:bg-violet-50 hover:text-violet-700',
+                              : canRequestAction
+                                ? 'bg-gray-100 text-gray-700 hover:bg-violet-50 hover:text-violet-700'
+                                : 'bg-gray-100 text-gray-500 cursor-default',
                           )}
                         >
                           {getUserName(s)}
@@ -166,7 +174,7 @@ function TimelineView({
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
-export function DayDetailModal({ day, currentUser, roleGroup, onClose, onSwapClick }: DayDetailModalProps) {
+export function DayDetailModal({ day, currentUser, roleGroup, canRequestAction = true, onClose, onSwapClick }: DayDetailModalProps) {
   const dayNumber = format(day.date, 'd');
   const dayOfWeek = UTILS_THAI_DAYS[day.date.getDay()];
   const dow = day.date.getDay();
@@ -232,12 +240,14 @@ export function DayDetailModal({ day, currentUser, roleGroup, onClose, onSwapCli
 
         {/* Timeline content */}
         <div className="px-3 py-3 max-h-[60vh] overflow-y-auto">
-          <TimelineView day={day} currentUser={currentUser} onSwapClick={onSwapClick} />
+          <TimelineView day={day} currentUser={currentUser} canRequestAction={canRequestAction} onSwapClick={onSwapClick} />
         </div>
 
         {/* Footer */}
         <div className="border-t px-5 py-3 bg-gray-50 flex items-center justify-between">
-          <p className="text-[10px] text-gray-400">แตะชื่อเพื่อขอแลกเวร</p>
+          <p className="text-[10px] text-gray-400">
+            {canRequestAction ? 'แตะชื่อเพื่อขอแลกเวร' : 'ดูตารางเวรได้อย่างเดียว'}
+          </p>
           <span
             className={cn(
               'text-[10px] font-medium px-2 py-0.5 rounded-full',

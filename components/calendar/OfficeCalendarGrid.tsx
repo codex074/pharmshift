@@ -136,6 +136,7 @@ interface RenderContext {
 
 function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
+  const canClickShift = !!ctx.onShiftClick;
   const isPendingDelete = ctx.pendingDeletes?.has(s.id);
   const pendingSub = ctx.pendingEdits?.[s.id];
 
@@ -168,8 +169,12 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     return (
       <span
         key={s.id}
-        className={cn(nameTextStyle, 'text-violet-700 font-bold bg-violet-100 rounded-sm cursor-pointer')}
-        onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+        className={cn(
+          nameTextStyle,
+          'text-violet-700 font-bold bg-violet-100 rounded-sm',
+          canClickShift && 'cursor-pointer',
+        )}
+        onClick={(e) => { e.stopPropagation(); if (canClickShift) ctx.onShiftClick?.(s); }}
       >
         {displayName}
       </span>
@@ -180,8 +185,12 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, 'text-slate-800 cursor-pointer hover:bg-sky-100 hover:text-sky-800 transition-colors rounded-sm')}
-      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      className={cn(
+        nameTextStyle,
+        'text-slate-800 transition-colors rounded-sm',
+        canClickShift && 'cursor-pointer hover:bg-sky-100 hover:text-sky-800',
+      )}
+      onClick={(e) => { e.stopPropagation(); if (canClickShift) ctx.onShiftClick?.(s); }}
     >
       {displayName}
     </span>

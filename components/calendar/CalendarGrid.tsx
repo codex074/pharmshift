@@ -176,6 +176,7 @@ function getDeptName(shift: Shift): string {
 
 function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const isMe = ctx.currentUser && s.user_id === ctx.currentUser.id;
+  const canClickShift = !!ctx.onShiftClick;
   const isPendingDelete = ctx.pendingDeletes?.has(s.id);
   const pendingSub = ctx.pendingEdits?.[s.id];
   
@@ -209,10 +210,16 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
     return (
       <span
         key={s.id}
-        className="block text-center w-full py-[2px] sm:py-[3px] leading-[1.28] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px] cursor-pointer"
-        onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+        className={cn(
+          "block text-center w-full py-[2px] sm:py-[3px] leading-[1.28] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]",
+          canClickShift && "cursor-pointer",
+        )}
+        onClick={(e) => { e.stopPropagation(); if (canClickShift) ctx.onShiftClick?.(s); }}
       >
-        <span className="inline-flex items-center gap-0.5 text-white font-bold text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all hover:shadow-lg ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none"
+        <span className={cn(
+          "inline-flex items-center gap-0.5 text-white font-bold text-[12px] sm:text-[13px] xl:text-[13px] [.exporting-pdf_&]:text-xs rounded-lg px-1.5 py-0.5 shadow-md transition-all ring-1 ring-white/40 [.exporting-pdf_&]:bg-violet-100 [.exporting-pdf_&]:text-violet-800 [.exporting-pdf_&]:shadow-none",
+          canClickShift && "hover:shadow-lg",
+        )}
           style={{ background: 'linear-gradient(135deg, #7c3aed, #6d28d9)' }}
         >
           {displayName}
@@ -225,8 +232,12 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   return (
     <span
       key={s.id}
-      className={cn(nameTextStyle, 'text-slate-700 rounded-sm cursor-pointer hover:bg-sky-100 hover:text-sky-800 transition-colors')}
-      onClick={(e) => { e.stopPropagation(); ctx.onShiftClick?.(s); }}
+      className={cn(
+        nameTextStyle,
+        'text-slate-700 rounded-sm transition-colors',
+        canClickShift && 'cursor-pointer hover:bg-sky-100 hover:text-sky-800',
+      )}
+      onClick={(e) => { e.stopPropagation(); if (canClickShift) ctx.onShiftClick?.(s); }}
     >
       {displayName}
     </span>
