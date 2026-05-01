@@ -100,17 +100,40 @@ export default function CalendarPage() {
   const userIsAdmin = isAdmin(currentUser);
   const userIsAdminLike = isAdminLike(currentUser);
 
-  // For admin/sub-admin: use viewRoleGroup selector; for staff: use own role
-  const effectiveRoleGroup: UserRole =
-    userIsAdmin
-      ? viewRoleGroup
-      : (currentUser?.role as UserRole) ?? 'pharmacist';
+  const ownRoleGroup = STAFF_ROLES.includes(currentUser?.role as UserRole)
+    ? (currentUser?.role as UserRole)
+    : 'pharmacist';
 
   useEffect(() => {
-    if (currentUser?.is_sub_admin && currentUser.role !== 'admin' && viewRoleGroup !== currentUser.role) {
-      setViewRoleGroup(currentUser.role);
+    if (STAFF_ROLES.includes(currentUser?.role as UserRole)) {
+      setViewRoleGroup(currentUser?.role as UserRole);
     }
-  }, [currentUser?.is_sub_admin, currentUser?.role, viewRoleGroup]);
+  }, [currentUser?.role]);
+
+  const effectiveRoleGroup: UserRole = viewRoleGroup;
+  const canManageActiveRoleGroup = canManageRoleGroup(currentUser, effectiveRoleGroup);
+  const activeRolePublished = publishedRoles[effectiveRoleGroup] ?? false;
+  const canViewActiveRoleSchedule = canManageActiveRoleGroup || activeRolePublished;
+  const canRequestSwapInActiveRole =
+    !!currentUser
+    && currentUser.role === effectiveRoleGroup
+    && currentUser.role !== 'admin'
+    && currentUser.is_active !== false
+    && currentUser.is_readonly !== true
+    && activeRolePublished;
+  const activeEditMode = isEditMode && canManageActiveRoleGroup;
+
+  useEffect(() => {
+    if (isEditMode && !canManageActiveRoleGroup) {
+      setIsEditMode(false);
+      setPendingDeletes(new Set());
+      setPendingEdits({});
+      setPendingAdds([]);
+      setMobileEditDaySelected(null);
+      setEditingSubsShift(null);
+      setAddingShiftContext(null);
+    }
+  }, [canManageActiveRoleGroup, isEditMode]);
 
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
@@ -120,10 +143,9 @@ export default function CalendarPage() {
 
   // Publish guards — disable export buttons if the month hasn't been published
   const pharmacistPublished = publishedRoles.pharmacist ?? false;
-  const myRoleKey = (currentUser?.role ?? 'pharmacist') as keyof typeof publishedRoles;
-  const myRolePublished = userIsAdminLike
-    ? (publishedRoles[viewRoleGroup as keyof typeof publishedRoles] ?? false)
-    : (publishedRoles[myRoleKey] ?? false);
+  const myRoleKey = ownRoleGroup as keyof typeof publishedRoles;
+  const myRolePublished = publishedRoles[myRoleKey] ?? false;
+  const canViewOwnRoleSchedule = canManageRoleGroup(currentUser, ownRoleGroup) || myRolePublished;
   const {
     swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
@@ -142,13 +164,13 @@ export default function CalendarPage() {
   }
 
   function handleDayClick(day: CalendarDay) {
-    if (!userIsAdminLike && !myRolePublished) return;
+    if (!canViewActiveRoleSchedule) return;
     if (isMobile) setMobileDaySelected(day);
   }
 
   function handleMobileDayClick(day: CalendarDay) {
-    if (!userIsAdminLike && !myRolePublished) return;
-    if (userIsAdminLike && isEditMode && viewMode === 'all') {
+    if (!canViewActiveRoleSchedule) return;
+    if (activeEditMode && viewMode === 'all') {
       setMobileEditDaySelected(day);
       return;
     }
@@ -156,8 +178,15 @@ export default function CalendarPage() {
   }
 
   function handleShiftClick(shift: Shift) {
-    if (!userIsAdminLike && !myRolePublished) return;
-    if (isEditMode) return; // Don't open swap modal in edit mode
+    if (!canViewActiveRoleSchedule) return;
+    if (activeEditMode) return; // Don't open swap modal in edit mode
+    if (!canRequestSwapInActiveRole) {
+      const shiftRole = (shift.user as any)?.role as UserRole | undefined;
+      if (shiftRole && shiftRole !== currentUser?.role) {
+        toastError('ดูตารางเวร role อื่นได้อย่างเดียว ไม่สามารถทำรายการกับเวรของ role อื่นได้');
+      }
+      return;
+    }
     if (currentUser?.is_active === false) {
       toastError('บัญชีของคุณถูกระงับ — ไม่สามารถแลก/ซื้อเวรได้');
       return;
@@ -167,6 +196,10 @@ export default function CalendarPage() {
   }
 
   function handleToggleEditMode() {
+    if (!canManageActiveRoleGroup) {
+      toastError('คุณไม่มีสิทธิ์จัดการตารางเวรของ role นี้');
+      return;
+    }
     const nextEditMode = !isEditMode;
     setIsEditMode(nextEditMode);
     if (nextEditMode) {
@@ -193,7 +226,7 @@ export default function CalendarPage() {
   }
 
   function handleEditShiftFromCalendar(shift: Shift) {
-    if (!isEditMode) return;
+    if (!activeEditMode) return;
     setEditingSubsShift(shift);
   }
 
@@ -217,9 +250,13 @@ export default function CalendarPage() {
     setPendingAdds(prev => prev.filter((_, i) => i !== index));
   }
 
-  // Stats — if current user exists, only count their shifts, else count all shifts visible
-  const myShifts  = allShifts.filter((s) => s.user_id === currentUser?.id);
-  const sourceShiftsForStats = currentUser ? myShifts : shifts;
+  // Stats cards always show only the current user's shifts for the viewed calendar month.
+  const viewedMonthKey = `${year}-${String(month).padStart(2, '0')}`;
+  const myShifts  = allShifts.filter((s) => {
+    if (s.user_id !== currentUser?.id) return false;
+    const shiftMonthKey = s.month_year || s.date.slice(0, 7);
+    return shiftMonthKey === viewedMonthKey;
+  });
   // Improvement 2: shift IDs with outgoing pending requests
   const pendingShiftIds = new Set(
     swapRequests
@@ -228,9 +265,9 @@ export default function CalendarPage() {
       .filter(Boolean) as string[]
   );
   // For non-admin users: hide all shift counts/data when the month isn't published for their role
-  const visibleShifts    = (!userIsAdminLike && !myRolePublished) ? [] : shifts;
-  const visibleMyShifts  = (!userIsAdminLike && !myRolePublished) ? [] : myShifts;
-  const visibleSource    = (!userIsAdminLike && !myRolePublished) ? [] : sourceShiftsForStats;
+  const visibleShifts    = !canViewActiveRoleSchedule ? [] : shifts;
+  const visibleMyShifts  = !canViewOwnRoleSchedule ? [] : myShifts;
+  const visibleSource    = visibleMyShifts;
   const totalCount = visibleSource.length;
   const chaoCount = visibleSource.filter((s) => s.shift_type === 'เช้า').length;
   const baiCount  = visibleSource.filter((s) => s.shift_type === 'บ่าย').length;
@@ -308,7 +345,7 @@ export default function CalendarPage() {
           </div>
         {/* Desktop action buttons — unified dark/violet palette */}
         <div className={cn("flex items-center gap-1.5 flex-wrap", isMobile && "hidden")}>
-            {userIsAdminLike && (
+            {canManageActiveRoleGroup && (
               <>
                 {isEditMode ? (
                   <>
@@ -349,7 +386,7 @@ export default function CalendarPage() {
                 </button>
               </>
             )}
-            {userIsAdminLike && (
+            {canManageActiveRoleGroup && (
               <button
                 onClick={() => setShowUploadModal(true)}
                 className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
@@ -370,7 +407,7 @@ export default function CalendarPage() {
                 <span className="hidden sm:inline">ตั้งค่าระบบ</span>
               </button>
             )}
-        <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={publishedRoles[effectiveRoleGroup] ?? false} isAdminLike={userIsAdminLike} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.f_name} roleGroup={effectiveRoleGroup} />
+        <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={activeRolePublished} isAdminLike={canManageActiveRoleGroup} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.f_name} roleGroup={effectiveRoleGroup} />
             {currentUser && (
               <div className="relative group">
                 <button
@@ -392,7 +429,7 @@ export default function CalendarPage() {
                 )}
               </div>
             )}
-            {userIsAdminLike && (
+            {canManageActiveRoleGroup && (
               <button
                 onClick={() => setShowAdminExportModal(true)}
                 className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
@@ -428,13 +465,13 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* Admin/Sub-admin: role group tab switcher */}
-        {userIsAdminLike && (
+        {/* Role group tab switcher */}
+        {currentUser && (
           <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 pb-1">
             <div className="flex items-center gap-1 p-1 rounded-2xl w-max min-w-full sm:w-auto shadow-lg"
               style={{ background: 'linear-gradient(135deg, #0f0a2e, #1a1145, #2d1b69)' }}
             >
-              {STAFF_ROLES.filter((role) => canManageRoleGroup(currentUser, role)).map((role) => {
+              {STAFF_ROLES.map((role) => {
                 const isActive = viewRoleGroup === role;
 
                 return (
@@ -456,7 +493,7 @@ export default function CalendarPage() {
           </div>
         )}
 
-        {!publishedRoles[effectiveRoleGroup] && userIsAdminLike && (
+        {!activeRolePublished && canManageActiveRoleGroup && (
           <div className="border border-amber-300/40 text-amber-100 rounded-2xl p-3.5 text-sm flex items-center gap-3 shadow-lg"
             style={{ background: 'linear-gradient(135deg, #92400e, #78350f)' }}
           >
@@ -477,14 +514,14 @@ export default function CalendarPage() {
             <div
               key={id}
               onClick={() => {
-                if (currentUser && (userIsAdminLike || myRolePublished)) {
+                if (currentUser && canViewOwnRoleSchedule) {
                   setPersonalShiftsFilter(id as ShiftType | 'all');
                   setShowPersonalShiftsModal(true);
                 }
               }}
               className={cn(
                 'rounded-xl p-2 sm:p-3 transition-all duration-300 shadow text-white relative overflow-hidden',
-                currentUser && value > 0 && (userIsAdminLike || myRolePublished)
+                currentUser && value > 0 && canViewOwnRoleSchedule
                   ? 'cursor-pointer hover:scale-[1.03] hover:shadow-md active:scale-[0.97]'
                   : 'cursor-default'
               )}
@@ -576,7 +613,7 @@ export default function CalendarPage() {
                 <Loader2 className="w-6 h-6 animate-spin" />
                 <span className="text-sm">กำลังโหลดตารางเวร...</span>
               </div>
-            ) : !publishedRoles[effectiveRoleGroup] && !userIsAdminLike ? (
+            ) : !canViewActiveRoleSchedule ? (
               <div className="flex flex-col items-center justify-center py-20 gap-3 text-gray-500 bg-gray-50 rounded-xl border border-dashed border-gray-200">
                 <p className="text-lg font-medium text-gray-600">ตารางเวรตำแหน่งนี้ประจำเดือน {formatThaiMonth(year, month)} ยังไม่ถูกประกาศ</p>
                 <p className="text-sm">กรุณารอการประกาศตารางเวรจากผู้ดูแลระบบ</p>
@@ -587,9 +624,9 @@ export default function CalendarPage() {
                 month={month}
                 shifts={visibleMyShifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole.filter(s => s.user_id === currentUser?.id)}
+                prevMonthLastDayShifts={prevMonthLastDayShifts.filter(s => s.user_id === currentUser?.id)}
                 onDayClick={handleDayClick}
-                onShiftClick={(s) => { if (!userIsAdminLike && !myRolePublished) return; setDetailShift(s); }}
+                onShiftClick={(s) => { if (!canViewOwnRoleSchedule) return; setDetailShift(s); }}
                 pendingShiftIds={pendingShiftIds}
               />
             ) : isMobile ? (
@@ -600,7 +637,7 @@ export default function CalendarPage() {
                 holidays={holidays}
                 prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 onDayClick={handleMobileDayClick}
-                isEditMode={userIsAdminLike && isEditMode && viewMode === 'all'}
+                isEditMode={activeEditMode && viewMode === 'all'}
                 roleGroup={effectiveRoleGroup}
                 pendingDeletes={pendingDeletes}
                 pendingEdits={pendingEdits}
@@ -615,9 +652,9 @@ export default function CalendarPage() {
                 prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
-                onShiftClick={handleShiftClick}
+                onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}
                 viewMode={viewMode}
-                isEditMode={isEditMode}
+                isEditMode={activeEditMode}
                 pendingDeletes={pendingDeletes}
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
@@ -635,9 +672,9 @@ export default function CalendarPage() {
                 prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
-                onShiftClick={handleShiftClick}
+                onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}
                 viewMode={viewMode}
-                isEditMode={isEditMode}
+                isEditMode={activeEditMode}
                 pendingDeletes={pendingDeletes}
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
@@ -655,9 +692,9 @@ export default function CalendarPage() {
                 prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
-                onShiftClick={handleShiftClick}
+                onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}
                 viewMode={viewMode}
-                isEditMode={isEditMode}
+                isEditMode={activeEditMode}
                 pendingDeletes={pendingDeletes}
                 pendingEdits={pendingEdits}
                 onToggleDelete={handleToggleDelete}
@@ -750,7 +787,7 @@ export default function CalendarPage() {
       )}
 
       {/* Admin Replace Modal */}
-      {editingSubsShift && isEditMode && (
+      {editingSubsShift && activeEditMode && (
         <AdminShiftSubstituteModal
           shift={editingSubsShift}
           onClose={() => setEditingSubsShift(null)}
@@ -759,7 +796,7 @@ export default function CalendarPage() {
       )}
 
       {/* Admin Confirm Submit Modal */}
-      {showAdminConfirm && isEditMode && (
+      {showAdminConfirm && activeEditMode && (
         <AdminConfirmModal
           pendingDeletes={pendingDeletes}
           pendingEdits={pendingEdits}
@@ -779,7 +816,7 @@ export default function CalendarPage() {
       )}
 
       {/* Admin Add Shift Modal */}
-      {addingShiftContext && isEditMode && (
+      {addingShiftContext && activeEditMode && (
         <AdminAddShiftModal
           context={addingShiftContext}
           roleGroup={effectiveRoleGroup}
@@ -794,6 +831,7 @@ export default function CalendarPage() {
           day={mobileDaySelected}
           currentUser={currentUser}
           roleGroup={effectiveRoleGroup}
+          canRequestAction={canRequestSwapInActiveRole}
           onClose={() => setMobileDaySelected(null)}
           onSwapClick={(shift) => {
             setMobileDaySelected(null);
@@ -802,7 +840,7 @@ export default function CalendarPage() {
         />
       )}
 
-      {mobileEditDaySelected && userIsAdminLike && isEditMode && viewMode === 'all' && (
+      {mobileEditDaySelected && activeEditMode && viewMode === 'all' && (
         <MobileEditDayModal
           day={mobileEditDaySelected}
           roleGroup={effectiveRoleGroup}
@@ -824,14 +862,14 @@ export default function CalendarPage() {
           onViewModeChange={setViewMode}
           onBellClick={() => setShowNotifications(true)}
           pendingCount={pendingCount}
-          isEditMode={isEditMode}
+          isEditMode={activeEditMode}
         />
       )}
 
       {/* Mobile Admin FAB Menu */}
-      {isMobile && userIsAdminLike && (
+      {isMobile && canManageActiveRoleGroup && (
         <MobileAdminMenu
-          isEditMode={isEditMode}
+          isEditMode={activeEditMode}
           isSubAdmin={!userIsAdmin && currentUser?.is_sub_admin === true}
           onEditMode={handleToggleEditMode}
           onShowConfirm={() => setShowAdminConfirm(true)}
