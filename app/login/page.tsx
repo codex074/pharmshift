@@ -4,8 +4,7 @@ import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import { toast } from 'sonner';
-import { Eye, EyeOff, ArrowRight, Sparkles } from 'lucide-react';
-import { LoadingOverlay } from '@/components/ui/loading-overlay';
+import { Eye, EyeOff, ArrowRight, Sparkles, Loader2 } from 'lucide-react';
 
 function SessionExpiredToast() {
   const searchParams = useSearchParams();
@@ -65,7 +64,6 @@ function LoginForm() {
 
   return (
     <div className="min-h-screen flex font-sans">
-      {loading && <LoadingOverlay />}
 
       {/* Left Panel — Dark Branding */}
       <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden items-center justify-center"
@@ -184,59 +182,81 @@ function LoginForm() {
             </p>
           </div>
 
-          {/* Form */}
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div>
-              <label htmlFor="phaId" className="block text-sm font-bold text-gray-700 mb-2">
-                รหัสผู้ใช้งาน
-              </label>
-              <input
-                id="phaId"
-                type="text"
-                value={phaId}
-                onChange={(e) => setPhaId(e.target.value)}
-                required
-                placeholder="เช่น pha208"
-                autoComplete="username"
-                className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all duration-200 text-[15px] font-medium tracking-wide"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
-                รหัสผ่าน
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  autoComplete="current-password"
-                  className="w-full px-4 py-3.5 pr-12 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all duration-200 text-[15px] font-medium tracking-wider"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-500 focus:outline-none transition-colors"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
+          {/* Form / Skeleton */}
+          {loading ? (
+            <div className="space-y-5">
+              {/* PhaId skeleton */}
+              <div>
+                <div className="h-4 w-28 bg-gray-200 rounded-lg mb-2 animate-pulse" />
+                <div className="h-[54px] bg-gray-100 border-2 border-gray-200 rounded-2xl animate-pulse" />
+              </div>
+              {/* Password skeleton */}
+              <div>
+                <div className="h-4 w-20 bg-gray-200 rounded-lg mb-2 animate-pulse" />
+                <div className="h-[54px] bg-gray-100 border-2 border-gray-200 rounded-2xl animate-pulse" />
+              </div>
+              {/* Button skeleton */}
+              <div
+                className="h-[56px] rounded-2xl flex items-center justify-center gap-2 opacity-80"
+                style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%)' }}
+              >
+                <Loader2 className="w-5 h-5 text-white animate-spin" />
+                <span className="text-white font-bold text-[15px]">กำลังเข้าสู่ระบบ...</span>
               </div>
             </div>
+          ) : (
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div>
+                <label htmlFor="phaId" className="block text-sm font-bold text-gray-700 mb-2">
+                  รหัสผู้ใช้งาน
+                </label>
+                <input
+                  id="phaId"
+                  type="text"
+                  value={phaId}
+                  onChange={(e) => setPhaId(e.target.value)}
+                  required
+                  placeholder="เช่น pha208"
+                  autoComplete="username"
+                  className="w-full px-4 py-3.5 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all duration-200 text-[15px] font-medium tracking-wide"
+                />
+              </div>
 
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-4 rounded-2xl text-white font-bold text-[15px] tracking-wide transition-all duration-300 shadow-[0_8px_32px_rgba(124,58,237,0.3)] hover:shadow-[0_12px_48px_rgba(124,58,237,0.4)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed group flex items-center justify-center gap-2"
-              style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%)' }}
-            >
-              <span>เข้าสู่ระบบ</span>
-              <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
-            </button>
-          </form>
+              <div>
+                <label htmlFor="password" className="block text-sm font-bold text-gray-700 mb-2">
+                  รหัสผ่าน
+                </label>
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    placeholder="••••••••"
+                    autoComplete="current-password"
+                    className="w-full px-4 py-3.5 pr-12 bg-white border-2 border-gray-200 rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 transition-all duration-200 text-[15px] font-medium tracking-wider"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-500 focus:outline-none transition-colors"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-4 rounded-2xl text-white font-bold text-[15px] tracking-wide transition-all duration-300 shadow-[0_8px_32px_rgba(124,58,237,0.3)] hover:shadow-[0_12px_48px_rgba(124,58,237,0.4)] active:scale-[0.98] group flex items-center justify-center gap-2"
+                style={{ background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%)' }}
+              >
+                <span>เข้าสู่ระบบ</span>
+                <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
+              </button>
+            </form>
+          )}
 
           {/* Footer */}
           <div className="mt-8 text-center">
