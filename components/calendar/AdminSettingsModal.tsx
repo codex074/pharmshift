@@ -1,15 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar, Users, Database, TableProperties } from 'lucide-react';
+import { X, Calendar, Users, Database, TableProperties, Activity } from 'lucide-react';
 import { ManageHolidaysModal } from './ManageHolidaysModal';
 import { AdminUserManagementModal } from './AdminUserManagementModal';
 import { AdminBackupModal } from './AdminBackupModal';
 import { AdminShiftEditorModal } from './AdminShiftEditorModal';
+import { AdminAuditLogModal } from './AdminAuditLogModal';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
 
-type Tab = 'holidays' | 'users' | 'shifts' | 'backup';
+type Tab = 'holidays' | 'users' | 'shifts' | 'backup' | 'audit';
 
 interface AdminSettingsModalProps {
   onClose: () => void;
@@ -25,6 +26,9 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
     { id: 'users',    label: 'ผู้ใช้',     icon: <Users           className="w-4 h-4" /> },
     { id: 'shifts',   label: 'แก้ไขเวร',  icon: <TableProperties className="w-4 h-4" /> },
     { id: 'backup',   label: 'ข้อมูล',    icon: <Database        className="w-4 h-4" /> },
+    ...(currentUser?.role === 'admin'
+      ? [{ id: 'audit' as Tab, label: 'Audit', icon: <Activity className="w-4 h-4" /> }]
+      : []),
   ];
 
   return (
@@ -35,7 +39,7 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
       <div
         className={cn(
           'bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200',
-          activeTab === 'shifts' ? 'max-w-4xl' : 'max-w-2xl',
+          activeTab === 'shifts' || activeTab === 'audit' ? 'max-w-4xl' : 'max-w-2xl',
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -92,6 +96,10 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
 
           {activeTab === 'backup' && (
             <AdminBackupModal currentUser={currentUser} />
+          )}
+
+          {activeTab === 'audit' && currentUser?.role === 'admin' && (
+            <AdminAuditLogModal />
           )}
         </div>
       </div>

@@ -40,6 +40,8 @@ begin
     return;
   end if;
 
+  perform set_config('app.current_user_id', p_actor_user_id::text, true);
+
   if exists (
     select 1
     from pg_constraint
