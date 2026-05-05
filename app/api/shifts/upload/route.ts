@@ -5,7 +5,15 @@ import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
 import * as XLSX from 'xlsx';
 
-const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
+type ShiftDateContext = {
+  isWeekendOrHoliday: boolean;
+  isWeekdayHoliday: boolean;
+};
+
+const projectShiftType = (dateContext: ShiftDateContext) =>
+  dateContext.isWeekendOrHoliday ? 'เช้า' : 'บ่าย';
+
+const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string) => {
   if (!code) return null;
   // Normalize Latin chars to lowercase; Thai chars are unchanged by toLowerCase()
   const c = code.trim().toLowerCase();
@@ -17,7 +25,7 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
       case 'd':   return { dept: 'MED',       type: 'เช้า',      position: 'D/C' };
       case 'c':   return { dept: 'MED',       type: 'เช้า',      position: 'Cont' };
       case 's':   return { dept: 'SURG',      type: 'เช้า',      position: '' };
-      case 'ext': return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: '' };
+      case 'ext': return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: '' };
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
       case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
@@ -35,7 +43,7 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
-      case 'ext': return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: '' };
+      case 'ext': return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: '' };
       case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
       case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
       case 'รh':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
@@ -56,7 +64,7 @@ const mapShiftCode = (code: string, isWeekend: boolean, role: string) => {
     }
     if (/^m[1-4]$/.test(c))    return { dept: 'MED',       type: 'เช้า',  position: c };
     if (/^s[1-3]$/.test(c))    return { dept: 'SURG',      type: 'เช้า',  position: c };
-    if (/^ext[1-2]$/.test(c))  return { dept: 'โครงการ',  type: isWeekend ? 'เช้า' : 'บ่าย', position: c };
+    if (/^ext[1-2]$/.test(c))  return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: c };
     if (/^บe[1-2]$/.test(c))   return { dept: 'ER',        type: 'บ่าย', position: c };
     if (/^smc[1-2]$/.test(c))  return { dept: 'SMC',       type: 'บ่าย', position: c };
     if (/^รo[1-2]$/.test(c))   return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: c };
@@ -86,7 +94,9 @@ export async function POST(req: NextRequest) {
 
     const targetMonth = parseInt(monthStr);
     const targetYear = parseInt(yearStr);
-    const monthYear = `${targetYear}-${String(targetMonth).padStart(2, '0')}`;
+    const monthPadded = String(targetMonth).padStart(2, '0');
+    const lastDayOfMonth = new Date(targetYear, targetMonth, 0).getDate();
+    const monthYear = `${targetYear}-${monthPadded}`;
 
     const supabase = createSupabaseServer();
 
@@ -172,13 +182,12 @@ export async function POST(req: NextRequest) {
     const { data: users, error: usersError } = await supabase.from('users').select('id, nickname, pha_id');
     if (usersError) throw usersError;
 
-    // Fetch holidays for this month (and adjacent months for safety) to correctly
-    // identify public holidays that fall on weekdays
+    // Fetch holidays for this month to identify public holidays that fall on weekdays.
     const { data: holidays } = await supabase
       .from('holidays')
       .select('date')
-      .gte('date', `${targetYear}-${String(targetMonth).padStart(2, '0')}-01`)
-      .lte('date', `${targetYear}-${String(targetMonth).padStart(2, '0')}-31`);
+      .gte('date', `${targetYear}-${monthPadded}-01`)
+      .lte('date', `${targetYear}-${monthPadded}-${String(lastDayOfMonth).padStart(2, '0')}`);
     const holidaySet = new Set((holidays || []).map((h: { date: string }) => h.date));
 
     const deptMap = new Map<string, number>();
@@ -223,25 +232,33 @@ export async function POST(req: NextRequest) {
         continue;
       }
 
-      for (let day = 1; day <= 31; day++) {
+      for (let day = 1; day <= lastDayOfMonth; day++) {
         const cellValue = String(row[day + 1] || '').trim();
         if (!cellValue) continue;
 
         const dateObj = new Date(targetYear, targetMonth - 1, day);
-        if (dateObj.getMonth() !== targetMonth - 1) continue; // Skip invalid days (like Feb 30)
-
-        const dateStr = `${targetYear}-${String(targetMonth).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6 || holidaySet.has(dateStr);
+        const dateStr = `${targetYear}-${monthPadded}-${String(day).padStart(2, '0')}`;
+        const dow = dateObj.getDay();
+        const isWeekend = dow === 0 || dow === 6;
+        const isPublicHoliday = holidaySet.has(dateStr);
+        const dateContext = {
+          isWeekendOrHoliday: isWeekend || isPublicHoliday,
+          isWeekdayHoliday: isPublicHoliday && !isWeekend,
+        };
 
         // Split by comma or "/" — multiple shifts in one cell (e.g. "E/ด", "C/ด", "ชM1,บM1")
         const shiftCodes = cellValue.split(/[,/]/).map(s => s.trim()).filter(Boolean);
 
         for (const code of shiftCodes) {
-          const shiftData = mapShiftCode(code, isWeekend, sheetRole);
+          const shiftData = mapShiftCode(code, dateContext, sheetRole);
 
           if (!shiftData) {
             errors.push(`Row ${r + 2}, Day ${day}: Unknown shift code '${code}'`);
             continue;
+          }
+
+          if (dateContext.isWeekdayHoliday && shiftData.dept === 'โครงการ') {
+            shiftData.type = 'เช้า';
           }
 
           const deptId = deptMap.get(shiftData.dept.toLowerCase());
