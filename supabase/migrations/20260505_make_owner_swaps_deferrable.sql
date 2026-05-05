@@ -65,6 +65,8 @@ begin
     return;
   end if;
 
+  perform set_config('app.current_user_id', p_actor_user_id::text, true);
+
   if exists (
     select 1
     from pg_constraint
@@ -153,7 +155,8 @@ end;
 $$;
 
 create or replace function public.apply_shift_owner_edits_atomic(
-  p_edits jsonb
+  p_edits jsonb,
+  p_actor_user_id uuid default null
 )
 returns void
 language plpgsql
@@ -167,6 +170,10 @@ declare
 begin
   if jsonb_typeof(p_edits) <> 'array' then
     raise exception 'p_edits must be a JSON array' using errcode = '22023';
+  end if;
+
+  if p_actor_user_id is not null then
+    perform set_config('app.current_user_id', p_actor_user_id::text, true);
   end if;
 
   if exists (
@@ -195,5 +202,5 @@ begin
 end;
 $$;
 
-revoke all on function public.apply_shift_owner_edits_atomic(jsonb) from public;
-grant execute on function public.apply_shift_owner_edits_atomic(jsonb) to service_role;
+revoke all on function public.apply_shift_owner_edits_atomic(jsonb, uuid) from public;
+grant execute on function public.apply_shift_owner_edits_atomic(jsonb, uuid) to service_role;

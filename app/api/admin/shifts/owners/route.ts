@@ -94,6 +94,7 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supa.rpc('apply_shift_owner_edits_atomic', {
       p_edits: normalized,
+      p_actor_user_id: session.id,
     });
 
     if (error) {

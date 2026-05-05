@@ -81,22 +81,32 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     return conflicts.map(s => `${s.shift_type}${(s as any).department_name ? ` (${(s as any).department_name})` : ''}`);
   }
 
-  async function applyOwnerEdits() {
-    if (edits.length === 0) return;
+  async function applyShiftDataChanges(isPublished: (monthYear: string, role?: string) => boolean) {
+    if (deletes.length === 0 && edits.length === 0 && pendingAdds.length === 0) return;
 
-    const res = await fetch('/api/admin/shifts/owners', {
+    const res = await fetch('/api/admin/shifts/batch', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        edits: edits.map(e => ({
+        deleteIds: deletes.map(s => s.id),
+        ownerEdits: edits.map(e => ({
           shiftId: e.shift.id,
           userId: e.newUser.id,
+        })),
+        adds: pendingAdds.map(add => ({
+          date: add.date,
+          departmentId: add.department_id,
+          shiftType: add.shift_type,
+          position: add.position || null,
+          userId: add.user.id,
+          originalUserId: isPublished(add.month_year, add.user.role as any) ? add.user.id : null,
+          monthYear: add.month_year,
         })),
       }),
     });
 
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || 'ไม่สามารถบันทึกการเปลี่ยนคนอยู่เวรได้');
+    if (!res.ok) throw new Error(data.error || 'ไม่สามารถบันทึกการเปลี่ยนแปลงเวรได้');
   }
 
   async function handleConfirm() {
@@ -158,12 +168,10 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       };
       // ────────────────────────────────────────────────────────────────────
 
+      await applyShiftDataChanges(isPublished);
+
       // 1. Delete shifts
       if (deletes.length > 0) {
-        const delIds = deletes.map(s => s.id);
-        const { error: delError } = await supabase.from('shifts').delete().in('id', delIds);
-        if (delError) throw delError;
-
         // In-app + push notification per user — only if month is published
         const deletesByUser = new Map<string, typeof deletes>();
         deletes
@@ -191,8 +199,6 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
 
       // 2. Edit shifts (change owner)
       if (edits.length > 0) {
-        await applyOwnerEdits();
-
         // In-app + push notifications per user — only if month is published
         const editsByOldOwner = new Map<string, typeof edits>();
         const editsByNewOwner = new Map<string, typeof edits>();
@@ -240,19 +246,6 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
 
       // 3. Insert new shifts
       if (pendingAdds.length > 0) {
-        const insertRecords = pendingAdds.map(add => ({
-          date: add.date,
-          department_id: add.department_id,
-          shift_type: add.shift_type,
-          position: add.position || null,
-          user_id: add.user.id,
-          // Set original_user_id only if month is already published (post-publish admin add)
-          original_user_id: isPublished(add.month_year, add.user.role as any) ? add.user.id : null,
-          month_year: add.month_year,
-        }));
-        const { error: insertError } = await supabase.from('shifts').insert(insertRecords);
-        if (insertError) throw insertError;
-
         // In-app + push notifications per user — only if month is published
         const addsByUser = new Map<string, PendingAdd[]>();
         pendingAdds
