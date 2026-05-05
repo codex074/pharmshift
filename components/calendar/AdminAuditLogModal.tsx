@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, ChevronDown, Database, Loader2, RefreshCcw, Search, UserRound } from 'lucide-react';
+import { Activity, AlertCircle, CalendarClock, ChevronDown, Database, FileText, Loader2, Monitor, RefreshCcw, Search, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -27,6 +27,18 @@ type AuditLog = {
   created_at: string;
 };
 
+type UserLookup = {
+  id: string;
+  pha_id?: string;
+  prefix?: string;
+  f_name?: string;
+  l_name?: string;
+  nickname?: string;
+  role?: string;
+};
+
+type UserMap = Record<string, UserLookup>;
+
 const ACTION_OPTIONS = [
   { value: 'all', label: 'ทุก action' },
   { value: 'login_success', label: 'Login สำเร็จ' },
@@ -49,10 +61,52 @@ const ENTITY_OPTIONS = [
   { value: 'notifications', label: 'Notifications' },
 ];
 
-function actorName(log: AuditLog) {
+const ENTITY_LABELS: Record<string, string> = {
+  auth: 'การเข้าใช้งาน',
+  users: 'ผู้ใช้',
+  shifts: 'เวร',
+  swap_requests: 'คำขอแลก/โอนเวร',
+  published_months: 'การประกาศตาราง',
+  holidays: 'วันหยุด',
+  notifications: 'แจ้งเตือน',
+  departments: 'หน่วยงาน',
+  push_subscriptions: 'อุปกรณ์แจ้งเตือน',
+  shift_logs: 'ประวัติแลกเวรเดิม',
+};
+
+const ACTION_LABELS: Record<string, string> = {
+  insert: 'สร้าง',
+  update: 'แก้ไข',
+  delete: 'ลบ',
+  login_success: 'เข้าสู่ระบบสำเร็จ',
+  login_failed: 'เข้าสู่ระบบไม่สำเร็จ',
+  login_blocked: 'เข้าสู่ระบบถูกบล็อก',
+  logout: 'ออกจากระบบ',
+};
+
+const REASON_LABELS: Record<string, string> = {
+  user_not_found: 'ไม่พบรหัสผู้ใช้',
+  wrong_password: 'รหัสผ่านไม่ถูกต้อง',
+  inactive_account: 'บัญชีถูกระงับ',
+};
+
+function displayUser(user?: UserLookup | null) {
+  if (!user) return '';
+  const base = user.nickname || [user.prefix, user.f_name, user.l_name].filter(Boolean).join(' ').trim() || user.pha_id || user.id;
+  return user.pha_id ? `${base} (${user.pha_id})` : base;
+}
+
+function actorName(log: AuditLog, userMap: UserMap) {
   const actor = log.actor_snapshot;
-  if (!actor) return log.metadata?.pha_id ? String(log.metadata.pha_id) : 'System / ไม่ทราบผู้ใช้';
-  return actor.nickname || actor.f_name || actor.pha_id || 'ไม่ทราบชื่อ';
+  if (actor) return actor.nickname || actor.f_name || actor.pha_id || 'ไม่ทราบชื่อ';
+  if (log.actor_user_id && userMap[log.actor_user_id]) return displayUser(userMap[log.actor_user_id]);
+  if (log.metadata?.pha_id) return `ไม่ทราบผู้ใช้ (${String(log.metadata.pha_id)})`;
+  return 'ระบบ';
+}
+
+function userName(userId: unknown, userMap: UserMap) {
+  if (typeof userId !== 'string') return '-';
+  return displayUser(userMap[userId]) || userId.slice(0, 8);
 }
 
 function formatDate(value: string) {
@@ -63,21 +117,118 @@ function formatDate(value: string) {
   }
 }
 
-function summarizeChange(log: AuditLog) {
-  if (log.entity_type === 'auth') {
-    const reason = log.metadata?.reason ? ` (${String(log.metadata.reason)})` : '';
-    return `${log.action}${reason}`;
-  }
+function formatShift(data?: Record<string, unknown> | null) {
+  if (!data) return 'เวร';
+  const date = data.date ? String(data.date) : '';
+  const shiftType = data.shift_type ? `ผลัด${String(data.shift_type)}` : '';
+  const position = data.position ? ` (${String(data.position)})` : '';
+  return ['เวร', date, shiftType].filter(Boolean).join(' ') + position;
+}
 
-  if (log.action === 'insert') return 'สร้างรายการใหม่';
-  if (log.action === 'delete') return 'ลบรายการ';
-  if (log.action !== 'update') return log.action;
-
+function changedFields(log: AuditLog) {
   const before = log.before_data || {};
   const after = log.after_data || {};
-  const changed = Object.keys(after).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+  return Object.keys(after).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
+}
+
+function describeFieldChange(field: string, before: Record<string, unknown>, after: Record<string, unknown>, userMap: UserMap) {
+  if (field === 'user_id') return `เปลี่ยนผู้รับเวรจาก ${userName(before[field], userMap)} เป็น ${userName(after[field], userMap)}`;
+  if (field === 'original_user_id') return `บันทึกเจ้าของเวรเดิมเป็น ${userName(after[field], userMap)}`;
+  if (field === 'published_by') return `ผู้ประกาศคือ ${userName(after[field], userMap)}`;
+  if (field === 'status') return `สถานะ: ${String(before[field] || '-')} → ${String(after[field] || '-')}`;
+  if (field === 'requester_read') return `สถานะอ่านผลลัพธ์: ${String(before[field])} → ${String(after[field])}`;
+  if (field === 'user_snapshot') return 'บันทึก snapshot ข้อมูลผู้ใช้ ณ วันที่ประกาศ';
+  if ((field.includes('user') || field === 'requester_id' || field === 'target_user_id' || field === 'published_by' || field === 'performed_by') && before[field] !== after[field]) {
+    return `${field}: ${userName(before[field], userMap)} → ${userName(after[field], userMap)}`;
+  }
+  return `${field}: ${String(before[field] ?? '-')} → ${String(after[field] ?? '-')}`;
+}
+
+function summarizeChange(log: AuditLog, userMap: UserMap) {
+  if (log.entity_type === 'auth') {
+    const reason = log.metadata?.reason ? `: ${REASON_LABELS[String(log.metadata.reason)] || String(log.metadata.reason)}` : '';
+    return `${ACTION_LABELS[log.action] || log.action}${reason}`;
+  }
+
+  if (log.entity_type === 'shifts') {
+    if (log.action === 'insert') return `เพิ่ม${formatShift(log.after_data)} ให้ ${userName(log.after_data?.user_id, userMap)}`;
+    if (log.action === 'delete') return `ลบ${formatShift(log.before_data)} ของ ${userName(log.before_data?.user_id, userMap)}`;
+    const primary = changedFields(log).map((field) => describeFieldChange(field, log.before_data || {}, log.after_data || {}, userMap));
+    return `${formatShift(log.after_data || log.before_data)}: ${primary.slice(0, 2).join(', ') || 'แก้ไขข้อมูลเวร'}`;
+  }
+
+  if (log.entity_type === 'swap_requests') {
+    const data = log.after_data || log.before_data || {};
+    const type = data.request_type === 'cover' ? 'อยู่เวรแทน' : data.request_type === 'transfer' ? 'โอนเวร' : 'แลกเวร';
+    if (log.action === 'insert') {
+      return `สร้างคำขอ${type} จาก ${userName(data.requester_id, userMap)} ถึง ${userName(data.target_user_id, userMap)}`;
+    }
+    if (log.action === 'update') {
+      const status = log.after_data?.status ? `เป็น ${String(log.after_data.status)}` : '';
+      return `อัปเดตคำขอ${type}${status ? ` ${status}` : ''}`;
+    }
+    return `${ACTION_LABELS[log.action] || log.action}คำขอ${type}`;
+  }
+
+  if (log.entity_type === 'notifications') {
+    const data = log.after_data || log.before_data || {};
+    const title = data.title ? ` "${String(data.title)}"` : '';
+    const recipient = data.user_id ? `ถึง ${userName(data.user_id, userMap)}` : '';
+    if (log.action === 'insert') return `สร้างแจ้งเตือน${recipient}${title}`;
+    if (log.action === 'update') return `อัปเดตแจ้งเตือน${recipient}`;
+    return `ลบแจ้งเตือน${recipient}${title}`;
+  }
+
+  if (log.entity_type === 'users') {
+    const data = log.after_data || log.before_data || {};
+    const person = displayUser(data as UserLookup) || userName(log.entity_id, userMap);
+    if (log.action === 'insert') return `เพิ่มผู้ใช้ ${person}`;
+    if (log.action === 'delete') return `ลบผู้ใช้ ${person}`;
+    const fields = changedFields(log).filter((field) => field !== 'updated_at');
+    return `แก้ไขผู้ใช้ ${person}: ${fields.slice(0, 4).join(', ') || 'ข้อมูลผู้ใช้'}`;
+  }
+
+  if (log.entity_type === 'published_months') {
+    const data = log.after_data || log.before_data || {};
+    const month = data.month_year ? `เดือน ${String(data.month_year)}` : '';
+    return `${ACTION_LABELS[log.action] || log.action}สถานะประกาศตาราง${month ? ` ${month}` : ''}`;
+  }
+
+  if (log.entity_type === 'holidays') {
+    const data = log.after_data || log.before_data || {};
+    const name = data.name ? ` "${String(data.name)}"` : '';
+    const date = data.date ? `วันที่ ${String(data.date)}` : '';
+    return `${ACTION_LABELS[log.action] || log.action}วันหยุด${name}${date ? ` ${date}` : ''}`;
+  }
+
+  if (log.action === 'insert') return `สร้าง${ENTITY_LABELS[log.entity_type] || log.entity_type}`;
+  if (log.action === 'delete') return `ลบ${ENTITY_LABELS[log.entity_type] || log.entity_type}`;
+  if (log.action !== 'update') return ACTION_LABELS[log.action] || log.action;
+
+  const changed = changedFields(log);
   if (!changed.length) return 'แก้ไขข้อมูล';
   return `แก้ไข ${changed.slice(0, 5).join(', ')}${changed.length > 5 ? ` +${changed.length - 5}` : ''}`;
+}
+
+function buildNarrative(log: AuditLog, userMap: UserMap) {
+  const who = actorName(log, userMap);
+  const what = summarizeChange(log, userMap);
+  const when = formatDate(log.created_at);
+  const entityLabel = ENTITY_LABELS[log.entity_type] || log.entity_type;
+  const actionLabel = ACTION_LABELS[log.action] || log.action;
+  const source = log.ip_address || log.user_agent
+    ? [`IP ${log.ip_address || '-'}`, log.user_agent ? 'มีข้อมูลอุปกรณ์' : ''].filter(Boolean).join(' · ')
+    : 'ไม่มีข้อมูล IP/อุปกรณ์';
+
+  return {
+    who,
+    what,
+    when,
+    entityLabel,
+    actionLabel,
+    source,
+    sentence: `${who} ${what}`,
+  };
 }
 
 function JsonPreview({ label, data }: { label: string; data?: Record<string, unknown> | null }) {
@@ -105,6 +256,7 @@ function JsonPreview({ label, data }: { label: string; data?: Record<string, unk
 
 export function AdminAuditLogModal() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [userMap, setUserMap] = useState<UserMap>({});
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +278,7 @@ export function AdminAuditLogModal() {
       if (!res.ok) throw new Error(data.error || 'ไม่สามารถโหลด audit log ได้');
 
       setLogs((prev) => reset ? data.logs || [] : [...prev, ...(data.logs || [])]);
+      setUserMap((prev) => ({ ...prev, ...(data.userMap || {}) }));
       setNextCursor(data.nextCursor || null);
     } catch (err: any) {
       setError(err.message || 'ไม่สามารถโหลด audit log ได้');
@@ -144,17 +297,20 @@ export function AdminAuditLogModal() {
     const q = search.trim().toLowerCase();
     if (!q) return logs;
     return logs.filter((log) => {
+      const narrative = buildNarrative(log, userMap);
       const haystack = [
-        actorName(log),
+        narrative.who,
+        narrative.what,
+        narrative.entityLabel,
+        narrative.actionLabel,
         log.action,
         log.entity_type,
         log.entity_id || '',
         log.ip_address || '',
-        summarizeChange(log),
       ].join(' ').toLowerCase();
       return haystack.includes(q);
     });
-  }, [logs, search]);
+  }, [logs, search, userMap]);
 
   return (
     <div className="flex h-full min-h-[520px] flex-col bg-white">
@@ -225,44 +381,51 @@ export function AdminAuditLogModal() {
             <p className="text-sm font-medium">ยังไม่พบ audit log</p>
           </div>
         ) : (
-          filteredLogs.map((log) => (
-            <div key={log.id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm space-y-3">
+          filteredLogs.map((log) => {
+            const narrative = buildNarrative(log, userMap);
+            return (
+            <div key={log.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-gray-900 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                      {log.action}
+                  <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
+                    <span className="rounded-full bg-gray-900 px-2.5 py-1 uppercase tracking-wide text-white">
+                      {narrative.actionLabel}
                     </span>
-                    <span className="rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
-                      {log.entity_type}
+                    <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-700">
+                      {narrative.entityLabel}
                     </span>
-                    {log.entity_id && <span className="truncate text-xs text-gray-400">{log.entity_id}</span>}
                   </div>
-                  <p className="mt-2 text-sm font-semibold text-gray-900">{summarizeChange(log)}</p>
+                  <p className="mt-3 text-base font-bold text-gray-950 leading-snug">{narrative.sentence}</p>
                 </div>
-                <time className="text-xs font-medium text-gray-400 whitespace-nowrap">{formatDate(log.created_at)}</time>
+                <time className="text-xs font-semibold text-gray-500 whitespace-nowrap flex items-center gap-1.5">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  {narrative.when}
+                </time>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-gray-700">
                   <UserRound className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium truncate">{actorName(log)}</span>
+                  <span className="font-medium truncate">ใคร: {narrative.who}</span>
                 </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate">
-                  IP: {log.ip_address || '-'}
+                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate">
+                  <FileText className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="truncate">รายการ: {log.entity_id || '-'}</span>
                 </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate" title={log.user_agent || ''}>
-                  UA: {log.user_agent || '-'}
+                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate" title={log.user_agent || ''}>
+                  <Monitor className="w-3.5 h-3.5 text-gray-400" />
+                  <span className="truncate">{narrative.source}</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                <JsonPreview label="Before" data={log.before_data} />
-                <JsonPreview label="After" data={log.after_data} />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 pt-1">
+                <JsonPreview label="ข้อมูลก่อนเปลี่ยน (เทคนิค)" data={log.before_data} />
+                <JsonPreview label="ข้อมูลหลังเปลี่ยน (เทคนิค)" data={log.after_data} />
               </div>
-              <JsonPreview label="Metadata" data={log.metadata} />
+              <JsonPreview label="Metadata / รายละเอียดระบบ" data={log.metadata} />
             </div>
-          ))
+          );
+          })
         )}
       </div>
 
