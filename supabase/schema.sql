@@ -158,6 +158,16 @@ begin
     return;
   end if;
 
+  if exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.shifts'::regclass
+      and conname = 'unique_user_date_shifttype'
+      and condeferrable
+  ) then
+    execute 'set constraints unique_user_date_shifttype deferred';
+  end if;
+
   select user_id
   into v_shift_owner
   from public.shifts
@@ -234,6 +244,52 @@ begin
   return query select true, null::text, v_auto_rejected_ids;
 end;
 $$;
+
+create or replace function public.apply_shift_owner_edits_atomic(
+  p_edits jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_edit jsonb;
+  v_shift_id uuid;
+  v_user_id uuid;
+begin
+  if jsonb_typeof(p_edits) <> 'array' then
+    raise exception 'p_edits must be a JSON array' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.shifts'::regclass
+      and conname = 'unique_user_date_shifttype'
+      and condeferrable
+  ) then
+    execute 'set constraints unique_user_date_shifttype deferred';
+  end if;
+
+  for v_edit in select * from jsonb_array_elements(p_edits)
+  loop
+    v_shift_id := (v_edit->>'shift_id')::uuid;
+    v_user_id := (v_edit->>'user_id')::uuid;
+
+    update public.shifts
+    set user_id = v_user_id
+    where id = v_shift_id;
+
+    if not found then
+      raise exception 'SHIFT_NOT_FOUND:%', v_shift_id using errcode = 'P0002';
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function public.apply_shift_owner_edits_atomic(jsonb) from public;
+grant execute on function public.apply_shift_owner_edits_atomic(jsonb) to service_role;
 
 -- ── Enable Realtime ──────────────────────────────────────────
 -- Run in Supabase Dashboard → Database → Replication:

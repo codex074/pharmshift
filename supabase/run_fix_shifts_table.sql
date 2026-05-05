@@ -14,4 +14,5 @@ ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS position text;
 -- 3. Drop old unique constraint and recreate with position included
 ALTER TABLE public.shifts DROP CONSTRAINT IF EXISTS unique_user_date_shifttype;
 ALTER TABLE public.shifts ADD CONSTRAINT unique_user_date_shifttype
-  UNIQUE (user_id, date, shift_type, position);
+  UNIQUE (user_id, date, shift_type, position)
+  DEFERRABLE INITIALLY IMMEDIATE;
