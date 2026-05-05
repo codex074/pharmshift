@@ -15,6 +15,23 @@ function parseLimit(value: string | null) {
   return Math.max(10, Math.min(100, Math.floor(parsed)));
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function collectUuidStrings(value: unknown, out: Set<string>) {
+  if (!value) return;
+  if (typeof value === 'string') {
+    if (UUID_RE.test(value)) out.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach((item) => collectUuidStrings(item, out));
+    return;
+  }
+  if (typeof value === 'object') {
+    Object.values(value as Record<string, unknown>).forEach((item) => collectUuidStrings(item, out));
+  }
+}
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getSession();
@@ -59,7 +76,25 @@ export async function GET(req: NextRequest) {
     const logs = hasMore ? rows.slice(0, limit) : rows;
     const nextCursor = hasMore ? logs[logs.length - 1]?.created_at : null;
 
-    return NextResponse.json({ logs, nextCursor });
+    const userIds = new Set<string>();
+    logs.forEach((log: any) => {
+      collectUuidStrings(log.actor_user_id, userIds);
+      collectUuidStrings(log.before_data, userIds);
+      collectUuidStrings(log.after_data, userIds);
+      collectUuidStrings(log.metadata, userIds);
+    });
+
+    let userMap: Record<string, any> = {};
+    if (userIds.size) {
+      const { data: users, error: usersErr } = await supa
+        .from('users')
+        .select('id, pha_id, prefix, f_name, l_name, nickname, role')
+        .in('id', Array.from(userIds));
+      if (usersErr) throw usersErr;
+      userMap = Object.fromEntries((users || []).map((user: any) => [user.id, user]));
+    }
+
+    return NextResponse.json({ logs, nextCursor, userMap });
   } catch (err: any) {
     console.error('Admin audit logs GET error:', err);
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
