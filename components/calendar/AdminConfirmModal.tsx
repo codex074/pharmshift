@@ -70,12 +70,33 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     const shift = allShifts.find(s => s.id === shiftId);
     if (!shift) return [];
     const conflicts = allShifts.filter(
-      s => s.user_id === newUser.id &&
-           s.date === shift.date &&
-           s.id !== shiftId &&
-           shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType)
+      s => {
+        const finalOwnerId = pendingEdits[s.id]?.id || s.user_id;
+        return finalOwnerId === newUser.id &&
+          s.date === shift.date &&
+          s.id !== shiftId &&
+          shiftsOverlap(s.shift_type as ShiftType, shift.shift_type as ShiftType);
+      }
     );
     return conflicts.map(s => `${s.shift_type}${(s as any).department_name ? ` (${(s as any).department_name})` : ''}`);
+  }
+
+  async function applyOwnerEdits() {
+    if (edits.length === 0) return;
+
+    const res = await fetch('/api/admin/shifts/owners', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        edits: edits.map(e => ({
+          shiftId: e.shift.id,
+          userId: e.newUser.id,
+        })),
+      }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'ไม่สามารถบันทึกการเปลี่ยนคนอยู่เวรได้');
   }
 
   async function handleConfirm() {
@@ -170,13 +191,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
 
       // 2. Edit shifts (change owner)
       if (edits.length > 0) {
-        const promises = edits.map(async (e) => {
-          const { error } = await supabase.from('shifts')
-            .update({ user_id: e.newUser.id })
-            .eq('id', e.shift.id);
-          if (error) throw error;
-        });
-        await Promise.all(promises);
+        await applyOwnerEdits();
 
         // In-app + push notifications per user — only if month is published
         const editsByOldOwner = new Map<string, typeof edits>();

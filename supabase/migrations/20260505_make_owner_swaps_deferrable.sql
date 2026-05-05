@@ -1,4 +1,29 @@
--- RUN THIS IN SUPABASE SQL EDITOR TO PREVENT DOUBLE-ACCEPT RACE CONDITIONS
+do $$
+declare
+  v_cols text;
+  v_is_deferrable boolean;
+begin
+  select
+    string_agg(quote_ident(a.attname), ', ' order by keys.ord),
+    c.condeferrable
+  into v_cols, v_is_deferrable
+  from pg_constraint c
+  join lateral unnest(c.conkey) with ordinality as keys(attnum, ord) on true
+  join pg_attribute a
+    on a.attrelid = c.conrelid
+   and a.attnum = keys.attnum
+  where c.conrelid = 'public.shifts'::regclass
+    and c.conname = 'unique_user_date_shifttype'
+  group by c.condeferrable;
+
+  if v_cols is not null and not v_is_deferrable then
+    alter table public.shifts drop constraint unique_user_date_shifttype;
+    execute format(
+      'alter table public.shifts add constraint unique_user_date_shifttype unique (%s) deferrable initially immediate',
+      v_cols
+    );
+  end if;
+end $$;
 
 create or replace function public.accept_swap_request_atomic(
   p_swap_id uuid,
@@ -126,3 +151,49 @@ begin
   return query select true, null::text, v_auto_rejected_ids;
 end;
 $$;
+
+create or replace function public.apply_shift_owner_edits_atomic(
+  p_edits jsonb
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_edit jsonb;
+  v_shift_id uuid;
+  v_user_id uuid;
+begin
+  if jsonb_typeof(p_edits) <> 'array' then
+    raise exception 'p_edits must be a JSON array' using errcode = '22023';
+  end if;
+
+  if exists (
+    select 1
+    from pg_constraint
+    where conrelid = 'public.shifts'::regclass
+      and conname = 'unique_user_date_shifttype'
+      and condeferrable
+  ) then
+    execute 'set constraints unique_user_date_shifttype deferred';
+  end if;
+
+  for v_edit in select * from jsonb_array_elements(p_edits)
+  loop
+    v_shift_id := (v_edit->>'shift_id')::uuid;
+    v_user_id := (v_edit->>'user_id')::uuid;
+
+    update public.shifts
+    set user_id = v_user_id
+    where id = v_shift_id;
+
+    if not found then
+      raise exception 'SHIFT_NOT_FOUND:%', v_shift_id using errcode = 'P0002';
+    end if;
+  end loop;
+end;
+$$;
+
+revoke all on function public.apply_shift_owner_edits_atomic(jsonb) from public;
+grant execute on function public.apply_shift_owner_edits_atomic(jsonb) to service_role;
