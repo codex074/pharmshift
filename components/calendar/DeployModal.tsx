@@ -8,6 +8,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { ROLE_LABELS, STAFF_ROLES, UserRole, isAdminLike, isAdmin } from '@/lib/types';
 import { insertNotifications } from '@/lib/notifyUsers';
+import { postAuditLog } from '@/lib/auditLogClient';
 
 interface DeployModalProps {
   initialYear: number;
@@ -129,6 +130,11 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
 
       const { error } = await supabase.from('published_months').upsert(updatePayload);
       if (error) throw error;
+
+      await postAuditLog({
+        action: 'publish_schedule',
+        description: `ประกาศตารางเวร เดือน ${monthYear} (${Array.from(newRoles).map((role) => ROLE_LABELS[role]).join(', ')})`,
+      });
 
       setSuccessMsg('ประกาศตารางเวรสำเร็จแล้ว!');
       toast.success('ประกาศตารางเวรสำเร็จแล้ว!');

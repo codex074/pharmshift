@@ -8,6 +8,7 @@ import { toastError, toastSuccess } from '@/lib/swal';
 import { exportCompensationExcel, exportEvidenceExcel } from '@/lib/excelExport';
 import { exportSignSheet } from '@/lib/signSheetExport';
 import { cn } from '@/lib/utils';
+import { postAuditLog } from '@/lib/auditLogClient';
 
 type ExportType = 'compensation' | 'sign-sheet' | 'evidence';
 type UserRole = 'pharmacist' | 'pharmacy_technician' | 'officer';
@@ -151,6 +152,18 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           await exportEvidenceExcel(filteredShifts as any, usersData || [], year, month);
         }
       }
+
+      const typeLabel =
+        selected === 'compensation' ? 'หลักฐานค่าตอบแทน' :
+        selected === 'sign-sheet' ? 'ตารางเซ็นเวร' :
+        'หลักฐานการจัดตารางเวร';
+      const roleLabels = hasRoleFilter
+        ? Array.from(selectedRoles).map((role) => ROLES.find((item) => item.id === role)?.short || role).join(', ')
+        : 'ทุก role';
+      await postAuditLog({
+        action: 'export_report',
+        description: `ดึงรายงาน ${typeLabel} เดือน ${year}-${String(month).padStart(2, '0')} (${roleLabels})`,
+      });
 
       toastSuccess('ส่งออกสำเร็จ');
       onClose();

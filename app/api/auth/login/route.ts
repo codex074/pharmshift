@@ -24,38 +24,16 @@ export async function POST(request: Request) {
       .single();
 
     if (error || !user) {
-      await writeAuditLog({
-        action: 'login_failed',
-        entityType: 'auth',
-        metadata: { pha_id: normalizedPhaId, reason: 'user_not_found' },
-        request,
-      });
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
     // Checking the password directly with text equality
     if (user.password !== password) {
-      await writeAuditLog({
-        actorUserId: user.id,
-        action: 'login_failed',
-        entityType: 'auth',
-        entityId: user.id,
-        metadata: { pha_id: normalizedPhaId, reason: 'wrong_password' },
-        request,
-      });
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
     // Block disabled accounts
     if (user.is_active === false) {
-      await writeAuditLog({
-        actorUserId: user.id,
-        action: 'login_blocked',
-        entityType: 'auth',
-        entityId: user.id,
-        metadata: { pha_id: normalizedPhaId, reason: 'inactive_account' },
-        request,
-      });
       return NextResponse.json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' }, { status: 403 });
     }
 
@@ -66,11 +44,8 @@ export async function POST(request: Request) {
 
     await writeAuditLog({
       actorUserId: user.id,
-      action: 'login_success',
-      entityType: 'auth',
-      entityId: user.id,
-      metadata: { pha_id: normalizedPhaId, role: user.role },
-      request,
+      action: 'login',
+      description: `เข้าสู่ระบบ`,
     });
 
     return NextResponse.json({

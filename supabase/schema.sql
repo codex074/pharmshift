@@ -301,160 +301,22 @@ grant execute on function public.apply_shift_owner_edits_atomic(jsonb, uuid) to 
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor_user_id uuid references public.users(id) on delete set null,
-  actor_snapshot jsonb,
+  actor_name text not null,
   action text not null,
-  entity_type text not null,
-  entity_id text,
-  before_data jsonb,
-  after_data jsonb,
-  metadata jsonb not null default '{}'::jsonb,
-  ip_address inet,
-  user_agent text,
+  description text not null,
   created_at timestamptz not null default now()
 );
 
 create index if not exists audit_logs_created_at_idx
   on public.audit_logs (created_at desc);
 create index if not exists audit_logs_actor_created_idx
-  on public.audit_logs (actor_user_id, created_at desc);
-create index if not exists audit_logs_entity_created_idx
-  on public.audit_logs (entity_type, created_at desc);
+  on public.audit_logs (actor_name, created_at desc);
 create index if not exists audit_logs_action_created_idx
   on public.audit_logs (action, created_at desc);
 
 alter table public.audit_logs enable row level security;
 revoke all on table public.audit_logs from anon, authenticated;
 grant select, insert on table public.audit_logs to service_role;
-
-create or replace function public.audit_actor_snapshot(p_actor_user_id uuid)
-returns jsonb
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select to_jsonb(u) - 'password'
-  from (
-    select id, pha_id, prefix, f_name, l_name, nickname, role
-    from public.users
-    where id = p_actor_user_id
-  ) u;
-$$;
-
-create or replace function public.audit_redact_row(p_table_name text, p_data jsonb)
-returns jsonb
-language plpgsql
-immutable
-as $$
-begin
-  if p_data is null then
-    return null;
-  end if;
-
-  p_data := p_data - 'password' - 'token' - 'auth' - 'p256dh';
-
-  if p_table_name = 'push_subscriptions' then
-    p_data := p_data - 'endpoint';
-  end if;
-
-  return p_data;
-end;
-$$;
-
-create or replace function public.audit_row_change()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_actor_text text;
-  v_actor_user_id uuid;
-  v_old jsonb;
-  v_new jsonb;
-  v_entity_id text;
-begin
-  v_actor_text := nullif(current_setting('app.current_user_id', true), '');
-
-  if v_actor_text is not null then
-    begin
-      v_actor_user_id := v_actor_text::uuid;
-    exception when others then
-      v_actor_user_id := null;
-    end;
-  end if;
-
-  if tg_op in ('UPDATE', 'DELETE') then
-    v_old := public.audit_redact_row(tg_table_name, to_jsonb(old));
-  end if;
-
-  if tg_op in ('INSERT', 'UPDATE') then
-    v_new := public.audit_redact_row(tg_table_name, to_jsonb(new));
-  end if;
-
-  v_entity_id := coalesce(
-    v_new->>'id',
-    v_old->>'id',
-    v_new->>'month_year',
-    v_old->>'month_year',
-    v_new->>'date',
-    v_old->>'date'
-  );
-
-  insert into public.audit_logs (
-    actor_user_id,
-    actor_snapshot,
-    action,
-    entity_type,
-    entity_id,
-    before_data,
-    after_data,
-    metadata
-  )
-  values (
-    v_actor_user_id,
-    case when v_actor_user_id is not null then public.audit_actor_snapshot(v_actor_user_id) else null end,
-    lower(tg_op),
-    tg_table_name,
-    v_entity_id,
-    v_old,
-    v_new,
-    jsonb_build_object('schema', tg_table_schema)
-  );
-
-  if tg_op = 'DELETE' then
-    return old;
-  end if;
-  return new;
-end;
-$$;
-
-do $$
-declare
-  v_table text;
-  v_tables text[] := array[
-    'users',
-    'departments',
-    'shifts',
-    'swap_requests',
-    'published_months',
-    'holidays',
-    'notifications',
-    'push_subscriptions',
-    'shift_logs'
-  ];
-begin
-  foreach v_table in array v_tables loop
-    if to_regclass(format('public.%I', v_table)) is not null then
-      execute format('drop trigger if exists audit_%I_row_change on public.%I', v_table, v_table);
-      execute format(
-        'create trigger audit_%I_row_change after insert or update or delete on public.%I for each row execute function public.audit_row_change()',
-        v_table,
-        v_table
-      );
-    end if;
-  end loop;
-end $$;
 
 create or replace function public.apply_admin_shift_changes_atomic(
   p_delete_ids uuid[] default array[]::uuid[],
