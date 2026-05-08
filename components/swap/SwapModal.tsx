@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
 import { DEPT_STYLES, ROLE_LABELS } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
+import { postAuditLog } from '@/lib/auditLogClient';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth,
 } from 'date-fns';
@@ -78,6 +79,14 @@ function duplicateRequestMessage(name: string | undefined) {
   return `ส่งคำขอถึง ${name || 'ผู้ใช้รายนี้'} ไปแล้วก่อนหน้านี้`;
 }
 
+function formatAuditShift(shift: Shift | null | undefined) {
+  if (!shift) return 'เวร';
+  const deptName = (shift.department as { name?: string } | undefined)?.name || '';
+  const area = [deptName, shift.position].filter(Boolean).join(' ');
+  const dateLabel = format(new Date(`${shift.date}T00:00:00`), 'd MMM yyyy', { locale: th });
+  return `เวร${shift.shift_type}${area ? ` ${area}` : ''} วันที่ ${dateLabel}`;
+}
+
 interface SwapModalProps {
   shift: Shift | null;
   currentUser: UserType | null;
@@ -121,7 +130,7 @@ export function SwapModal({
   const isMonthPublished = !!publishedRoles[ownerRoleForPublish];
 
   const shiftOwner = shift?.user as { f_name: string; nickname?: string; role?: UserRole } | undefined;
-  const ownerLabel = shiftOwner?.nickname || shiftOwner?.f_name || '—';
+  const ownerLabel = shiftOwner?.f_name || shiftOwner?.nickname || '—';
   const ownerRole: UserRole = shiftOwner?.role || currentUser?.role || 'pharmacist';
   const roleName = ROLE_LABELS[ownerRole] || 'เภสัชกร';
   const shiftDate = shift ? new Date(shift.date + 'T00:00:00') : new Date();
@@ -241,7 +250,7 @@ export function SwapModal({
         requestType: 'transfer',
       });
       if (hasDuplicate) {
-        const duplicateMessage = duplicateRequestMessage(selectedUser.nickname || selectedUser.f_name);
+        const duplicateMessage = duplicateRequestMessage(selectedUser.f_name || selectedUser.nickname);
         setSubmitError(duplicateMessage);
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
@@ -252,6 +261,10 @@ export function SwapModal({
         message: message.trim() || null, status: 'pending',
       });
       if (error) throw error;
+      await postAuditLog({
+        action: 'request_transfer',
+        description: `ขอโอน${formatAuditShift(shift)} ให้ ${selectedUser.f_name || selectedUser.nickname || 'ผู้ใช้'}`,
+      });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
       const notifTitle = '📩 คำขอโอนเวร';
@@ -318,6 +331,10 @@ export function SwapModal({
         status: 'pending',
       });
       if (error) throw error;
+      await postAuditLog({
+        action: 'request_swap',
+        description: `ขอแลก${formatAuditShift(selectedMyShift)} กับ ${ownerLabel} (${formatAuditShift(shift)})`,
+      });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
       const yourDateFmt  = format(shiftDate, 'd MMM', { locale: th });
@@ -377,6 +394,10 @@ export function SwapModal({
         status: 'pending',
       });
       if (error) throw error;
+      await postAuditLog({
+        action: 'request_cover',
+        description: `ขออยู่แทน ${ownerLabel} ใน${formatAuditShift(shift)}`,
+      });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });
       const notifTitle = '🙋 คำขออยู่เวรแทน';

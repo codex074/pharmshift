@@ -120,7 +120,15 @@ export async function GET(request: Request) {
 
   if (errLogs) console.error('[cron/cleanup] shift_logs 3-month delete error:', errLogs);
 
-  // ── 7) Delete push_subscriptions inactive for 3 months ─────────────────
+  // ── 7) Delete audit_logs older than 3 months ───────────────────────────
+  const { error: errAuditLogs, count: countAuditLogs } = await supabase
+    .from('audit_logs')
+    .delete({ count: 'exact' })
+    .lt('created_at', cutoff3m.toISOString());
+
+  if (errAuditLogs) console.error('[cron/cleanup] audit_logs 3-month delete error:', errAuditLogs);
+
+  // ── 8) Delete push_subscriptions inactive for 3 months ─────────────────
   const cutoff60d = new Date();
   cutoff60d.setMonth(cutoff60d.getMonth() - 3);
 
@@ -135,6 +143,7 @@ export async function GET(request: Request) {
     `[cron/cleanup] swap_requests: ${count4w ?? 0} old(>3mo) | ${count48h ?? 0} rejected(>3mo) | ${countChain} chain-hops`,
     `[cron/cleanup] notifications: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} others(>3d)`,
     `[cron/cleanup] shift_logs: ${countLogs ?? 0} old(>3mo)`,
+    `[cron/cleanup] audit_logs: ${countAuditLogs ?? 0} old(>3mo)`,
     `[cron/cleanup] push_subscriptions: ${countPush ?? 0} inactive(>3mo)`,
   ].join('\n'));
 
@@ -146,6 +155,7 @@ export async function GET(request: Request) {
     deleted_reminder_notifs:        countReminder ?? 0,
     deleted_other_notifs:           countNotif   ?? 0,
     deleted_shift_logs:             countLogs    ?? 0,
+    deleted_audit_logs:             countAuditLogs ?? 0,
     deleted_push_subscriptions:     countPush    ?? 0,
   });
 }
