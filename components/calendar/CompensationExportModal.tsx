@@ -6,6 +6,7 @@ import { cn, THAI_MONTHS } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { toastError } from '@/lib/swal';
 import { exportCompensationExcel } from '@/lib/excelExport';
+import { postAuditLog } from '@/lib/auditLogClient';
 
 interface Props {
   onClose: () => void;
@@ -47,6 +48,10 @@ export function CompensationExportModal({ onClose, defaultMonth, defaultYear }: 
       // Ensure that we get all roles, and they will be sorted inside `exportCompensationExcel` 
       // (which we will update to sort by role first, then pha_id).
       await exportCompensationExcel(shiftsData as any, year, month);
+      await postAuditLog({
+        action: 'export_report',
+        description: `ดึงรายงานค่าตอบแทน เดือน ${year}-${String(month).padStart(2, '0')}`,
+      });
 
       onClose(); // Close the modal upon success
     } catch (err: any) {

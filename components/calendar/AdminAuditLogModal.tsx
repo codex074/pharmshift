@@ -1,59 +1,45 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, ChevronDown, Database, Loader2, RefreshCcw, Search, UserRound } from 'lucide-react';
+import { Activity, AlertCircle, CalendarClock, CheckCircle2, Database, Loader2, RefreshCcw, Search, UserRound } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import type { UserRole } from '@/lib/types';
 
 type AuditLog = {
   id: string;
-  actor_user_id?: string | null;
-  actor_snapshot?: {
-    pha_id?: string;
-    f_name?: string;
-    l_name?: string;
-    nickname?: string;
-    role?: string;
-  } | null;
+  actor_name?: string | null;
+  actor_role?: UserRole | null;
   action: string;
-  entity_type: string;
-  entity_id?: string | null;
-  before_data?: Record<string, unknown> | null;
-  after_data?: Record<string, unknown> | null;
-  metadata?: Record<string, unknown> | null;
-  ip_address?: string | null;
-  user_agent?: string | null;
+  description: string;
   created_at: string;
 };
 
 const ACTION_OPTIONS = [
   { value: 'all', label: 'ทุก action' },
-  { value: 'login_success', label: 'Login สำเร็จ' },
-  { value: 'login_failed', label: 'Login ไม่สำเร็จ' },
-  { value: 'login_blocked', label: 'Login ถูกบล็อก' },
-  { value: 'logout', label: 'Logout' },
-  { value: 'insert', label: 'Create' },
-  { value: 'update', label: 'Update' },
-  { value: 'delete', label: 'Delete' },
+  { value: 'login', label: 'ล็อกอิน' },
+  { value: 'publish_schedule', label: 'ประกาศตารางเวร' },
+  { value: 'add_shift', label: 'เพิ่มเวร' },
+  { value: 'edit_shift', label: 'แก้ไขเวร' },
+  { value: 'delete_shift', label: 'ลบเวร' },
+  { value: 'request_swap', label: 'ขอแลกเวร' },
+  { value: 'request_cover', label: 'ขออยู่แทน' },
+  { value: 'request_transfer', label: 'โอนเวร' },
+  { value: 'export_report', label: 'ดึงรายงาน' },
 ];
 
-const ENTITY_OPTIONS = [
-  { value: 'all', label: 'ทุกข้อมูล' },
-  { value: 'auth', label: 'Auth' },
-  { value: 'users', label: 'Users' },
-  { value: 'shifts', label: 'Shifts' },
-  { value: 'swap_requests', label: 'Swap requests' },
-  { value: 'published_months', label: 'Published months' },
-  { value: 'holidays', label: 'Holidays' },
-  { value: 'notifications', label: 'Notifications' },
-];
-
-function actorName(log: AuditLog) {
-  const actor = log.actor_snapshot;
-  if (!actor) return log.metadata?.pha_id ? String(log.metadata.pha_id) : 'System / ไม่ทราบผู้ใช้';
-  return actor.nickname || actor.f_name || actor.pha_id || 'ไม่ทราบชื่อ';
-}
+const ACTION_LABELS: Record<string, string> = {
+  login: 'ล็อกอิน',
+  publish_schedule: 'ประกาศตารางเวร',
+  add_shift: 'เพิ่มเวร',
+  edit_shift: 'แก้ไขเวร',
+  delete_shift: 'ลบเวร',
+  request_swap: 'ขอแลกเวร',
+  request_cover: 'ขออยู่แทน',
+  request_transfer: 'โอนเวร',
+  export_report: 'ดึงรายงาน',
+};
 
 function formatDate(value: string) {
   try {
@@ -63,45 +49,37 @@ function formatDate(value: string) {
   }
 }
 
-function summarizeChange(log: AuditLog) {
-  if (log.entity_type === 'auth') {
-    const reason = log.metadata?.reason ? ` (${String(log.metadata.reason)})` : '';
-    return `${log.action}${reason}`;
-  }
-
-  if (log.action === 'insert') return 'สร้างรายการใหม่';
-  if (log.action === 'delete') return 'ลบรายการ';
-  if (log.action !== 'update') return log.action;
-
-  const before = log.before_data || {};
-  const after = log.after_data || {};
-  const changed = Object.keys(after).filter((key) => JSON.stringify(before[key]) !== JSON.stringify(after[key]));
-  if (!changed.length) return 'แก้ไขข้อมูล';
-  return `แก้ไข ${changed.slice(0, 5).join(', ')}${changed.length > 5 ? ` +${changed.length - 5}` : ''}`;
+function actionLabel(action: string) {
+  return ACTION_LABELS[action] || action;
 }
 
-function JsonPreview({ label, data }: { label: string; data?: Record<string, unknown> | null }) {
-  const [open, setOpen] = useState(false);
-  if (!data || Object.keys(data).length === 0) return null;
+function logSentence(log: AuditLog) {
+  const actor = log.actor_name || 'ระบบ';
+  const detail = (log.description || actionLabel(log.action)).trim();
+  if (!detail) return `${actor} ทำรายการ ${actionLabel(log.action)}`;
 
-  return (
-    <div className="rounded-lg border border-gray-200 bg-gray-50">
-      <button
-        type="button"
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-100"
-      >
-        <span>{label}</span>
-        <ChevronDown className={cn('w-3.5 h-3.5 transition-transform', open && 'rotate-180')} />
-      </button>
-      {open && (
-        <pre className="max-h-48 overflow-auto border-t border-gray-200 p-3 text-[11px] leading-relaxed text-gray-700 whitespace-pre-wrap">
-          {JSON.stringify(data, null, 2)}
-        </pre>
-      )}
-    </div>
-  );
+  if (detail.startsWith(actor)) return detail;
+  return `${actor} ${detail}`;
 }
+
+const ROLE_BADGES: Record<string, { label: string; className: string }> = {
+  pharmacist: {
+    label: 'เภสัช',
+    className: 'bg-violet-50 text-violet-700 border-violet-200',
+  },
+  pharmacy_technician: {
+    label: 'จพง.',
+    className: 'bg-sky-50 text-sky-700 border-sky-200',
+  },
+  officer: {
+    label: 'จนท.',
+    className: 'bg-amber-50 text-amber-700 border-amber-200',
+  },
+  admin: {
+    label: 'Admin',
+    className: 'bg-rose-50 text-rose-700 border-rose-200',
+  },
+};
 
 export function AdminAuditLogModal() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -110,7 +88,6 @@ export function AdminAuditLogModal() {
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [action, setAction] = useState('all');
-  const [entityType, setEntityType] = useState('all');
   const [search, setSearch] = useState('');
 
   async function fetchLogs(reset = false) {
@@ -119,7 +96,7 @@ export function AdminAuditLogModal() {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ limit: '50', action, entityType });
+      const params = new URLSearchParams({ limit: '50', action });
       if (cursor) params.set('cursor', cursor);
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       const data = await res.json();
@@ -138,19 +115,18 @@ export function AdminAuditLogModal() {
   useEffect(() => {
     fetchLogs(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [action, entityType]);
+  }, [action]);
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return logs;
     return logs.filter((log) => {
       const haystack = [
-        actorName(log),
-        log.action,
-        log.entity_type,
-        log.entity_id || '',
-        log.ip_address || '',
-        summarizeChange(log),
+        log.actor_name || '',
+        log.description || '',
+        logSentence(log),
+        actionLabel(log.action),
+        formatDate(log.created_at),
       ].join(' ').toLowerCase();
       return haystack.includes(q);
     });
@@ -166,7 +142,7 @@ export function AdminAuditLogModal() {
             </div>
             <div>
               <h3 className="text-base font-bold text-gray-900">Audit Log</h3>
-              <p className="text-xs text-gray-500">เฉพาะ admin เท่านั้นที่เรียกดูได้</p>
+              <p className="text-xs text-gray-500">แสดงเฉพาะ ใครทำอะไร เมื่อไหร่</p>
             </div>
           </div>
           <button
@@ -180,13 +156,13 @@ export function AdminAuditLogModal() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_150px_170px] gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="ค้นหาชื่อ, action, table, IP..."
+              placeholder="ค้นหาชื่อผู้ใช้หรือ action..."
               className="w-full h-10 rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-indigo-200"
             />
           </div>
@@ -196,13 +172,6 @@ export function AdminAuditLogModal() {
             className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
           >
             {ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-          <select
-            value={entityType}
-            onChange={(event) => setEntityType(event.target.value)}
-            className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
-          >
-            {ENTITY_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </div>
       </div>
@@ -226,41 +195,36 @@ export function AdminAuditLogModal() {
           </div>
         ) : (
           filteredLogs.map((log) => (
-            <div key={log.id} className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-lg bg-gray-900 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-white">
-                      {log.action}
-                    </span>
-                    <span className="rounded-lg bg-indigo-50 px-2 py-1 text-[11px] font-semibold text-indigo-700">
-                      {log.entity_type}
-                    </span>
-                    {log.entity_id && <span className="truncate text-xs text-gray-400">{log.entity_id}</span>}
-                  </div>
-                  <p className="mt-2 text-sm font-semibold text-gray-900">{summarizeChange(log)}</p>
-                </div>
-                <time className="text-xs font-medium text-gray-400 whitespace-nowrap">{formatDate(log.created_at)}</time>
+            <div key={log.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-white">
+                  {actionLabel(log.action)}
+                </span>
+                {log.actor_role && ROLE_BADGES[log.actor_role] && (
+                  <span className={cn(
+                    'rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                    ROLE_BADGES[log.actor_role].className,
+                  )}>
+                    {ROLE_BADGES[log.actor_role].label}
+                  </span>
+                )}
+                <time className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                  <CalendarClock className="w-3.5 h-3.5" />
+                  {formatDate(log.created_at)}
+                </time>
+                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  สำเร็จ
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                <div className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 text-gray-700">
-                  <UserRound className="w-3.5 h-3.5 text-gray-400" />
-                  <span className="font-medium truncate">{actorName(log)}</span>
+              <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700 space-y-1.5">
+                <div className="flex items-center gap-2 font-semibold text-gray-900">
+                  <UserRound className="w-4 h-4 text-gray-400" />
+                  <span>{log.actor_name || 'ระบบ'}</span>
                 </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate">
-                  IP: {log.ip_address || '-'}
-                </div>
-                <div className="rounded-lg bg-gray-50 px-3 py-2 text-gray-600 truncate" title={log.user_agent || ''}>
-                  UA: {log.user_agent || '-'}
-                </div>
+                <p className="leading-relaxed">{logSentence(log)}</p>
               </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
-                <JsonPreview label="Before" data={log.before_data} />
-                <JsonPreview label="After" data={log.after_data} />
-              </div>
-              <JsonPreview label="Metadata" data={log.metadata} />
             </div>
           ))
         )}

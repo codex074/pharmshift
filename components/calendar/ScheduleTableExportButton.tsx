@@ -6,6 +6,7 @@ import { toastError, toastSuccess } from '@/lib/swal';
 import { exportScheduleTable } from '@/lib/scheduleTableExport';
 import { exportMySchedule } from '@/lib/myScheduleExport';
 import type { Shift, Holiday, UserRole } from '@/lib/types';
+import { postAuditLog } from '@/lib/auditLogClient';
 
 const ROLE_SHORT_LABEL: Partial<Record<UserRole, string>> = {
   pharmacist: 'เภสัชกร',
@@ -42,12 +43,20 @@ export function ScheduleTableExportButton({ shifts, holidays, year, month, isPub
         if (!myShifts.length) throw new Error('ไม่พบข้อมูลเวรของคุณในเดือนนี้');
         const name = currentUserName || 'ฉัน';
         await exportMySchedule(myShifts, holidays, year, month, name, prevMonthLastDayShifts || []);
+        await postAuditLog({
+          action: 'export_report',
+          description: `ดึงรายงานเวรของฉัน เดือน ${year}-${String(month).padStart(2, '0')}`,
+        });
         toastSuccess('ส่งออกตารางเวรของฉันสำเร็จ');
         return;
       }
 
       if (!roleShifts.length) throw new Error('ไม่พบข้อมูลเวรของ role นี้ในเดือนนี้');
       await exportScheduleTable(roleShifts, holidays, year, month, useOriginal, prevDuekByRole, roleGroup);
+      await postAuditLog({
+        action: 'export_report',
+        description: `ดึงรายงานตารางเวร ${ROLE_SHORT_LABEL[roleGroup] || roleGroup} เดือน ${year}-${String(month).padStart(2, '0')}${useOriginal ? ' (ตารางเดิม)' : ' (ตารางปัจจุบัน)'}`,
+      });
       toastSuccess(useOriginal ? 'ส่งออกตารางเวร (ตารางเดิม) สำเร็จ' : 'ส่งออกตารางเวรสำเร็จ');
     } catch (err: any) {
       toastError(err.message || 'เกิดข้อผิดพลาดในการสร้างไฟล์');

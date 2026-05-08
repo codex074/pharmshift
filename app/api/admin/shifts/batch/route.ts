@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import { writeAuditLogs } from '@/lib/auditLog';
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,6 +25,29 @@ type AddShiftPayload = {
   originalUserId?: string | null;
   monthYear?: string;
 };
+
+function displayUserName(user?: { f_name?: string | null } | null) {
+  return user?.f_name || 'ไม่ทราบผู้ใช้';
+}
+
+function formatAuditDate(date?: string | null) {
+  if (!date) return 'ไม่ทราบวันที่';
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return date;
+  return parsed.toLocaleDateString('th-TH', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+}
+
+function formatShiftArea(input: {
+  departmentName?: string | null;
+  position?: string | null;
+}) {
+  const parts = [input.departmentName, input.position].filter(Boolean);
+  return parts.length ? ` ${parts.join(' ')}` : '';
+}
 
 function normalizeBatchError(err: any): string {
   const raw = err?.message || '';
@@ -82,6 +106,36 @@ export async function POST(req: NextRequest) {
       ...ownerEdits.map((edit: any) => edit.user_id),
       ...adds.map((add: any) => add.user_id),
     ]));
+    const departmentIds = Array.from(new Set(adds.map((add: any) => add.department_id).filter(Boolean)));
+
+    const [{ data: shiftRows }, { data: userRows }, { data: departmentRows }] = await Promise.all([
+      shiftIds.length
+        ? supa
+            .from('shifts')
+            .select(`
+              id, date, shift_type, position,
+              department:departments(name),
+              user:users!user_id(f_name)
+            `)
+            .in('id', shiftIds)
+        : Promise.resolve({ data: [] as any[] }),
+      userIds.length
+        ? supa
+            .from('users')
+            .select('id, f_name, role')
+            .in('id', userIds)
+        : Promise.resolve({ data: [] as any[] }),
+      departmentIds.length
+        ? supa
+            .from('departments')
+            .select('id, name')
+            .in('id', departmentIds)
+        : Promise.resolve({ data: [] as any[] }),
+    ]);
+
+    const shiftMap = new Map((shiftRows || []).map((row: any) => [row.id, row]));
+    const userMap = new Map((userRows || []).map((row: any) => [row.id, row]));
+    const departmentMap = new Map((departmentRows || []).map((row: any) => [row.id, row.name]));
 
     if (session.role !== 'admin') {
       if (shiftIds.length) {
@@ -134,6 +188,48 @@ export async function POST(req: NextRequest) {
     if (error) {
       return NextResponse.json({ error: normalizeBatchError(error) }, { status: 409 });
     }
+
+    const auditEntries = [
+      ...deleteIds.map((shiftId: string) => {
+        const shift = shiftMap.get(shiftId);
+        return {
+          actorUserId: session.id,
+          action: 'delete_shift',
+          description: `ลบเวร${shift?.shift_type || ''}${formatShiftArea({
+            departmentName: shift?.department?.name,
+            position: shift?.position,
+          })} วันที่ ${formatAuditDate(shift?.date)} ของ ${displayUserName(shift?.user)}`,
+        };
+      }),
+      ...ownerEdits.map((edit: { shift_id: string; user_id: string }) => {
+        const shift = shiftMap.get(edit.shift_id);
+        const nextUser = userMap.get(edit.user_id);
+        return {
+          actorUserId: session.id,
+          action: 'edit_shift',
+          description: `แก้ไขเวร${shift?.shift_type || ''}${formatShiftArea({
+            departmentName: shift?.department?.name,
+            position: shift?.position,
+          })} วันที่ ${formatAuditDate(shift?.date)} จาก ${displayUserName(shift?.user)} เป็น ${displayUserName(nextUser)}`,
+        };
+      }),
+      ...adds.map((add: {
+        date: string;
+        department_id: number;
+        shift_type: string;
+        position: string | null;
+        user_id: string;
+      }) => ({
+        actorUserId: session.id,
+        action: 'add_shift',
+        description: `เพิ่มเวร${add.shift_type || ''}${formatShiftArea({
+          departmentName: departmentMap.get(add.department_id) || '',
+          position: add.position,
+        })} วันที่ ${formatAuditDate(add.date)} ให้ ${displayUserName(userMap.get(add.user_id))}`,
+      })),
+    ];
+
+    await writeAuditLogs(auditEntries);
 
     return NextResponse.json({ success: true });
   } catch (err: any) {
