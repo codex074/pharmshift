@@ -31,6 +31,16 @@ const DOW_HDR: Record<number, string> = {
   6: 'bg-[#D0AEEF] text-purple-900',
 };
 
+function dateHeader(dayNum: string, dateClass: string, extraClass?: string) {
+  return (
+    <div className={cn('flex h-10 justify-end', extraClass)}>
+      <div className={cn('flex h-full w-12 items-center justify-center border-l border-gray-400/60 text-[20px] font-black', dateClass)}>
+        {dayNum}
+      </div>
+    </div>
+  );
+}
+
 interface CalendarGridProps {
   year: number;
   month: number;
@@ -61,15 +71,16 @@ export function OfficeCalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
-    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-md bg-white">
+    <div className="w-full overflow-x-auto border-t-2 border-l-2 border-slate-400 rounded-b-xl shadow-sm bg-white">
       <div className="min-w-[1000px] select-none">
 
         {/* Header Row */}
         <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr_1fr_1fr_1.3fr] border-b-2 border-slate-400">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-2 text-center text-sm font-bold border-r-2 border-slate-400',
-              DOW_HDR[i]
+              'py-2.5 text-center text-sm font-semibold',
+              'border-r-2 border-slate-400',
+              DOW_HDR[i],
             )}>
               {day}
             </div>
@@ -221,7 +232,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   const rowH = 'min-h-[1.65rem]';
 
   const subHdr = (shiftPalette: keyof typeof SHIFT_HDR, extra?: string) => cn(
-    `${SHIFT_HDR[shiftPalette]} flex items-center justify-center font-bold text-[10px] xl:text-[11px] tracking-tight truncate`,
+    `${SHIFT_HDR[shiftPalette]} flex items-center justify-center font-semibold text-[10px] xl:text-[11px] truncate`,
     rowH, bb, extra
   );
   const nameCell = (extra?: string) => cn(
@@ -246,6 +257,23 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     );
   };
 
+  const renderPendingAddBadge = (add: PendingAdd, globalIndex: number) => (
+    <div
+      key={`pending-add-${globalIndex}`}
+      className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto"
+    >
+      <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
+        {add.user.nickname || add.user.f_name}
+      </span>
+      <button
+        onClick={(e) => { e.stopPropagation(); ctx.onRemovePendingAdd?.(globalIndex); }}
+        className="w-3 h-3 ml-1 shrink-0 rounded flex items-center justify-center text-red-500 hover:text-red-700 font-bold text-[10px] leading-none"
+      >
+        ×
+      </button>
+    </div>
+  );
+
   /** Sorted shift list for a given type + optional dept */
   const getList = (shiftType: ShiftType, dept?: string): Shift[] => {
     const list = day.shifts.filter(s =>
@@ -255,13 +283,30 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     return list;
   };
 
+  const getPendingList = (shiftType: ShiftType, dept?: string, position: string = '') => {
+    const pending = (ctx.pendingAdds || [])
+      .map((add, globalIndex) => ({ add, globalIndex }))
+      .filter(({ add }) =>
+        add.date === dateStr &&
+        add.shift_type === shiftType &&
+        (!dept || add.department === dept) &&
+        (add.position || '') === position &&
+        add.user.role === 'officer'
+      );
+    pending.sort((a, b) => (a.add.position || '').localeCompare(b.add.position || '', 'th', { numeric: true }));
+    return pending;
+  };
+
   const slot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
     const list = getList(shiftType, dept);
     const s = list[i];
+    const pendingList = getPendingList(shiftType, dept);
+    const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
     return (
       <div className={cn(nameCell(), cls)}>
         {s && renderShiftBadge(s, ctx)}
-        {!s && dept && renderAddBtn(shiftType, dept)}
+        {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
+        {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
       </div>
     );
   };
@@ -322,10 +367,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
+      const pendingList = getPendingList(shiftType, dept);
+      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
-          {!s && dept && renderAddBtn(shiftType, dept)}
+          {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
         </div>
       );
     };
@@ -337,13 +385,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
         {/* Date header */}
-        <div className={cn('flex items-center justify-center font-bold text-[21px] h-10', dateBg, dateColor, bb)}>
-          {dayNum}
-        </div>
+        {dateHeader(dayNum, cn(dateBg, dateColor), bb)}
 
         {/* Column sub-headers */}
         <div className="flex">
-          <div className={cn(c1, br, subHdr('chao', 'text-amber-800'))}>โครงการ</div>
+          <div className={cn(c1, br, subHdr('chao'))}>โครงการ</div>
           <div className={cn(c2, br, subHdr('chao'))}>Surg</div>
           <div className={cn(c3, br, subHdr('chao'))}>MED</div>
           <div className={cn(c4, br, subHdr('bai'))}>บ่ายMED</div>
@@ -386,11 +432,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
           {/* ER separator row (gray) */}
           <div className="flex">
-            <div className={cn(c1, bb, `${SHIFT_HDR.chao} flex items-center justify-center font-bold text-[11px]`, fixedRowH)}>ER</div>
+            <div className={cn(c1, bb, `${SHIFT_HDR.chao} flex items-center justify-center font-semibold text-[11px]`, fixedRowH)}>ER</div>
             {fempty(c2)}
             {fempty(c3)}
             {/* ดึก label: spans c4+c5 */}
-            <div className={cn(dukW, bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, fixedRowH)}>ดึก</div>
+            <div className={cn(dukW, bb, `${SHIFT_HDR.duek} flex items-center justify-center font-semibold text-[11px]`, fixedRowH)}>ดึก</div>
             {isSat && fempty('flex-1')}
           </div>
 
@@ -463,11 +509,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
   const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string, cls: string) => {
     const list = getList(shiftType, dept).filter(s => (s.position || '') === position);
+    const maxEntries = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && position === 'OPD' ? 2 : 1;
 
     // Pending adds for this exact position — officer role only
     const pendingForPos = ctx.pendingAdds ? ctx.pendingAdds.filter(
       add => add.date === dateStr && add.shift_type === shiftType && (!dept || add.department === dept) && add.position === position && add.user.role === 'officer'
     ) : [];
+    const currentEntryCount = list.length + pendingForPos.length;
 
     return (
       <div className={cn(nameCell(), cls)}>
@@ -494,7 +542,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
               </div>
             );
           })}
-          {list.length === 0 && pendingForPos.length === 0 && dept && renderAddBtn(shiftType, dept, position)}
+          {currentEntryCount < maxEntries && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       </div>
     );
@@ -525,13 +573,11 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
 
       {/* Date header */}
-      <div className={cn('flex items-center justify-center font-bold text-[21px] h-10 bg-gray-200/60 text-gray-900', bb)}>
-        {dayNum}
-      </div>
+      {dateHeader(dayNum, 'bg-gray-100 text-gray-600', bb)}
 
       {/* Column sub-headers: โครงการ | บ่ายMED | บ่าย ER */}
       <div className="flex">
-        <div className={cn(col1w, br, subHdr('bai', 'text-orange-700'))}>โครงการ</div>
+        <div className={cn(col1w, br, subHdr('bai'))}>โครงการ</div>
         <div className={cn(col1w, br, subHdr('bai'))}>บ่ายMED</div>
         <div className={cn('flex-1',  subHdr('bai'))}>บ่าย ER</div>
       </div>
@@ -555,16 +601,15 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <>
           {/* Separator row: "รุ่งอรุณ" | "ดึก" */}
           <div className="flex">
-            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-bold text-[11px]`, rowH)}>รุ่งอรุณ</div>
-            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, rowH)}>ดึก</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-semibold text-[11px]`, rowH)}>รุ่งอรุณ</div>
+            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-semibold text-[11px]`, rowH)}>ดึก</div>
           </div>
           
           <div className="grid grid-cols-[1fr_2fr] flex-1">
-             {/* รุ่งอรุณ Column - 3 rows (OPD / ER / HIV) */}
-             <div className={cn(br, 'grid grid-rows-3')}>
+             {/* รุ่งอรุณ Column - 2 rows (OPD / ER) */}
+             <div className={cn(br, 'grid grid-rows-2')}>
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              {/* ดึก ER — 1 slot เดียว */}
              {slot('ดึก', 'ER', 0, 'h-full border-b-0 flex-1')}
@@ -574,17 +619,16 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <>
           {/* Separator row: "รุ่งอรุณ" | "SMC" | "ดึก" */}
           <div className="flex">
-            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-bold text-[11px]`, rowH)}>รุ่งอรุณ</div>
-            <div className={cn(col1w, br, bb, `${SHIFT_HDR.bai} flex items-center justify-center font-bold text-[11px]`, rowH)}>SMC</div>
-            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-bold text-[11px]`, rowH)}>ดึก</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.rung} flex items-center justify-center font-semibold text-[11px]`, rowH)}>รุ่งอรุณ</div>
+            <div className={cn(col1w, br, bb, `${SHIFT_HDR.bai} flex items-center justify-center font-semibold text-[11px]`, rowH)}>SMC</div>
+            <div className={cn('flex-1', bb, `${SHIFT_HDR.duek} flex items-center justify-center font-semibold text-[11px]`, rowH)}>ดึก</div>
           </div>
 
           <div className="grid grid-cols-3 flex-1">
-             {/* รุ่งอรุณ Column - 3 rows (OPD / ER / HIV) */}
-             <div className={cn(br, 'grid grid-rows-3')}>
+             {/* รุ่งอรุณ Column - 2 rows (OPD / ER) */}
+             <div className={cn(br, 'grid grid-rows-2')}>
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'border-b border-gray-400/60 h-full')}
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV', 'h-full border-b-0')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              
              {/* SMC Column - 2 rows */}

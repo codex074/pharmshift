@@ -48,7 +48,7 @@ const DOW_HDR: Record<number, string> = {
 };
 
 function hdr(palette: keyof typeof SHIFT_HDR, extra = '') {
-  return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
+  return cn(`${SHIFT_HDR[palette]} font-semibold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate`, extra);
 }
 
 function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
@@ -85,14 +85,14 @@ export function CalendarGrid({
   const ctx: RenderContext = { currentUser, isEditMode, pendingDeletes, pendingEdits, onToggleDelete, onEditShift, onShiftClick, pendingAdds, onAddShift, onRemovePendingAdd };
 
   return (
-    <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-lg bg-white">
+    <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-sm bg-white">
       <div className="min-w-[1000px] select-none">
 
         {/* Header Row — day names */}
         <div className="grid grid-cols-7">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-2.5 text-center text-sm font-bold tracking-wide',
+              'py-2.5 text-center text-sm font-semibold',
               i < 6 ? 'border-r border-white/20' : '',
               DOW_HDR[i],
               i === 0 && 'rounded-tl-2xl',
