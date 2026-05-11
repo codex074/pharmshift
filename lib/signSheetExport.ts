@@ -50,6 +50,7 @@ interface SheetConfig {
   advanceDukDate?: boolean; // default true — set false to keep ดึก at original date
   minRows?: number;         // minimum rows per day group (default 1)
   sortPositions?: string[]; // sort positions in this order within each group
+  blackFillEmpty?: boolean; // fill empty name cells black instead of leaving blank
 }
 
 const SHEET_CONFIGS: SheetConfig[] = [
@@ -60,12 +61,14 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'simple',
     minRows: 2,
     sortPositions: ['OPD', 'รo1', 'รo2', 'HIV'],
+    blackFillEmpty: true,
   },
   {
     name: 'รุ่งอรุณ ER',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรรุ่งอรุณ ER เดือน ${m} ${y}`,
     filter: (s) => s.shift_type === 'รุ่งอรุณ' && s.position === 'ER',
     layout: 'simple',
+    blackFillEmpty: true,
   },
   {
     name: 'เช้า MED',
@@ -577,6 +580,21 @@ export async function exportSignSheet(
           totalCols,
           hasSubtype ? new Set([1, 2, 9, 10, 11, 12]) : new Set([1, 8, 9, 10])
         );
+
+        if (config.blackFillEmpty) {
+          const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+          // [origCol, swapCol, actualCol] for each role: เภสัช, จพง., จนท.
+          const roleCols = hasSubtype
+            ? [[3, 6, 13], [4, 7, 14], [5, 8, 15]]
+            : [[2, 5, 11], [3, 6, 12], [4, 7, 13]];
+          for (const [origCol, swapCol, actualCol] of roleCols) {
+            if (!dataRow.getCell(origCol).value) {
+              dataRow.getCell(origCol).fill = blackFill;
+              dataRow.getCell(swapCol).fill = blackFill;
+              dataRow.getCell(actualCol).fill = blackFill;
+            }
+          }
+        }
       }
 
       // Merge date column vertically if multiple rows
