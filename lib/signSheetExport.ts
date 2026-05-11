@@ -622,13 +622,13 @@ export async function exportSignSheet(
 
     // Merge date column across all shift types for hasSubtype (ER) layout
     if (hasSubtype) {
-      for (const { startRow, endRow } of dateSpans.values()) {
+      Array.from(dateSpans.values()).forEach(({ startRow, endRow }) => {
         if (endRow > startRow) {
           ws.mergeCells(startRow, 1, endRow, 1);   // date left (col 1)
           ws.mergeCells(startRow, 10, endRow, 10); // gap (col 10)
           ws.mergeCells(startRow, 11, endRow, 11); // date right (col 11)
         }
-      }
+      });
     }
 
     ws.views = [{ state: 'frozen', ySplit: 3 }];
