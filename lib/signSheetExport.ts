@@ -95,6 +95,7 @@ const SHEET_CONFIGS: SheetConfig[] = [
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรเดือน ${m} ${y} (เวร โครงการ)`,
     filter: (s) => getDeptName(s) === 'โครงการ',
     layout: 'simple',
+    minRows: 2,
   },
   {
     name: 'บ่าย MED',
