@@ -409,8 +409,11 @@ export async function exportSignSheet(
           vals[11] = label;
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
-          [3, 4, 5].forEach(col => {
-            if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = blackFill;
+          [[3, 13], [4, 14], [5, 15]].forEach(([origCol, actualCol]) => {
+            if (!dataRow.getCell(origCol).value) {
+              dataRow.getCell(origCol).fill = blackFill;
+              dataRow.getCell(actualCol).fill = blackFill;
+            }
           });
         });
 
@@ -421,8 +424,11 @@ export async function exportSignSheet(
         styleDataRow(offRow, 15, new Set([1, 2, 9, 10, 11, 12]));
         offRow.getCell(2).fill = blackFill;
         offRow.getCell(12).fill = blackFill;
-        [3, 4, 5].forEach(col => {
-          if (!offRow.getCell(col).value) offRow.getCell(col).fill = blackFill;
+        [[3, 13], [4, 14], [5, 15]].forEach(([origCol, actualCol]) => {
+          if (!offRow.getCell(origCol).value) {
+            offRow.getCell(origCol).fill = blackFill;
+            offRow.getCell(actualCol).fill = blackFill;
+          }
         });
 
         // Merge date cols across 3 rows
@@ -482,8 +488,11 @@ export async function exportSignSheet(
           vals[3] = grp.officers[i] || '';
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
-          [2, 3, 4].forEach(col => {
-            if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = surgBlackFill;
+          [[2, 11], [3, 12], [4, 13]].forEach(([origCol, actualCol]) => {
+            if (!dataRow.getCell(origCol).value) {
+              dataRow.getCell(origCol).fill = surgBlackFill;
+              dataRow.getCell(actualCol).fill = surgBlackFill;
+            }
           });
         }
 
@@ -494,8 +503,11 @@ export async function exportSignSheet(
         styleDataRow(offRow, 13, new Set([1, 8, 9, 10]));
         offRow.getCell(2).fill = surgBlackFill;
         offRow.getCell(11).fill = surgBlackFill;
-        [3, 4].forEach(col => {
-          if (!offRow.getCell(col).value) offRow.getCell(col).fill = surgBlackFill;
+        [[3, 12], [4, 13]].forEach(([origCol, actualCol]) => {
+          if (!offRow.getCell(origCol).value) {
+            offRow.getCell(origCol).fill = surgBlackFill;
+            offRow.getCell(actualCol).fill = surgBlackFill;
+          }
         });
 
         // Merge date cols across all rows (maxPharmPT + 1 officer row)
@@ -607,11 +619,14 @@ export async function exportSignSheet(
 
         if (config.blackFillEmpty) {
           const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-          // Only black the original-owner columns when empty: เภสัช, จพง., จนท.
-          const origCols = hasSubtype ? [3, 4, 5] : [2, 3, 4];
-          for (const col of origCols) {
-            if (!dataRow.getCell(col).value) {
-              dataRow.getCell(col).fill = blackFill;
+          // [origCol, actualCol] pairs — black both when original is empty
+          const colPairs = hasSubtype
+            ? [[3, 13], [4, 14], [5, 15]]
+            : [[2, 11], [3, 12], [4, 13]];
+          for (const [origCol, actualCol] of colPairs) {
+            if (!dataRow.getCell(origCol).value) {
+              dataRow.getCell(origCol).fill = blackFill;
+              dataRow.getCell(actualCol).fill = blackFill;
             }
           }
         }
