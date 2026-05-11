@@ -89,6 +89,7 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'with-subtype',
     getSubtype: (s) => s.shift_type,
     subtypeLabel: 'เวร',
+    blackFillEmpty: true,
   },
   {
     name: 'โครงการ',
@@ -96,18 +97,21 @@ const SHEET_CONFIGS: SheetConfig[] = [
     filter: (s) => getDeptName(s) === 'โครงการ',
     layout: 'simple',
     minRows: 2,
+    blackFillEmpty: true,
   },
   {
     name: 'บ่าย MED',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรเดือน ${m} ${y} เวรบ่าย MED เวลา 16.30 – 24.00 น.`,
     filter: (s) => s.shift_type === 'บ่าย' && getDeptName(s) === 'MED',
     layout: 'simple',
+    blackFillEmpty: true,
   },
   {
     name: 'SMC',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยา SMC เดือน ${m} ${y}`,
     filter: (s) => getDeptName(s) === 'SMC',
     layout: 'simple',
+    blackFillEmpty: true,
   },
   {
     name: 'Chemo',
@@ -336,6 +340,10 @@ export async function exportSignSheet(
             cell.border = ALL_BORDERS;
           }
         });
+        const chemoBlackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
+        [2, 3].forEach(col => {
+          if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = chemoBlackFill;
+        });
       }
 
       continue;
@@ -401,6 +409,9 @@ export async function exportSignSheet(
           vals[11] = label;
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
+          [3, 4, 5].forEach(col => {
+            if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = blackFill;
+          });
         });
 
         // Officer row — ตำแหน่ง cell เป็นสีดำ, ชื่อจนท. อยู่คอลัมน์ จนท.
@@ -410,6 +421,9 @@ export async function exportSignSheet(
         styleDataRow(offRow, 15, new Set([1, 2, 9, 10, 11, 12]));
         offRow.getCell(2).fill = blackFill;
         offRow.getCell(12).fill = blackFill;
+        [3, 4, 5].forEach(col => {
+          if (!offRow.getCell(col).value) offRow.getCell(col).fill = blackFill;
+        });
 
         // Merge date cols across 3 rows
         ws.mergeCells(startRow, 1, startRow + 2, 1);
@@ -468,6 +482,9 @@ export async function exportSignSheet(
           vals[3] = grp.officers[i] || '';
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
+          [2, 3, 4].forEach(col => {
+            if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = surgBlackFill;
+          });
         }
 
         // Officer row — col 2 (เภสัช) and col 11 (เภสัช actual) painted black
@@ -477,6 +494,9 @@ export async function exportSignSheet(
         styleDataRow(offRow, 13, new Set([1, 8, 9, 10]));
         offRow.getCell(2).fill = surgBlackFill;
         offRow.getCell(11).fill = surgBlackFill;
+        [3, 4].forEach(col => {
+          if (!offRow.getCell(col).value) offRow.getCell(col).fill = surgBlackFill;
+        });
 
         // Merge date cols across all rows (maxPharmPT + 1 officer row)
         ws.mergeCells(startRow, 1, startRow + maxPharmPT, 1);
