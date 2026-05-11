@@ -40,11 +40,15 @@ const DOW_HDR: Record<number, string> = {
 };
 
 function hdr(palette: keyof typeof SHIFT_HDR, extra = '') {
-  return cn(`${SHIFT_HDR[palette]} font-bold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate tracking-tight`, extra);
+  return cn(`${SHIFT_HDR[palette]} font-semibold border-r border-b flex items-center justify-center text-[10px] sm:text-[11px] xl:text-xs truncate`, extra);
 }
 
 function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
   return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full px-1 py-1.5 min-h-[2.15rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
+}
+
+function centeredNameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
+  return nameCell(palette, cn('justify-center gap-0', extra));
 }
 
 function headerWithDate(
@@ -97,14 +101,14 @@ export function PharmacyTechCalendarGrid({
   };
 
   return (
-    <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-lg bg-white">
+    <div className="w-full overflow-x-auto border border-gray-200 rounded-2xl shadow-sm bg-white">
       <div className="min-w-[1000px] select-none">
 
         {/* Header Row — day names */}
         <div className="grid grid-cols-7">
           {THAI_DAYS.map((day, i) => (
             <div key={day} className={cn(
-              'py-2.5 text-center text-sm font-bold tracking-wide',
+              'py-2.5 text-center text-sm font-semibold',
               i < 6 ? 'border-r border-white/20' : '',
               DOW_HDR[i],
               i === 0 && 'rounded-tl-2xl',
@@ -446,7 +450,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
           {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's2', dateStr)}
         </div>
       </div>
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
     </div>
   );
 }
@@ -464,7 +468,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
         {headerWithDate('บ่าย', 'bai', dayNum, 'bg-gray-100 text-gray-600')}
       </div>
 
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
       <div className="grid grid-rows-2" style={{ gridArea: '2 / 2 / 4 / 3' }}>
         <div className={cn(nameCell('bai'), 'border-b border-gray-200')}>
           {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
@@ -484,7 +488,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
     </div>
   );
 }
@@ -499,15 +503,15 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
         {headerWithDate('บ่าย', 'bai', dayNum, 'bg-gray-100 text-gray-600')}
       </div>
 
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
       <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
       <div className={hdr('duek')} style={{ gridArea: '4 / 2 / 5 / 5' }}>ดึก</div>
 
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
     </div>
   );
 }
