@@ -583,15 +583,11 @@ export async function exportSignSheet(
 
         if (config.blackFillEmpty) {
           const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-          // [origCol, swapCol, actualCol] for each role: เภสัช, จพง., จนท.
-          const roleCols = hasSubtype
-            ? [[3, 6, 13], [4, 7, 14], [5, 8, 15]]
-            : [[2, 5, 11], [3, 6, 12], [4, 7, 13]];
-          for (const [origCol, swapCol, actualCol] of roleCols) {
-            if (!dataRow.getCell(origCol).value) {
-              dataRow.getCell(origCol).fill = blackFill;
-              dataRow.getCell(swapCol).fill = blackFill;
-              dataRow.getCell(actualCol).fill = blackFill;
+          // Only black the original-owner columns when empty: เภสัช, จพง., จนท.
+          const origCols = hasSubtype ? [3, 4, 5] : [2, 3, 4];
+          for (const col of origCols) {
+            if (!dataRow.getCell(col).value) {
+              dataRow.getCell(col).fill = blackFill;
             }
           }
         }
