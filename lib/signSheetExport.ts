@@ -548,6 +548,9 @@ export async function exportSignSheet(
     // ── Data rows ──────────────────────────────────────────────
     const groups = buildGroups(shifts, config, originalUserMap, usersMap);
 
+    // hasSubtype: merge date col across all shift types of the same day
+    const dateSpans = new Map<string, { startRow: number; endRow: number }>();
+
     for (const grp of groups) {
       const maxRows = Math.max(grp.pharmacists.length, grp.pharm_techs.length, grp.officers.length, config.minRows ?? 1);
       const startRow = ws.lastRow!.number + 1;
@@ -594,15 +597,35 @@ export async function exportSignSheet(
         }
       }
 
-      // Merge date column vertically if multiple rows
+      const endRow = startRow + maxRows - 1;
+
+      // Merge within group: subtype label (hasSubtype) or date (simple)
       if (maxRows > 1) {
-        const endRow = startRow + maxRows - 1;
-        ws.mergeCells(startRow, 1, endRow, 1);
         if (hasSubtype) {
-          ws.mergeCells(startRow, 2, endRow, 2);
-          ws.mergeCells(startRow, 10, endRow, 10);
-          ws.mergeCells(startRow, 11, endRow, 11);
+          ws.mergeCells(startRow, 2, endRow, 2);   // subtype left
+          ws.mergeCells(startRow, 11, endRow, 11); // subtype right
+          // col 1 and col 10 (date) will be merged across full date span below
         } else {
+          ws.mergeCells(startRow, 1, endRow, 1);
+          ws.mergeCells(startRow, 10, endRow, 10);
+        }
+      }
+
+      // Accumulate date span for hasSubtype cross-group merge
+      if (hasSubtype) {
+        if (!dateSpans.has(grp.date)) {
+          dateSpans.set(grp.date, { startRow, endRow });
+        } else {
+          dateSpans.get(grp.date)!.endRow = endRow;
+        }
+      }
+    }
+
+    // Merge date column across all shift types for hasSubtype (ER) layout
+    if (hasSubtype) {
+      for (const { startRow, endRow } of dateSpans.values()) {
+        if (endRow > startRow) {
+          ws.mergeCells(startRow, 1, endRow, 1);
           ws.mergeCells(startRow, 10, endRow, 10);
         }
       }
