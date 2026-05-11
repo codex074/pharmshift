@@ -600,11 +600,10 @@ export async function exportSignSheet(
       const endRow = startRow + maxRows - 1;
 
       // Merge within group: subtype label (hasSubtype) or date (simple)
+      // For hasSubtype, cols 1/10/11 (date left, gap, date right) are deferred to cross-group below
       if (maxRows > 1) {
         if (hasSubtype) {
-          ws.mergeCells(startRow, 2, endRow, 2);   // subtype left
-          ws.mergeCells(startRow, 11, endRow, 11); // subtype right
-          // col 1 and col 10 (date) will be merged across full date span below
+          ws.mergeCells(startRow, 2, endRow, 2); // subtype left only
         } else {
           ws.mergeCells(startRow, 1, endRow, 1);
           ws.mergeCells(startRow, 10, endRow, 10);
@@ -625,8 +624,9 @@ export async function exportSignSheet(
     if (hasSubtype) {
       for (const { startRow, endRow } of dateSpans.values()) {
         if (endRow > startRow) {
-          ws.mergeCells(startRow, 1, endRow, 1);
-          ws.mergeCells(startRow, 10, endRow, 10);
+          ws.mergeCells(startRow, 1, endRow, 1);   // date left (col 1)
+          ws.mergeCells(startRow, 10, endRow, 10); // gap (col 10)
+          ws.mergeCells(startRow, 11, endRow, 11); // date right (col 11)
         }
       }
     }
