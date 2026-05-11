@@ -354,10 +354,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
       ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
       const s = list[i];
+      const pendingList = getPendingList(shiftType, dept);
+      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer flex-1', cls)}>
           {s && renderShiftBadge(s, ctx)}
-          {!s && dept && renderAddBtn(shiftType, dept)}
+          {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
         </div>
       );
     };
@@ -374,6 +377,20 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
           {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+        </div>
+      );
+    };
+    const sendYaSlot = (i: number, cls: string) => {
+      const list = getList('เช้า', 'ส่งยา สอ.');
+      const s = list[i];
+      const pendingList = getPendingList('เช้า', 'ส่งยา สอ.');
+      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+
+      return (
+        <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
+          {s && renderShiftBadge(s, ctx)}
+          {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
+          {!s && !pendingEntry && renderAddBtn('เช้า', 'ส่งยา สอ.')}
         </div>
       );
     };
@@ -413,10 +430,10 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {fslot('เช้า', 'โครงการ',  0, c1)}
             {fempty(c2)}
             {fempty(c3)}
-            {/* บ่ายMED: ลบ border-b + ใส่ br โดยตรง (ย้ายออกจาก overlay) */}
-            {fslot('บ่าย', 'MED',       0, cn(c4, br, 'border-b-0'))}
+            {/* บ่ายMED: ย้ายไป overlay เพื่อ center ใน 2 แถว */}
+            {fempty(cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        0, c5)}
-            {isSat && fslot('เช้า', 'ส่งยา สอ.', 0, 'flex-1')}
+            {isSat && sendYaSlot(0, 'flex-1')}
           </div>
 
           {/* Morning Row 1 */}
@@ -427,7 +444,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {/* บ่ายMED empty: ลบ border-b + ใส่ br โดยตรง */}
             {fempty(cn(c4, br, 'border-b-0'))}
             {fslot('บ่าย', 'ER',        1, c5)}
-            {isSat && fempty('flex-1')}
+            {isSat && sendYaSlot(1, 'flex-1')}
           </div>
 
           {/* ER separator row (gray) */}
@@ -437,22 +454,22 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {fempty(c3)}
             {/* ดึก label: spans c4+c5 */}
             <div className={cn(dukW, bb, `${SHIFT_HDR.duek} flex items-center justify-center font-semibold text-[11px]`, fixedRowH)}>ดึก</div>
-            {isSat && fempty('flex-1')}
+            {isSat && sendYaSlot(2, 'flex-1')}
           </div>
 
-          {/* Post-ER rows: MED[2+], ดึก[0] spanning */}
+          {/* Post-ER rows: MED[2+], ดึก[0] spanning — flex-1 + h-full เพื่อ center ดึก */}
           {Array.from({ length: postErRows }, (_, i) => (
-            <div key={i} className="flex">
-              {i === 0 ? fslot('เช้า', 'ER', 0, cn(c1, postErRows === 1 ? 'border-b-0' : '')) : fempty(cn(c1, i === postErRows - 1 ? 'border-b-0' : ''))}
-              {fempty(cn(c2, i === postErRows - 1 ? 'border-b-0' : ''))}
+            <div key={i} className="flex flex-1">
+              {i === 0 ? fslot('เช้า', 'ER', 0, cn(c1, 'h-full', postErRows === 1 ? 'border-b-0' : '')) : fempty(cn(c1, 'h-full', i === postErRows - 1 ? 'border-b-0' : ''))}
+              {fempty(cn(c2, 'h-full', i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* MED[2] / MED[3] - replaced by overlay */}
-              {fempty(cn(c3, i === postErRows - 1 ? 'border-b-0' : ''))}
+              {fempty(cn(c3, 'h-full', i === postErRows - 1 ? 'border-b-0' : ''))}
               {/* ดึก[0] in first post-ER row, spanning c4+c5 */}
               {i === 0
-                ? fslot('ดึก', 'ER', 0, cn(dukW, postErRows === 1 ? 'border-b-0' : ''))
-                : <div className={cn(dukW, 'bg-white', fixedRowH, i === postErRows - 1 ? 'border-b-0' : '')} />
+                ? fslot('ดึก', 'ER', 0, cn(dukW, 'h-full', postErRows === 1 ? 'border-b-0' : ''))
+                : <div className={cn(dukW, 'bg-white h-full', i === postErRows - 1 ? 'border-b-0' : '')} />
               }
-              {isSat && fempty(cn('flex-1', i === postErRows - 1 ? 'border-b-0' : ''))}
+              {isSat && sendYaSlot(i + 3, cn('flex-1 h-full', i === postErRows - 1 ? 'border-b-0' : ''))}
             </div>
           ))}
 
@@ -482,6 +499,19 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             {surgSlot('เช้า', 'MED', 2, has4MedSlots ? 'border-b border-gray-400/60 pointer-events-auto' : 'pointer-events-auto')}
             {has4MedSlots && surgSlot('เช้า', 'MED', 3, 'pointer-events-auto')}
           </div>
+
+          {/* บ่ายMED Overlay (centered in first 2 morning rows) */}
+          <div
+            className="absolute z-10 pointer-events-none flex flex-col"
+            style={{
+              left: isSat ? '45%' : '60%',
+              width: isSat ? '15%' : '20%',
+              top: 0,
+              height: 'calc(1.925rem * 2)'
+            }}
+          >
+            {surgSlot('บ่าย', 'MED', 0, cn(br, 'pointer-events-auto'))}
+          </div>
         </div>
 
       </div>
@@ -510,6 +540,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string, cls: string) => {
     const list = getList(shiftType, dept).filter(s => (s.position || '') === position);
     const maxEntries = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && position === 'OPD' ? 2 : 1;
+    const stackNames = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && position === 'OPD';
 
     // Pending adds for this exact position — officer role only
     const pendingForPos = ctx.pendingAdds ? ctx.pendingAdds.filter(
@@ -522,7 +553,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <div className="flex flex-wrap items-center justify-center gap-y-0.5 w-full">
           {list.map((s, idx) => (
             <div key={idx} className="flex items-center w-full">
-              {idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
+              {!stackNames && idx > 0 && <span className="mx-0.5 font-bold text-slate-500 text-[10px]">/</span>}
               {renderShiftBadge(s, ctx)}
             </div>
           ))}
@@ -582,18 +613,13 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <div className={cn('flex-1',  subHdr('bai'))}>บ่าย ER</div>
       </div>
 
-      {/* Row 0: โครงการ[0] | บ่ายMED[0] | บ่ายER[0] */}
-      <div className="flex">
-        {slot('บ่าย', 'โครงการ', 0, cn(col1w, br))}
-        {slot('บ่าย', 'MED',     0, cn(col1w, br, 'border-b-0'))}
-        {slot('บ่าย', 'ER',      0, 'flex-1')}
-      </div>
-
-      {/* Row 1: โครงการ[1] | (empty) | บ่ายER[1] */}
-      <div className="flex">
-        {slot('บ่าย', 'โครงการ', 1, cn(col1w, br))}
-        <div className={cn(col1w, br, empty())} />
-        {slot('บ่าย', 'ER',      1, 'flex-1')}
+      {/* Morning rows — grid to center บ่ายMED across 2 rows */}
+      <div className="grid grid-cols-3 grid-rows-2">
+        {slot('บ่าย', 'โครงการ', 0, br)}
+        {slot('บ่าย', 'MED', 0, cn(br, 'row-span-2'))}
+        {slot('บ่าย', 'ER', 0, '')}
+        {slot('บ่าย', 'โครงการ', 1, br)}
+        {slot('บ่าย', 'ER', 1, '')}
       </div>
 
       {/* Friday: no SMC section — but has 'ดึก' and 'รุ่งอรุณ' */}

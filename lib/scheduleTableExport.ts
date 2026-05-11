@@ -137,6 +137,12 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
   const findAll = (type: string, dept: string) =>
     ds.filter(s => s.shift_type === type && (getDeptName(s) === dept || getDeptName(s).toUpperCase() === dept.toUpperCase()))
       .map(getNickname);
+  const findAllByPos = (type: string, dept: string, pos: string) =>
+    ds.filter(s =>
+      s.shift_type === type &&
+      (getDeptName(s) === dept || getDeptName(s).toUpperCase() === dept.toUpperCase()) &&
+      (s.position || '').toUpperCase() === pos.toUpperCase()
+    ).map(getNickname);
 
   const smc = findAll('บ่าย', 'SMC');
   const chemo = findAll('เช้า', 'Chemo');
@@ -163,7 +169,9 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
     baiER: find('บ่าย', 'ER'), baiMED: find('บ่าย', 'MED'),
     baiProject: isHoliday ? '' : find('บ่าย', 'โครงการ'),
     smc1: smc[0] || '', smc2: smc[1] || '',
-    rungOPD: find('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD'),
+    rungOPD: role === 'officer'
+      ? findAllByPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD').join('\n')
+      : find('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD'),
     rungER: find('รุ่งอรุณ', 'รุ่งอรุณ', 'ER'),
     rungHIV: find('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV'),
     duek: find('ดึก', 'ER'),
@@ -298,6 +306,12 @@ export async function exportScheduleTable(
         { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = IPD'], color: PAL.chao.hdr },
         { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
+      ]
+    : role === 'officer'
+    ? [
+        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
+        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'รุ่งอรุณ', items: ['รายชื่อบน-ล่าง = OPD', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
       ]
     : [
         { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
@@ -552,9 +566,14 @@ function renderWeek(
       set(3, c1, 'รุ่งอรุณ', { font: hdrFont(PAL.rung), fill: cellFill(PAL.rung.hdr) });
       merge(3, c2, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
 
-      set(4, c1, day.rungOPD, { font: nameFont });
-      set(5, c1, day.rungER, { font: nameFont });
-      set(6, c1, day.rungHIV, { font: nameFont });
+      if (role === 'officer') {
+        merge(4, c1, 5, c1, day.rungOPD, { font: nameFont });
+        set(6, c1, day.rungER, { font: nameFont });
+      } else {
+        set(4, c1, day.rungOPD, { font: nameFont });
+        set(5, c1, day.rungER, { font: nameFont });
+        set(6, c1, day.rungHIV, { font: nameFont });
+      }
       merge(4, c2, 6, c4, day.duek, { font: nameFont });
 
     } else {
@@ -572,9 +591,14 @@ function renderWeek(
       set(3, c1, 'รุ่งอรุณ', { font: hdrFont(PAL.rung), fill: cellFill(PAL.rung.hdr) });
       merge(3, c2, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
 
-      set(4, c1, day.rungOPD, { font: nameFont });
-      set(5, c1, day.rungER, { font: nameFont });
-      set(6, c1, '', { font: nameFont });
+      if (role === 'officer') {
+        merge(4, c1, 5, c1, day.rungOPD, { font: nameFont });
+        set(6, c1, day.rungER, { font: nameFont });
+      } else {
+        set(4, c1, day.rungOPD, { font: nameFont });
+        set(5, c1, day.rungER, { font: nameFont });
+        set(6, c1, '', { font: nameFont });
+      }
       merge(4, c2, 6, c4, day.duek, { font: nameFont });
     }
 

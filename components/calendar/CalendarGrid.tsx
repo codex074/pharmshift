@@ -55,6 +55,10 @@ function nameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
   return cn(`${CELL_BG[palette]} cursor-pointer overflow-hidden [.exporting-pdf_&]:overflow-visible leading-tight border-b border-r ${BORDER} flex flex-col justify-evenly items-center gap-1 h-full w-full px-1 py-1.5 min-h-[2.15rem] relative [.exporting-pdf_&]:min-h-0 [.exporting-pdf_&]:p-0.5 [.exporting-pdf_&]:gap-0 [.exporting-pdf_&]:justify-center`, extra);
 }
 
+function centeredNameCell(palette: keyof typeof CELL_BG = 'plain', extra = '') {
+  return nameCell(palette, cn('justify-center gap-0', extra));
+}
+
 interface CalendarGridProps {
   year: number;
   month: number;
@@ -509,7 +513,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
         </div>
       </div>
 
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 6' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
@@ -556,7 +560,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
       {/* SMC slot บน */}
       <div className={cn(nameCell('bai'), 'flex-col border-b border-gray-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
         {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
@@ -578,7 +582,7 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
 
       {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
@@ -596,9 +600,9 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={cn(hdr('neutral'), 'bg-gray-100 text-gray-600 text-[20px] font-black')} style={{ gridArea: '1 / 4 / 2 / 5' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 */}
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'บ่าย', 'โครงการ', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '2 / 2 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('bai')} style={{ gridArea: '3 / 2 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
       {/* ROW 4 */}
       <div className={hdr('rung')} style={{ gridArea: '4 / 1 / 5 / 2' }}>รุ่งอรุณ</div>
@@ -606,7 +610,7 @@ function FridayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
 
       {/* ROW 5-7 */}
       {renderRungAroonBlocks(day, ctx)}
-      <div className={nameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 2 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
 
     </div>
   );
