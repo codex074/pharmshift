@@ -48,13 +48,23 @@ interface SheetConfig {
   getSubtype?: (s: Shift) => string;
   subtypeLabel?: string;
   advanceDukDate?: boolean; // default true — set false to keep ดึก at original date
+  minRows?: number;         // minimum rows per day group (default 1)
+  sortPositions?: string[]; // sort positions in this order within each group
 }
 
 const SHEET_CONFIGS: SheetConfig[] = [
   {
-    name: 'รุ่งอรุณ',
-    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรรุ่งอรุณ เดือน ${m} ${y}`,
-    filter: (s) => s.shift_type === 'รุ่งอรุณ',
+    name: 'รุ่งอรุณ OPD',
+    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรรุ่งอรุณ OPD เดือน ${m} ${y}`,
+    filter: (s) => s.shift_type === 'รุ่งอรุณ' && s.position !== 'ER',
+    layout: 'simple',
+    minRows: 2,
+    sortPositions: ['OPD', 'รo1', 'รo2', 'HIV'],
+  },
+  {
+    name: 'รุ่งอรุณ ER',
+    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรรุ่งอรุณ ER เดือน ${m} ${y}`,
+    filter: (s) => s.shift_type === 'รุ่งอรุณ' && s.position === 'ER',
     layout: 'simple',
   },
   {
@@ -160,7 +170,19 @@ function buildGroups(
   originalUserMap: Map<string, string>,
   usersMap: Map<string, UserInfo>
 ): RowGroup[] {
-  const filtered = shifts.filter(config.filter);
+  let filtered = shifts.filter(config.filter);
+
+  if (config.sortPositions) {
+    const posOrd = config.sortPositions;
+    filtered = [...filtered].sort((a, b) => {
+      const pa = posOrd.indexOf(a.position || '');
+      const pb = posOrd.indexOf(b.position || '');
+      const ia = pa === -1 ? posOrd.length : pa;
+      const ib = pb === -1 ? posOrd.length : pb;
+      if (ia !== ib) return ia - ib;
+      return sortByRole(a, b);
+    });
+  }
 
   // Build grouping key
   const groupMap = new Map<string, RowGroup>();
@@ -523,7 +545,7 @@ export async function exportSignSheet(
     const groups = buildGroups(shifts, config, originalUserMap, usersMap);
 
     for (const grp of groups) {
-      const maxRows = Math.max(grp.pharmacists.length, grp.pharm_techs.length, grp.officers.length, 1);
+      const maxRows = Math.max(grp.pharmacists.length, grp.pharm_techs.length, grp.officers.length, config.minRows ?? 1);
       const startRow = ws.lastRow!.number + 1;
 
       for (let i = 0; i < maxRows; i++) {
