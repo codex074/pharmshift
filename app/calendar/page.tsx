@@ -600,7 +600,7 @@ export default function CalendarPage() {
               </div>
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />
-                <span className="text-orange-900">บ่าย ER ชื่อ 1 = pre-pack, ชื่อ 2 = บ่ายห้องER</span>
+                <span className="text-orange-900">เวรบ่าย ชื่อบน = บ่าย ER, ชื่อล่าง = บ่าย MED</span>
               </div>
             </div>
           )}
