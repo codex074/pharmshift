@@ -10,11 +10,22 @@ DROP VIEW IF EXISTS public.shifts_full;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS f_name text NOT NULL DEFAULT '';
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS l_name text NOT NULL DEFAULT '';
 
--- 3. Migrate existing data: copy "name" into f_name as fallback
-UPDATE public.users
-SET f_name = COALESCE(name, ''),
-    l_name = ''
-WHERE f_name = '' OR f_name IS NULL;
+-- 3. Migrate existing data: copy deprecated "name" into f_name as fallback
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'users'
+      AND column_name = 'name'
+  ) THEN
+    EXECUTE 'UPDATE public.users
+      SET f_name = COALESCE(name, ''''),
+          l_name = ''''
+      WHERE f_name = '''' OR f_name IS NULL';
+  END IF;
+END $$;
 
 -- 4. Drop deprecated columns (name, fullname)
 ALTER TABLE public.users DROP COLUMN IF EXISTS name;
@@ -24,7 +35,8 @@ ALTER TABLE public.users DROP COLUMN IF EXISTS fullname;
 ALTER TABLE public.users ADD COLUMN IF NOT EXISTS salary_number text;
 
 -- 6. Recreate the shifts_full view with new columns
-CREATE OR REPLACE VIEW public.shifts_full AS
+CREATE OR REPLACE VIEW public.shifts_full
+WITH (security_invoker = true) AS
   SELECT
     s.id,
     s.date,

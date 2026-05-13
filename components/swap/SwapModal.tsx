@@ -11,6 +11,7 @@ import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
 import { DEPT_STYLES, ROLE_LABELS } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
+import { insertNotifications } from '@/lib/notifyUsers';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth,
 } from 'date-fns';
@@ -273,10 +274,7 @@ export function SwapModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
       }).catch(() => {});
-      supabase.from('notifications').insert({
-        user_id: selectedUser.id, type: 'swap_request',
-        title: notifTitle, body: notifBody, url: '/calendar',
-      }).then(() => {});
+      insertNotifications([selectedUser.id], 'swap_request', notifTitle, notifBody);
       toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
@@ -345,10 +343,7 @@ export function SwapModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
       }).catch(() => {});
-      supabase.from('notifications').insert({
-        user_id: shift.user_id, type: 'swap_request',
-        title: notifTitle, body: notifBody, url: '/calendar',
-      }).then(() => {});
+      insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
       toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {
@@ -406,10 +401,7 @@ export function SwapModal({
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
       }).catch(() => {});
-      supabase.from('notifications').insert({
-        user_id: shift.user_id, type: 'swap_request',
-        title: notifTitle, body: notifBody, url: '/calendar',
-      }).then(() => {});
+      insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
       toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
       onClose();
     } catch (err: any) {

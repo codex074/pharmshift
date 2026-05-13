@@ -24,10 +24,13 @@ create table if not exists public.users (
 
 -- Row Level Security
 alter table public.users enable row level security;
+drop policy if exists "Users can read all pharmacists" on public.users;
 create policy "Users can read all pharmacists" on public.users
   for select using (true);
+drop policy if exists "Users can update own record" on public.users;
 create policy "Users can update own record" on public.users
   for update using (true);
+drop policy if exists "Service role can insert users" on public.users;
 create policy "Service role can insert users" on public.users
   for insert with check (true);
 
@@ -44,8 +47,16 @@ insert into public.departments (name) values
   ('MED'),
   ('ER'),
   ('SMC'),
-  ('รุ่งอรุณ')
+  ('รุ่งอรุณ'),
+  ('Chemo'),
+  ('ส่งยา สอ.')
 on conflict (name) do nothing;
+
+-- Row Level Security
+alter table public.departments enable row level security;
+drop policy if exists "Anyone can read departments" on public.departments;
+create policy "Anyone can read departments" on public.departments
+  for select to anon, authenticated using (true);
 
 -- ── Shifts ───────────────────────────────────────────────────
 create table if not exists public.shifts (
@@ -55,9 +66,14 @@ create table if not exists public.shifts (
   shift_type     text not null check (shift_type in ('เช้า', 'บ่าย', 'ดึก', 'รุ่งอรุณ')),
   position       text,                         -- 'OPD', 'ER', 'HIV', 'Cont', 'D/C'
   user_id        uuid references public.users(id) on delete cascade,
+  original_user_id uuid references public.users(id) on delete set null,
+  user_snapshot  jsonb,
   month_year     text,                         -- 'YYYY-MM'
   created_at     timestamptz default now()
 );
+
+alter table public.shifts add column if not exists original_user_id uuid references public.users(id) on delete set null;
+alter table public.shifts add column if not exists user_snapshot jsonb;
 
 create index if not exists shifts_date_idx on public.shifts (date);
 create index if not exists shifts_user_idx on public.shifts (user_id);
@@ -65,12 +81,16 @@ create index if not exists shifts_month_idx on public.shifts (month_year);
 
 -- Row Level Security
 alter table public.shifts enable row level security;
+drop policy if exists "Authenticated users can read shifts" on public.shifts;
 create policy "Authenticated users can read shifts" on public.shifts
   for select using (true);
+drop policy if exists "Service role can insert shifts" on public.shifts;
 create policy "Service role can insert shifts" on public.shifts
   for insert with check (true);
+drop policy if exists "Admins and owners can update shifts" on public.shifts;
 create policy "Admins and owners can update shifts" on public.shifts
   for update using (true);
+drop policy if exists "Admins and owners can delete shifts" on public.shifts;
 create policy "Admins and owners can delete shifts" on public.shifts
   for delete using (true);
 
@@ -96,12 +116,16 @@ create index if not exists swap_requests_status_idx on public.swap_requests (sta
 
 -- Row Level Security
 alter table public.swap_requests enable row level security;
+drop policy if exists "Users can see swap requests involving them" on public.swap_requests;
 create policy "Users can see swap requests involving them" on public.swap_requests
   for select using (true);
+drop policy if exists "Users can create swap requests" on public.swap_requests;
 create policy "Users can create swap requests" on public.swap_requests
   for insert with check (true);
+drop policy if exists "Target user can update (accept/reject)" on public.swap_requests;
 create policy "Target user can update (accept/reject)" on public.swap_requests
   for update using (true);
+drop policy if exists "Allowed to delete swap requests" on public.swap_requests;
 create policy "Allowed to delete swap requests" on public.swap_requests
   for delete using (true);
 
@@ -112,8 +136,10 @@ begin
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$ language plpgsql
+set search_path = public, pg_temp;
 
+drop trigger if exists swap_requests_updated_at on public.swap_requests;
 create trigger swap_requests_updated_at
   before update on public.swap_requests
   for each row execute procedure public.handle_updated_at();
@@ -128,6 +154,7 @@ returns table (
   auto_rejected_ids uuid[]
 )
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_req public.swap_requests%rowtype;
@@ -295,7 +322,7 @@ begin
 end;
 $$;
 
-revoke all on function public.apply_shift_owner_edits_atomic(jsonb, uuid) from public;
+revoke execute on function public.apply_shift_owner_edits_atomic(jsonb, uuid) from public, anon, authenticated;
 grant execute on function public.apply_shift_owner_edits_atomic(jsonb, uuid) to service_role;
 
 create table if not exists public.audit_logs (
@@ -404,7 +431,7 @@ begin
 end;
 $$;
 
-revoke all on function public.apply_admin_shift_changes_atomic(uuid[], jsonb, jsonb, uuid) from public;
+revoke execute on function public.apply_admin_shift_changes_atomic(uuid[], jsonb, jsonb, uuid) from public, anon, authenticated;
 grant execute on function public.apply_admin_shift_changes_atomic(uuid[], jsonb, jsonb, uuid) to service_role;
 
 -- ── Enable Realtime ──────────────────────────────────────────
@@ -412,7 +439,8 @@ grant execute on function public.apply_admin_shift_changes_atomic(uuid[], jsonb,
 -- Select: shifts, swap_requests for realtime
 
 -- Convenience view: shifts with user + dept info
-create or replace view public.shifts_full as
+create or replace view public.shifts_full
+with (security_invoker = true) as
   select
     s.id,
     s.date,

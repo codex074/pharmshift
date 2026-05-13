@@ -1,11 +1,25 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { createSupabaseServer } from '@/lib/supabaseServer';
+import { createClient } from '@supabase/supabase-js';
+import { getSession } from '@/lib/session';
+import { isAdminLike } from '@/lib/types';
 import fs from 'fs';
 import path from 'path';
 
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
+
 export async function POST() {
   try {
+    const session = await getSession();
+    if (!isAdminLike(session)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // 1. Read the JSON file
     const filePath = path.join(process.cwd(), 'holidays.json');
     if (!fs.existsSync(filePath)) {
@@ -27,8 +41,8 @@ export async function POST() {
 
     // 3. Upsert to Supabase
     // We use ON CONFLICT (date) DO UPDATE to prevent duplicate date errors
-    const supabase = createSupabaseServer();
-    const { data, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
       .from('holidays')
       .upsert(holidayEntries, { onConflict: 'date' })
       .select();

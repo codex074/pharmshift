@@ -1,6 +1,15 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { getSession } from '@/lib/session';
+import { isAdminLike } from '@/lib/types';
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 // UPDATE a holiday by ID
 export async function PATCH(
@@ -8,6 +17,11 @@ export async function PATCH(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getSession();
+    if (!isAdminLike(session)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = params;
     const body = await request.json();
     const { date, name } = body;
@@ -16,7 +30,8 @@ export async function PATCH(
       return NextResponse.json({ error: 'Missing date or name' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
       .from('holidays')
       .update({ date, name })
       .eq('id', id)
@@ -43,9 +58,15 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
+    const session = await getSession();
+    if (!isAdminLike(session)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = params;
 
-    const { error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { error } = await supabaseAdmin
       .from('holidays')
       .delete()
       .eq('id', id);

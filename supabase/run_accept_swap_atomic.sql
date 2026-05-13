@@ -10,6 +10,7 @@ returns table (
   auto_rejected_ids uuid[]
 )
 language plpgsql
+set search_path = public, pg_temp
 as $$
 declare
   v_req public.swap_requests%rowtype;

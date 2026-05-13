@@ -1,6 +1,16 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
+import { getSession } from '@/lib/session';
+import { isAdminLike } from '@/lib/types';
+
+function getSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  );
+}
 
 // GET all holidays
 export async function GET() {
@@ -21,6 +31,11 @@ export async function GET() {
 // CREATE a new holiday
 export async function POST(request: NextRequest) {
   try {
+    const session = await getSession();
+    if (!isAdminLike(session)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
     const { date, name } = body;
 
@@ -28,7 +43,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing date or name' }, { status: 400 });
     }
 
-    const { data, error } = await supabase
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data, error } = await supabaseAdmin
       .from('holidays')
       .insert([{ date, name }])
       .select()

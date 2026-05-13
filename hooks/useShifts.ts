@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
@@ -381,13 +382,7 @@ export function useSwapRequests(userId?: string) {
           tag: `swap-${swapId}`,
         }),
       }).catch(() => {});
-      supabase.from('notifications').insert({
-        user_id: reqData.requester_id,
-        type: 'swap_result',
-        title: rejectTitle,
-        body: rejectBody,
-        url: '/calendar',
-      }).then(({ error: nErr }) => { if (nErr) console.error('[Reject] in-app notif error:', nErr); });
+      insertNotifications([reqData.requester_id], 'swap_result', rejectTitle, rejectBody);
     }
 
     applySwapRequests((prev) =>
