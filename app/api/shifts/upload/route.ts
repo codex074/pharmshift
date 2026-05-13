@@ -273,6 +273,7 @@ export async function POST(req: NextRequest) {
             shift_type: shiftData.type,
             position: shiftData.position,
             user_id: userId,
+            original_user_id: userId,
             month_year: monthYear,
           });
         }
@@ -320,15 +321,15 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Batch upsert into shifts table (ignore conflicts from DB)
-    const { error: insertError } = await supabase.from('shifts').upsert(
-      finalRecordsToInsert,
-      { onConflict: 'user_id,date,shift_type,position', ignoreDuplicates: true }
-    );
-
-    if (insertError) {
-      console.error('Insert/Upsert error:', insertError);
-      return NextResponse.json({ error: 'Database insert failed', details: [insertError.message] }, { status: 500 });
+    // Plain insert (upsert cannot be used because unique_user_date_shifttype is DEFERRABLE)
+    const BATCH_SIZE = 500;
+    for (let i = 0; i < finalRecordsToInsert.length; i += BATCH_SIZE) {
+      const batch = finalRecordsToInsert.slice(i, i + BATCH_SIZE);
+      const { error: insertError } = await supabase.from('shifts').insert(batch);
+      if (insertError) {
+        console.error('Insert error:', insertError);
+        return NextResponse.json({ error: 'Database insert failed', details: [insertError.message] }, { status: 500 });
+      }
     }
 
     return NextResponse.json({
