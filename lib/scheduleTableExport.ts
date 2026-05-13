@@ -51,7 +51,7 @@ function fmtDate(d: Date): string {
 }
 
 interface DayShifts {
-  date: number; dow: number; isHoliday: boolean;
+  date: number; dow: number; isHoliday: boolean; isPublicHoliday: boolean;
   project: string; surg1: string; surg2: string; medDC: string; medCont: string; er: string;
   chemo1: string; chemo2: string;
   baiER: string; baiMED: string; baiProject: string;
@@ -59,6 +59,11 @@ interface DayShifts {
   rungOPD: string; rungER: string; rungHIV: string;
   duek: string;
   isPrevMonth?: boolean;
+  // Officer extras
+  surg3: string;
+  medM3: string;
+  medM4: string;
+  sendYa: string;
 }
 
 function buildUserLookup(...shiftGroups: Shift[][]): Map<string, NonNullable<Shift['user']>> {
@@ -122,7 +127,8 @@ function withOriginalUser(shift: Shift, userLookup: Map<string, NonNullable<Shif
 function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<string>, role: UserRole): DayShifts {
   const dow = dateObj.getDay();
   const dateStr = fmtDate(dateObj);
-  const isHoliday = dow === 0 || dow === 6 || hols.has(dateStr);
+  const isPublicHoliday = hols.has(dateStr);
+  const isHoliday = dow === 0 || dow === 6 || isPublicHoliday;
   const ds = shifts.filter(s => s.date === dateStr);
 
   const find = (type: string, dept: string, pos?: string) => {
@@ -137,44 +143,39 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
   const findAll = (type: string, dept: string) =>
     ds.filter(s => s.shift_type === type && (getDeptName(s) === dept || getDeptName(s).toUpperCase() === dept.toUpperCase()))
       .map(getNickname);
-  const findAllByPos = (type: string, dept: string, pos: string) =>
-    ds.filter(s =>
-      s.shift_type === type &&
-      (getDeptName(s) === dept || getDeptName(s).toUpperCase() === dept.toUpperCase()) &&
-      (s.position || '').toUpperCase() === pos.toUpperCase()
-    ).map(getNickname);
 
   const smc = findAll('บ่าย', 'SMC');
-  const chemo = findAll('เช้า', 'Chemo');
-  const surg = role === 'pharmacy_technician'
-    ? [
-        find('เช้า', 'SURG', 's1'),
-        find('เช้า', 'SURG', 's2'),
-      ].filter(Boolean)
+  const chemo = role === 'officer' ? [] : findAll('เช้า', 'Chemo');
+  const isOfficerOrTech = role === 'pharmacy_technician' || role === 'officer';
+  const surg = isOfficerOrTech
+    ? [find('เช้า', 'SURG', 's1'), find('เช้า', 'SURG', 's2')].filter(Boolean)
     : findAll('เช้า', 'SURG');
-  const medTop = role === 'pharmacy_technician'
-    ? find('เช้า', 'MED', 'm1')
-    : find('เช้า', 'MED', 'D/C');
-  const medBottom = role === 'pharmacy_technician'
-    ? find('เช้า', 'MED', 'm2')
-    : find('เช้า', 'MED', 'Cont');
+  const medTop = isOfficerOrTech ? find('เช้า', 'MED', 'm1') : find('เช้า', 'MED', 'D/C');
+  const medBottom = isOfficerOrTech ? find('เช้า', 'MED', 'm2') : find('เช้า', 'MED', 'Cont');
 
   return {
-    date: dayNum, dow, isHoliday,
-    project: isHoliday ? find('เช้า', 'โครงการ') : '',
+    date: dayNum, dow, isHoliday, isPublicHoliday,
+    project: isHoliday
+      ? (role === 'officer' ? findAll('เช้า', 'โครงการ').join('\n') : find('เช้า', 'โครงการ'))
+      : '',
     surg1: surg[0] || '', surg2: surg[1] || '',
     medDC: medTop, medCont: medBottom,
     er: find('เช้า', 'ER'),
     chemo1: chemo[0] || '', chemo2: chemo[1] || '',
-    baiER: find('บ่าย', 'ER'), baiMED: find('บ่าย', 'MED'),
-    baiProject: isHoliday ? '' : find('บ่าย', 'โครงการ'),
+    baiER: role === 'officer' ? findAll('บ่าย', 'ER').join('\n') : find('บ่าย', 'ER'),
+    baiMED: find('บ่าย', 'MED'),
+    baiProject: isHoliday ? '' : (role === 'officer' ? findAll('บ่าย', 'โครงการ').join('\n') : find('บ่าย', 'โครงการ')),
     smc1: smc[0] || '', smc2: smc[1] || '',
     rungOPD: role === 'officer'
-      ? findAllByPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD').join('\n')
+      ? [find('รุ่งอรุณ', 'รุ่งอรุณ', 'รo1'), find('รุ่งอรุณ', 'รุ่งอรุณ', 'รo2')].filter(Boolean).join('\n')
       : find('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD'),
     rungER: find('รุ่งอรุณ', 'รุ่งอรุณ', 'ER'),
-    rungHIV: find('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV'),
+    rungHIV: role === 'officer' ? '' : find('รุ่งอรุณ', 'รุ่งอรุณ', 'HIV'),
     duek: find('ดึก', 'ER'),
+    surg3: role === 'officer' ? find('เช้า', 'SURG', 's3') : '',
+    medM3: role === 'officer' ? find('เช้า', 'MED', 'm3') : '',
+    medM4: role === 'officer' ? find('เช้า', 'MED', 'm4') : '',
+    sendYa: role === 'officer' ? findAll('เช้า', 'ส่งยา สอ.').join('\n') : '',
   };
 }
 
@@ -309,9 +310,10 @@ export async function exportScheduleTable(
       ]
     : role === 'officer'
     ? [
-        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
+        { label: 'MED', items: ['รายชื่อ 1 = m1', 'รายชื่อ 2 = m2', '(m3, m4 = แถวล่าง)'], color: PAL.chao.hdr },
+        { label: 'SURG', items: ['รายชื่อ 1 = s1', 'รายชื่อ 2 = s2', '(s3 = แถวล่าง)'], color: PAL.chao.hdr },
         { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
-        { label: 'รุ่งอรุณ', items: ['รายชื่อบน-ล่าง = OPD', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
+        { label: 'รุ่งอรุณ', items: ['รายชื่อบน = รo1/รo2', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
       ]
     : [
         { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
@@ -494,8 +496,42 @@ function renderWeek(
       set(6, c2, '', { font: nameFont });
       merge(4, c3, 6, c4, day.duek, { font: nameFont });
 
+    } else if (role === 'officer' && holiday && isWE) {
+      // ══ Officer weekend layout: 5 cols ══
+      const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
+      const isSatLayout = dow === 6 && !day.isPublicHoliday;
+
+      set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'SURG', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
+      set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
+
+      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      set(1, c2, day.surg1, { font: nameFont });
+      set(2, c2, day.surg2, { font: nameFont });
+      set(1, c3, day.medDC, { font: nameFont });
+      set(2, c3, day.medCont, { font: nameFont });
+      merge(1, c4, 1, c5, day.baiER, { font: nameFont });
+      merge(2, c4, 2, c5, day.baiMED, { font: nameFont });
+
+      set(3, c1, 'ER', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(3, c2, isSatLayout ? 'ส่งยา สอ.' : '', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(3, c3, 3, c5, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
+
+      merge(4, c1, 6, c1, day.er, { font: nameFont });
+      if (isSatLayout) {
+        merge(4, c2, 5, c2, day.sendYa, { font: nameFont });
+        set(6, c2, [day.surg3, day.medM3].filter(Boolean).join('\n'), { font: nameFont });
+      } else {
+        set(4, c2, day.surg3 || '', { font: nameFont });
+        set(5, c2, day.medM3 || '', { font: nameFont });
+        set(6, c2, day.medM4 || '', { font: nameFont });
+      }
+      merge(4, c3, 6, c5, day.duek, { font: nameFont });
+
     } else if (holiday && isWE) {
-      // ══ Weekend layout: 5 cols ══
+      // ══ Weekend layout: 5 cols (pharmacist) ══
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
@@ -521,8 +557,34 @@ function renderWeek(
       set(6, c2, day.chemo2, { font: nameFont });
       merge(4, c3, 6, c5, day.duek, { font: nameFont });
 
+    } else if (role === 'officer' && holiday && !isWE) {
+      // ══ Officer weekday holiday: 4 cols ══
+      const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
+
+      set(0, c1, 'SURG',  { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'MED',   { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai),  fill: cellFill(PAL.bai.hdr) });
+      set(0, c4, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
+
+      set(1, c1, day.surg1,  { font: nameFont });
+      set(2, c1, day.surg2,  { font: nameFont });
+      set(1, c2, day.medDC,  { font: nameFont });
+      set(2, c2, day.medCont, { font: nameFont });
+      merge(1, c3, 1, c4, day.baiER,  { font: nameFont });
+      merge(2, c3, 2, c4, day.baiMED, { font: nameFont });
+
+      set(3, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(3, c2, 'ER',      { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(3, c3, 3, c4, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
+
+      set(4, c1, day.project, { font: nameFont });
+      merge(4, c2, 6, c2, day.er, { font: nameFont });
+      merge(4, c3, 6, c4, day.duek, { font: nameFont });
+      set(5, c1, [day.surg3, day.medM3].filter(Boolean).join('\n'), { font: nameFont });
+      set(6, c1, day.medM4 || '', { font: nameFont });
+
     } else if (holiday && !isWE) {
-      // ══ Weekday holiday: 4 cols ══
+      // ══ Weekday holiday: 4 cols (pharmacist) ══
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
 
       set(0, c1, 'SURG',  { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
