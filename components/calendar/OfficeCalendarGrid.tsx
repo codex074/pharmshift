@@ -537,14 +537,19 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     );
   };
 
-  const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string, cls: string) => {
-    const list = getList(shiftType, dept).filter(s => (s.position || '') === position);
-    const maxEntries = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && position === 'OPD' ? 2 : 1;
-    const stackNames = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && position === 'OPD';
+  // positions: single string OR array — array means "match any of these"
+  const combinedSlotPos = (shiftType: ShiftType, dept: string | undefined, position: string | string[], cls: string) => {
+    const posArr = Array.isArray(position) ? position : [position];
+    const posSet = new Set(posArr);
+    const list = getList(shiftType, dept).filter(s => posSet.has(s.position || ''));
+    const isRungOPD = shiftType === 'รุ่งอรุณ' && dept === 'รุ่งอรุณ' && posArr.includes('OPD');
+    const maxEntries = isRungOPD ? 2 : 1;
+    const stackNames = isRungOPD;
+    const addPosition = Array.isArray(position) ? position[0] : position;
 
-    // Pending adds for this exact position — officer role only
+    // Pending adds — match any of the positions (officer role only)
     const pendingForPos = ctx.pendingAdds ? ctx.pendingAdds.filter(
-      add => add.date === dateStr && add.shift_type === shiftType && (!dept || add.department === dept) && add.position === position && add.user.role === 'officer'
+      add => add.date === dateStr && add.shift_type === shiftType && (!dept || add.department === dept) && posSet.has(add.position || '') && add.user.role === 'officer'
     ) : [];
     const currentEntryCount = list.length + pendingForPos.length;
 
@@ -573,7 +578,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
               </div>
             );
           })}
-          {currentEntryCount < maxEntries && dept && renderAddBtn(shiftType, dept, position)}
+          {currentEntryCount < maxEntries && dept && renderAddBtn(shiftType, dept, addPosition)}
         </div>
       </div>
     );
@@ -634,7 +639,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="grid grid-cols-[1fr_2fr] flex-1">
              {/* รุ่งอรุณ Column - 2 rows (OPD / ER) */}
              <div className={cn(br, 'grid grid-rows-2')}>
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', ['OPD', 'รo1', 'รo2'], 'border-b border-gray-400/60 h-full')}
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              {/* ดึก ER — 1 slot เดียว */}
@@ -653,7 +658,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
           <div className="grid grid-cols-3 flex-1">
              {/* รุ่งอรุณ Column - 2 rows (OPD / ER) */}
              <div className={cn(br, 'grid grid-rows-2')}>
-               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD', 'border-b border-gray-400/60 h-full')}
+               {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', ['OPD', 'รo1', 'รo2'], 'border-b border-gray-400/60 h-full')}
                {combinedSlotPos('รุ่งอรุณ', 'รุ่งอรุณ', 'ER', 'h-full border-b-0')}
              </div>
              
