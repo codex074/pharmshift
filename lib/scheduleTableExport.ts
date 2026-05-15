@@ -68,6 +68,10 @@ interface DayShifts {
   medM3: string;
   medM4: string;
   sendYa: string[];
+  // Officer 2-row split lists (one entry per row)
+  projectList: string[];      // morning โครงการ (officer holiday cases)
+  baiProjectList: string[];   // afternoon โครงการ (officer non-holiday cases)
+  rungOPDList: string[];      // รุ่งอรุณ OPD/รo1/รo2 (officer non-holiday weekday)
 }
 
 function buildUserLookup(...shiftGroups: Shift[][]): Map<string, NonNullable<Shift['user']>> {
@@ -188,6 +192,15 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
     medM3: role === 'officer' ? find('เช้า', 'MED', 'm3') : '',
     medM4: role === 'officer' ? find('เช้า', 'MED', 'm4') : '',
     sendYa: role === 'officer' ? findAll('เช้า', 'ส่งยา สอ.') : [],
+    projectList: role === 'officer' && isHoliday ? findAll('เช้า', 'โครงการ') : [],
+    baiProjectList: role === 'officer' && !isHoliday ? findAll('บ่าย', 'โครงการ') : [],
+    rungOPDList: role === 'officer'
+      ? [
+          find('รุ่งอรุณ', 'รุ่งอรุณ', 'OPD'),
+          find('รุ่งอรุณ', 'รุ่งอรุณ', 'รo1'),
+          find('รุ่งอรุณ', 'รุ่งอรุณ', 'รo2'),
+        ].filter(Boolean).slice(0, 2)
+      : [],
   };
 }
 
@@ -216,6 +229,7 @@ export async function exportScheduleTable(
   const F = 'TH SarabunPSK';
   const thin: Partial<ExcelJS.Border> = { style: 'thin', color: { argb: 'FFD1D5DB' } };   // gray-300
   const med:  Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF94A3B8' } };  // slate-400
+  const dark: Partial<ExcelJS.Border> = { style: 'medium', color: { argb: 'FF334155' } }; // slate-700 — frame for shift cells
   const thinB: Partial<ExcelJS.Borders> = { top: thin, bottom: thin, left: thin, right: thin };
   const center: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle', wrapText: true };
 
@@ -313,7 +327,7 @@ export async function exportScheduleTable(
   // ── Render each week ──
   let row = 4;
   for (const week of weeks) {
-    renderWeek(ws, row, week, F, thinB, thin, med, center, fill, role, dayCol, dayW, totalCols);
+    renderWeek(ws, row, week, F, thinB, thin, med, dark, center, fill, role, dayCol, dayW, totalCols);
     row += ROWS_PER_WEEK;
   }
 
@@ -366,6 +380,7 @@ function renderWeek(
   ws: ExcelJS.Worksheet, sr: number, days: (DayShifts | null)[],
   F: string,
   thinB: Partial<ExcelJS.Borders>, thin: Partial<ExcelJS.Border>, med: Partial<ExcelJS.Border>,
+  dark: Partial<ExcelJS.Border>,
   center: Partial<ExcelJS.Alignment>,
   fill: (argb: string) => ExcelJS.Fill,
   role: UserRole,
@@ -416,6 +431,24 @@ function renderWeek(
     const { left: _rightLeft, ...rightBorder } = rightCell.border || {};
     leftCell.border = leftBorder;
     rightCell.border = rightBorder;
+  };
+
+  // Apply a dark border around the outer perimeter of a rectangular region,
+  // preserving the existing internal borders. Used to frame shift-cell groups
+  // (โครงการ, รุ่งอรุณ) without adding any internal fills.
+  const frameRegion = (r1: number, col1: number, r2: number, col2: number) => {
+    for (let r = r1; r <= r2; r++) {
+      for (let c = col1; c <= col2; c++) {
+        const cell = ws.getCell(sr + r, c);
+        const cur = cell.border || {};
+        cell.border = {
+          top:    r === r1   ? dark : cur.top,
+          bottom: r === r2   ? dark : cur.bottom,
+          left:   c === col1 ? dark : cur.left,
+          right:  c === col2 ? dark : cur.right,
+        };
+      }
+    }
   };
 
   // Section header font & name font — with muted variants for previous month
@@ -545,8 +578,10 @@ function renderWeek(
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 || day.isPublicHoliday ? 'FFFEE2E2' : PAL.date.hdr) });
       if (c6 !== null) set(0, c6, 'ส่งยา สอ.', { font: hdrFont(PAL.date), fill: cellFill(PAL.date.hdr) });
 
-      // โครงการ — 2 morning rows merged into one cell
-      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      // โครงการ — 2 separate rows (one shift per row)
+      set(1, c1, day.projectList[0] || '', { font: nameFont });
+      set(2, c1, day.projectList[1] || '', { font: nameFont });
+      frameRegion(1, c1, 2, c1);
 
       // SURG (3 slots): rows split as 1-2 / 3-4 / 5-6 for ~equal heights
       merge(1, c2, 2, c2, day.surg1, { font: nameFont });
@@ -626,7 +661,10 @@ function renderWeek(
       set(0, c4, 'บ่าย',    { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 
-      merge(1, c1, 2, c1, day.project, { font: nameFont });
+      // โครงการ — 2 separate rows (one shift per row)
+      set(1, c1, day.projectList[0] || '', { font: nameFont });
+      set(2, c1, day.projectList[1] || '', { font: nameFont });
+      frameRegion(1, c1, 2, c1);
 
       // SURG (3 slots)
       merge(1, c2, 2, c2, day.surg1, { font: nameFont });
@@ -687,7 +725,11 @@ function renderWeek(
       merge(0, c2, 0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(PAL.date.hdr) });
 
-      merge(1, c1, 2, c1, day.baiProject, { font: nameFont });
+      // บ่าย โครงการ — 2 separate rows (one shift per row)
+      set(1, c1, day.baiProjectList[0] || '', { font: nameFont });
+      set(2, c1, day.baiProjectList[1] || '', { font: nameFont });
+      frameRegion(1, c1, 2, c1);
+
       merge(1, c2, 1, c3, day.baiER1, { font: nameFont });
       merge(1, c4, 1, c5, day.baiER2, { font: nameFont });
       removeVerticalBorder(1, c3, c4);
@@ -697,8 +739,12 @@ function renderWeek(
       set(3, c2, 'SMC', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       merge(3, c3, 3, c5, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
 
-      merge(4, c1, 5, c1, day.rungOPD, { font: nameFont });
+      // รุ่งอรุณ — OPD split into 2 rows, ER on the bottom row
+      set(4, c1, day.rungOPDList[0] || '', { font: nameFont });
+      set(5, c1, day.rungOPDList[1] || '', { font: nameFont });
       set(6, c1, day.rungER, { font: nameFont });
+      frameRegion(4, c1, 6, c1);
+
       set(4, c2, day.smc1, { font: nameFont });
       set(5, c2, day.smc2, { font: nameFont });
       set(6, c2, '', { font: nameFont });
@@ -735,7 +781,11 @@ function renderWeek(
       merge(0, c2, 0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(PAL.date.hdr) });
 
-      merge(1, c1, 2, c1, day.baiProject, { font: nameFont });
+      // บ่าย โครงการ — 2 separate rows (one shift per row)
+      set(1, c1, day.baiProjectList[0] || '', { font: nameFont });
+      set(2, c1, day.baiProjectList[1] || '', { font: nameFont });
+      frameRegion(1, c1, 2, c1);
+
       merge(1, c2, 1, c3, day.baiER1, { font: nameFont });
       merge(1, c4, 1, c5, day.baiER2, { font: nameFont });
       removeVerticalBorder(1, c3, c4);
@@ -744,8 +794,12 @@ function renderWeek(
       set(3, c1, 'รุ่งอรุณ', { font: hdrFont(PAL.rung), fill: cellFill(PAL.rung.hdr) });
       merge(3, c2, 3, c5, 'ดึก', { font: hdrFont(PAL.duek), fill: cellFill(PAL.duek.hdr) });
 
-      merge(4, c1, 5, c1, day.rungOPD, { font: nameFont });
+      // รุ่งอรุณ — OPD split into 2 rows, ER on the bottom row
+      set(4, c1, day.rungOPDList[0] || '', { font: nameFont });
+      set(5, c1, day.rungOPDList[1] || '', { font: nameFont });
       set(6, c1, day.rungER, { font: nameFont });
+      frameRegion(4, c1, 6, c1);
+
       merge(4, c2, 6, c5, day.duek, { font: nameFont });
 
     } else {

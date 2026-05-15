@@ -462,7 +462,7 @@ export function SwapModal({
     <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-center p-0 sm:p-4">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md animate-slide-up sm:animate-fade-in max-h-[92vh] flex flex-col">
+      <div className="relative glass-card rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md md:max-w-lg lg:max-w-2xl xl:max-w-3xl animate-slide-up sm:animate-fade-in max-h-[92vh] flex flex-col">
         <div className="sm:hidden w-12 h-1.5 bg-gray-300 rounded-full mx-auto mt-2 mb-1" />
 
         {/* Header */}
@@ -616,7 +616,7 @@ export function SwapModal({
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </button>
-                  <span className="text-sm font-semibold text-blue-700">
+                  <span className="text-sm sm:text-base lg:text-lg font-semibold text-blue-700">
                     {fetchingCalShifts
                       ? <Loader2 className="w-4 h-4 animate-spin inline" />
                       : format(calViewDate, 'MMMM yyyy', { locale: th })}
@@ -635,7 +635,7 @@ export function SwapModal({
                 </div>
                 <div className="grid grid-cols-7 border-b border-gray-100">
                   {THAI_DAY_SHORT.map(d => (
-                    <div key={d} className="text-center text-[10px] font-semibold text-gray-400 py-1">{d}</div>
+                    <div key={d} className="text-center text-[10px] sm:text-xs lg:text-sm font-semibold text-gray-400 py-1 sm:py-1.5">{d}</div>
                   ))}
                 </div>
                 <div className="grid grid-cols-7">
@@ -659,12 +659,12 @@ export function SwapModal({
                           }
                         }}
                         className={cn(
-                          'flex flex-col items-center gap-0.5 py-1 px-0.5 min-h-[3.5rem] transition-all',
+                          'flex flex-col items-center gap-0.5 py-1 px-0.5 min-h-[3.5rem] sm:min-h-[4rem] lg:min-h-[4.75rem] sm:py-1.5 sm:px-1 transition-all',
                           hasMyShift ? 'cursor-pointer hover:bg-blue-50' : 'cursor-default',
                           isSelected && 'bg-blue-100 rounded-lg',
                           !inMonth && 'opacity-0 pointer-events-none',
                         )}>
-                        <span className={cn('text-xs font-medium leading-none',
+                        <span className={cn('text-xs sm:text-sm lg:text-base font-medium leading-none',
                           !inMonth ? 'text-gray-300' :
                           isSelected ? 'text-blue-700 font-bold' :
                           hasMyShift ? 'text-blue-600 font-semibold' : 'text-gray-400')}>
@@ -675,7 +675,7 @@ export function SwapModal({
                           const pos = (s as any).position;
                           return (
                             <span key={si} className={cn(
-                              'text-[8px] font-semibold px-0.5 py-px rounded border leading-tight w-full text-center truncate',
+                              'text-[8px] sm:text-[10px] lg:text-xs font-semibold px-0.5 py-px sm:py-0.5 rounded border leading-tight w-full text-center truncate',
                               getShiftPillStyle(s.shift_type),
                             )}>
                               {getShiftLabel(s.shift_type, dept, pos)}
