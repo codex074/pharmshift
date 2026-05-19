@@ -79,8 +79,11 @@ async function hasDuekChaoSeq(
 function fmtShift(s: any): string {
   if (!s) return 'เวรดังกล่าว';
   const d = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
-  const dept = s.department?.name || '';
-  return `เวร${s.shift_type}${d ? ` ${d}` : ''}${dept ? ` (${dept})` : ''}`;
+  const rawDept = s.department?.name || '';
+  const dept = rawDept && rawDept !== s.shift_type ? rawDept : '';
+  const pos = s.position || '';
+  const area = [dept, pos].filter(Boolean).join(' ');
+  return `เวร${s.shift_type}${d ? ` ${d}` : ''}${area ? ` (${area})` : ''}`;
 }
 
 /* ── POST handler ────────────────────────────────────────────────────── */
@@ -232,9 +235,15 @@ export async function POST(request: NextRequest) {
 
   // 5) Notifications
   const acceptorName = req.target_user?.nickname || req.target_user?.f_name || 'เพื่อนร่วมงาน';
-  const acceptTitle = req.request_type === 'swap' ? '✅ แลกเวรสำเร็จ' : '✅ โอนเวรสำเร็จ';
+  const acceptTitle = req.request_type === 'swap'
+    ? '✅ แลกเวรสำเร็จ'
+    : req.request_type === 'cover'
+    ? '✅ อยู่เวรแทนสำเร็จ'
+    : '✅ โอนเวรสำเร็จ';
   const acceptBody = req.request_type === 'swap'
     ? `${acceptorName} ยอมรับการแลกเวรแล้ว — คุณได้รับ ${fmtShift(req.shift)}`
+    : req.request_type === 'cover'
+    ? `${acceptorName} ได้ยอมรับให้อยู่เวรแทนแล้ว — ${fmtShift(req.shift)}`
     : `${acceptorName} รับ ${fmtShift(req.shift)} แล้ว`;
 
   // Push notification

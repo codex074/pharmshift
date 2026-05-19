@@ -165,7 +165,7 @@ export async function GET(req: NextRequest) {
       if (!s.user_id) continue;
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
       const deptName = (s.department as any)?.name;
-      const dept = deptName ? ` (${deptName})` : '';
+      const dept = deptName && deptName !== s.shift_type ? ` (${deptName})` : '';
       const desc = `${label}${dept}`;
       const existing = userShifts.get(s.user_id) || [];
       existing.push(desc);

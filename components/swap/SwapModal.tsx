@@ -82,10 +82,18 @@ function duplicateRequestMessage(name: string | undefined) {
 
 function formatAuditShift(shift: Shift | null | undefined) {
   if (!shift) return 'เวร';
-  const deptName = (shift.department as { name?: string } | undefined)?.name || '';
+  const rawDept = (shift.department as { name?: string } | undefined)?.name || '';
+  const deptName = rawDept && rawDept !== shift.shift_type ? rawDept : '';
   const area = [deptName, shift.position].filter(Boolean).join(' ');
   const dateLabel = format(new Date(`${shift.date}T00:00:00`), 'd MMM yyyy', { locale: th });
   return `เวร${shift.shift_type}${area ? ` ${area}` : ''} วันที่ ${dateLabel}`;
+}
+
+function formatNotificationShift(shift: Shift, dateLabel: string) {
+  const rawDept = (shift.department as { name?: string } | undefined)?.name || '';
+  const deptName = rawDept && rawDept !== shift.shift_type ? rawDept : '';
+  const area = [deptName, shift.position].filter(Boolean).join(' ');
+  return `เวร${shift.shift_type} ${dateLabel}${area ? ` (${area})` : ''}`;
 }
 
 interface SwapModalProps {
@@ -269,7 +277,7 @@ export function SwapModal({
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
       const notifTitle = '📩 คำขอโอนเวร';
-      const notifBody = `${requesterName} ขอให้คุณรับ เวร${shift.shift_type} ${shiftDateFmt}${deptName ? ` (${deptName})` : ''}${colliding.length > 0 ? ' ⚠️ มีเวรซ้อน' : ''}`;
+      const notifBody = `${requesterName} ขอให้คุณรับ ${formatNotificationShift(shift, shiftDateFmt)}${colliding.length > 0 ? ' ⚠️ มีเวรซ้อน' : ''}`;
       fetch('/api/push/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
@@ -336,9 +344,8 @@ export function SwapModal({
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
       const yourDateFmt  = format(shiftDate, 'd MMM', { locale: th });
-      const myDept       = (selectedMyShift.department as any)?.name || '';
       const notifTitle = '🔄 คำขอแลกเวร';
-      const notifBody  = `${requesterName} เสนอแลก เวร${selectedMyShift.shift_type} ${myDateFmt}${myDept ? ` (${myDept})` : ''} ของเขา กับ เวร${shift.shift_type} ${yourDateFmt}${deptName ? ` (${deptName})` : ''} ของคุณ`;
+      const notifBody  = `${requesterName} เสนอแลก ${formatNotificationShift(selectedMyShift, myDateFmt)} ของเขา กับ ${formatNotificationShift(shift, yourDateFmt)} ของคุณ`;
       fetch('/api/push/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
@@ -396,7 +403,7 @@ export function SwapModal({
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });
       const notifTitle = '🙋 คำขออยู่เวรแทน';
-      const notifBody = `${requesterName} ต้องการขออยู่เวร${shift.shift_type}${deptName ? ` ${deptName}` : ''} ${shiftDateFmt} แทนคุณ`;
+      const notifBody = `${requesterName} ต้องการขออยู่${formatNotificationShift(shift, shiftDateFmt)} แทนคุณ`;
       fetch('/api/push/send', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
@@ -590,8 +597,7 @@ export function SwapModal({
           {/* ── SWAP MODE: Step 2a — cover confirmation ─────────────── */}
           {mode === 'swap' && swapAction === 'cover' && (
             <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-sm text-emerald-800">
-              🙋 คุณต้องการขออยู่เวร{shift.shift_type}{deptName ? ` ${deptName}` : ''} วันที่{' '}
-              <strong>{format(shiftDate, 'd/M', { locale: th })}</strong> แทน {ownerLabel}
+              🙋 คุณต้องการขออยู่{formatNotificationShift(shift, format(shiftDate, 'd/M', { locale: th }))} แทน {ownerLabel}
             </div>
           )}
 
@@ -704,7 +710,8 @@ export function SwapModal({
                     เลือกเวรวันที่ {format(new Date(selectedDate + 'T00:00:00'), 'd MMMM', { locale: th })}:
                   </p>
                   {myShiftsOnSelectedDate.map(s => {
-                    const sDept = (s.department as any)?.name || '';
+                    const rawDept = (s.department as any)?.name || '';
+                    const sDept = rawDept && rawDept !== s.shift_type ? rawDept : '';
                     const isSel = selectedMyShift?.id === s.id;
                     return (
                       <button key={s.id}
@@ -731,12 +738,11 @@ export function SwapModal({
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-800 space-y-1">
                   <p className="font-semibold text-blue-700">สรุปการแลกเวร:</p>
                   <p>คุณจะได้รับ:{' '}
-                    <strong>{shift.shift_type}{deptName ? ` ${deptName}` : ''} {format(shiftDate, 'd/M')}</strong>
+                    <strong>{formatNotificationShift(shift, format(shiftDate, 'd/M'))}</strong>
                   </p>
                   <p>{ownerLabel} จะได้รับ:{' '}
                     <strong>
-                      {selectedMyShift.shift_type}{(selectedMyShift.department as any)?.name ? ` ${(selectedMyShift.department as any).name}` : ''}{' '}
-                      {format(new Date(selectedMyShift.date + 'T00:00:00'), 'd/M')}
+                      {formatNotificationShift(selectedMyShift, format(new Date(selectedMyShift.date + 'T00:00:00'), 'd/M'))}
                     </strong>
                   </p>
                 </div>

@@ -13,8 +13,11 @@ import { th } from 'date-fns/locale';
 function fmtShiftNotif(s: Shift | null | undefined): string {
   if (!s) return 'เวรดังกล่าว';
   const date = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
-  const dept = (s as any).department?.name || '';
-  return `เวร${s.shift_type}${date ? ` ${date}` : ''}${dept ? ` (${dept})` : ''}`;
+  const rawDept = (s as any).department?.name || '';
+  const dept = rawDept && rawDept !== s.shift_type ? rawDept : '';
+  const pos = (s as any).position || '';
+  const area = [dept, pos].filter(Boolean).join(' ');
+  return `เวร${s.shift_type}${date ? ` ${date}` : ''}${area ? ` (${area})` : ''}`;
 }
 
 function upsertById<T extends { id: string }>(items: T[], nextItem: T): T[] {
@@ -69,19 +72,18 @@ function escapeLikePattern(value: string): string {
 function buildSwapRequestNotificationMatcher(req: {
   request_type: 'swap' | 'transfer' | 'cover';
   requester?: { f_name?: string; nickname?: string } | null;
-  shift?: { shift_type?: string; date?: string; department?: { name?: string } | null } | null;
-  target_shift?: { shift_type?: string; date?: string; department?: { name?: string } | null } | null;
+  shift?: { shift_type?: string; date?: string; position?: string | null; department?: { name?: string } | null } | null;
+  target_shift?: { shift_type?: string; date?: string; position?: string | null; department?: { name?: string } | null } | null;
 }) {
   const requesterName = req.requester?.nickname || req.requester?.f_name || 'เพื่อนร่วมงาน';
   const shiftType = req.shift?.shift_type || '';
   const shiftDate = req.shift?.date ? new Date(req.shift.date + 'T00:00:00') : null;
-  const shiftDept = req.shift?.department?.name || '';
 
   if (req.request_type === 'transfer') {
     const shiftDateFmt = shiftDate ? format(shiftDate, 'd MMM', { locale: th }) : '';
     return {
       title: '📩 คำขอโอนเวร',
-      bodyLike: `${escapeLikePattern(`${requesterName} ขอให้คุณรับ เวร${shiftType} ${shiftDateFmt}${shiftDept ? ` (${shiftDept})` : ''}`)}%`,
+      bodyLike: `${escapeLikePattern(`${requesterName} ขอให้คุณรับ เวร${shiftType} ${shiftDateFmt}`)}%`,
     };
   }
 
@@ -89,7 +91,7 @@ function buildSwapRequestNotificationMatcher(req: {
     const shiftDateFmt = shiftDate ? format(shiftDate, 'd/M', { locale: th }) : '';
     return {
       title: '🙋 คำขออยู่เวรแทน',
-      bodyLike: escapeLikePattern(`${requesterName} ต้องการขออยู่เวร${shiftType}${shiftDept ? ` ${shiftDept}` : ''} ${shiftDateFmt} แทนคุณ`),
+      bodyLike: `${escapeLikePattern(`${requesterName} ต้องการขออยู่เวร${shiftType}`)}%${escapeLikePattern(`${shiftDateFmt} แทนคุณ`)}`,
     };
   }
 
@@ -97,13 +99,10 @@ function buildSwapRequestNotificationMatcher(req: {
   const myDate = req.target_shift?.date ? new Date(req.target_shift.date + 'T00:00:00') : null;
   const myDateFmt = myDate ? format(myDate, 'd MMM', { locale: th }) : '';
   const yourDateFmt = shiftDate ? format(shiftDate, 'd MMM', { locale: th }) : '';
-  const myDept = req.target_shift?.department?.name || '';
 
   return {
     title: '🔄 คำขอแลกเวร',
-    bodyLike: escapeLikePattern(
-      `${requesterName} เสนอแลก เวร${myShiftType} ${myDateFmt}${myDept ? ` (${myDept})` : ''} ของเขา กับ เวร${shiftType} ${yourDateFmt}${shiftDept ? ` (${shiftDept})` : ''} ของคุณ`
-    ),
+    bodyLike: `${escapeLikePattern(`${requesterName} เสนอแลก เวร${myShiftType} ${myDateFmt}`)}%${escapeLikePattern(`ของเขา กับ เวร${shiftType} ${yourDateFmt}`)}%${escapeLikePattern('ของคุณ')}`,
   };
 }
 
