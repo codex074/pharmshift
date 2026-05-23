@@ -2,8 +2,17 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import type { User } from '@/lib/types';
 
-const secretKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'pharmshift-fallback-secret';
-const key = new TextEncoder().encode(secretKey);
+const NEW_SECRET = process.env.SESSION_JWT_SECRET;
+const LEGACY_SECRET = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!NEW_SECRET) {
+  throw new Error(
+    'SESSION_JWT_SECRET is required. Generate one with: openssl rand -base64 64'
+  );
+}
+
+const key = new TextEncoder().encode(NEW_SECRET);
+const legacyKey = LEGACY_SECRET ? new TextEncoder().encode(LEGACY_SECRET) : null;
 
 export const SESSION_COOKIE_NAME = 'pharmshift_session';
 
@@ -23,7 +32,17 @@ export async function decrypt(input: string): Promise<any> {
   try {
     const { payload } = await jwtVerify(input, key, { algorithms: ['HS256'] });
     return payload;
-  } catch (error) {
+  } catch {
+    // Legacy fallback: ยอมรับ session ที่ sign ด้วย anon key (จาก code เก่า)
+    // ระหว่าง migration window — middleware จะ re-sign ให้ใหม่ทันทีที่ user เข้าเว็บ
+    if (legacyKey) {
+      try {
+        const { payload } = await jwtVerify(input, legacyKey, { algorithms: ['HS256'] });
+        return payload;
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
 }
