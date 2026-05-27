@@ -307,13 +307,20 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     const position = getSlotPosition(shiftType, dept, index);
     const list = getList(shiftType, dept);
     const exactShift = position ? list.find(s => (s.position || '') === position) : undefined;
-    const legacyShift = !exactShift ? list.filter(s => !(s.position || ''))[index] : undefined;
+    const legacyShiftIndex = position
+      ? Array.from({ length: index }, (_, priorIndex) => priorIndex)
+          .filter((priorIndex) => {
+            const priorPosition = getSlotPosition(shiftType, dept, priorIndex);
+            return !priorPosition || !list.some(s => (s.position || '') === priorPosition);
+          }).length
+      : index;
+    const legacyShift = !exactShift ? list.filter(s => !(s.position || ''))[legacyShiftIndex] : undefined;
     const s = exactShift || legacyShift || (!position ? list[index] : undefined);
 
     const exactPendingList = position ? getPendingList(shiftType, dept, position) : [];
     const legacyPendingList = !s ? getPendingList(shiftType, dept) : [];
     const pendingEntry = !s
-      ? exactPendingList[0] || legacyPendingList[Math.max(0, index - list.length)]
+      ? exactPendingList[0] || legacyPendingList[Math.max(0, legacyShiftIndex - list.filter(s => !(s.position || '')).length)]
       : undefined;
 
     return { shift: s, pendingEntry, position };

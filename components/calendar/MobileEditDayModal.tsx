@@ -28,6 +28,7 @@ interface SlotConfig {
   department: string;
   position?: string;
   index?: number;
+  roleGroup?: UserRole;
 }
 
 interface SlotSection {
@@ -56,6 +57,7 @@ function rangeLabels(prefix: string, count: number, shiftType: ShiftType, depart
     department,
     position: getIndexedSlotPosition({ roleGroup, shiftType, department, index }) || undefined,
     index,
+    roleGroup,
   }));
 }
 
@@ -189,15 +191,37 @@ function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: Pendi
         getDeptName(item) === slot.department &&
         (item.position || '') === slot.position,
     );
-    const matchingLegacyShifts = day.shifts
+    const isIndexedPosition = slot.index !== undefined && slot.roleGroup !== undefined;
+    const countPriorExactShifts = () => {
+      if (!isIndexedPosition) return 0;
+      let count = 0;
+      for (let index = 0; index < (slot.index ?? 0); index += 1) {
+        const priorPosition = getIndexedSlotPosition({
+          roleGroup: slot.roleGroup,
+          shiftType: slot.shiftType,
+          department: slot.department,
+          index,
+        });
+        const hasPriorExactShift = day.shifts.some(
+          (item) =>
+            item.shift_type === slot.shiftType &&
+            getDeptName(item) === slot.department &&
+            (item.position || '') === priorPosition,
+        );
+        if (!hasPriorExactShift) count += 1;
+      }
+      return count;
+    };
+
+    const matchingLegacyShifts = isIndexedPosition ? day.shifts
       .filter(
         (item) =>
           item.shift_type === slot.shiftType &&
           getDeptName(item) === slot.department &&
           !(item.position || ''),
       )
-      .sort(sortShiftsForSlot);
-    const shift = exactShift || matchingLegacyShifts[slot.index ?? 0];
+      .sort(sortShiftsForSlot) : [];
+    const shift = exactShift || matchingLegacyShifts[countPriorExactShifts()];
 
     const exactPendingEntry = pendingAdds
       .map((add, globalIndex) => ({ add, globalIndex }))
@@ -208,7 +232,7 @@ function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: Pendi
           add.department === slot.department &&
           (add.position || '') === slot.position,
       );
-    const matchingLegacyPending = pendingAdds
+    const matchingLegacyPending = isIndexedPosition ? pendingAdds
       .map((add, globalIndex) => ({ add, globalIndex }))
       .filter(
         ({ add }) =>
@@ -216,7 +240,7 @@ function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: Pendi
           add.shift_type === slot.shiftType &&
           add.department === slot.department &&
           !add.position,
-      );
+      ) : [];
     const pendingEntry = !shift
       ? exactPendingEntry || matchingLegacyPending[slot.index ?? 0]
       : undefined;

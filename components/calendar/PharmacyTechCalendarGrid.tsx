@@ -395,8 +395,6 @@ function buildTwoSlots(day: CalendarDay, ctx: RenderContext, shiftType: ShiftTyp
   if (positions) {
     const usedShiftIds = new Set<string>();
     const usedPendingIndexes = new Set<number>();
-    let legacyShiftCursor = 0;
-    let legacyPendingCursor = 0;
     return positions.map((position) => {
       const exactShift = matching.find(s => (s.position || '') === position && !usedShiftIds.has(s.id));
       if (exactShift) {
@@ -413,17 +411,15 @@ function buildTwoSlots(day: CalendarDay, ctx: RenderContext, shiftType: ShiftTyp
       }
 
       const legacyShifts = matching.filter(s => !(s.position || '') && !usedShiftIds.has(s.id));
-      const legacyShift = legacyShifts[legacyShiftCursor];
+      const legacyShift = legacyShifts[0];
       if (legacyShift) {
-        legacyShiftCursor += 1;
         usedShiftIds.add(legacyShift.id);
         return { type: 'real', shift: legacyShift };
       }
 
       const legacyPendingItems = pendingItems.filter(item => !(item.add.position || '') && !usedPendingIndexes.has(item.globalIdx));
-      const legacyPending = legacyPendingItems[legacyPendingCursor];
+      const legacyPending = legacyPendingItems[0];
       if (legacyPending) {
-        legacyPendingCursor += 1;
         usedPendingIndexes.add(legacyPending.globalIdx);
         return { type: 'pending', ...legacyPending };
       }
