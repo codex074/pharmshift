@@ -5,6 +5,7 @@ import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
+import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 const BORDER = 'border-gray-300';
@@ -297,16 +298,34 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     return pending;
   };
 
-  const slot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
+  const getSlotPosition = (shiftType: ShiftType, dept: string | undefined, index: number) => {
+    if (!dept) return '';
+    return getIndexedSlotPosition({ roleGroup: 'officer', shiftType, department: dept, index });
+  };
+
+  const getIndexedSlotState = (shiftType: ShiftType, dept: string | undefined, index: number) => {
+    const position = getSlotPosition(shiftType, dept, index);
     const list = getList(shiftType, dept);
-    const s = list[i];
-    const pendingList = getPendingList(shiftType, dept);
-    const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+    const exactShift = position ? list.find(s => (s.position || '') === position) : undefined;
+    const legacyShift = !exactShift ? list.filter(s => !(s.position || ''))[index] : undefined;
+    const s = exactShift || legacyShift || (!position ? list[index] : undefined);
+
+    const exactPendingList = position ? getPendingList(shiftType, dept, position) : [];
+    const legacyPendingList = !s ? getPendingList(shiftType, dept) : [];
+    const pendingEntry = !s
+      ? exactPendingList[0] || legacyPendingList[Math.max(0, index - list.length)]
+      : undefined;
+
+    return { shift: s, pendingEntry, position };
+  };
+
+  const slot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
+    const { shift: s, pendingEntry, position } = getIndexedSlotState(shiftType, dept, i);
     return (
       <div className={cn(nameCell(), cls)}>
         {s && renderShiftBadge(s, ctx)}
         {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-        {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+        {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept, position)}
       </div>
     );
   };
@@ -319,31 +338,25 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
     const dukW = 'flex-1';
 
     const fslot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
-      const list = getList(shiftType, dept);
-      const s = list[i];
-      const pendingList = getPendingList(shiftType, dept);
-      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+      const { shift: s, pendingEntry, position } = getIndexedSlotState(shiftType, dept, i);
 
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       );
     };
 
     const surgSlot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
-      const list = getList(shiftType, dept);
-      const s = list[i];
-      const pendingList = getPendingList(shiftType, dept);
-      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+      const { shift: s, pendingEntry, position } = getIndexedSlotState(shiftType, dept, i);
 
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer flex-1', cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       );
     };
@@ -463,47 +476,34 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
 
     // Slot cell with flex-1 for absolute overlay
     const surgSlot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
-      const list = day.shifts.filter(s =>
-        s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
-      ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
-      const s = list[i];
-      const pendingList = getPendingList(shiftType, dept);
-      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+      const { shift: s, pendingEntry, position } = getIndexedSlotState(shiftType, dept, i);
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer flex-1', cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       );
     };
 
     const fslot = (shiftType: ShiftType, dept: string | undefined, i: number, cls: string) => {
-      const list = day.shifts.filter(s =>
-        s.shift_type === shiftType && (!dept || getDeptName(s) === dept)
-      ).sort((a, b) => (a.position || '').localeCompare(b.position || '', 'th', { numeric: true }));
-      const s = list[i];
-      const pendingList = getPendingList(shiftType, dept);
-      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+      const { shift: s, pendingEntry, position } = getIndexedSlotState(shiftType, dept, i);
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept)}
+          {!s && !pendingEntry && dept && renderAddBtn(shiftType, dept, position)}
         </div>
       );
     };
     const sendYaSlot = (i: number, cls: string) => {
-      const list = getList('เช้า', 'ส่งยา สอ.');
-      const s = list[i];
-      const pendingList = getPendingList('เช้า', 'ส่งยา สอ.');
-      const pendingEntry = !s ? pendingList[Math.max(0, i - list.length)] : undefined;
+      const { shift: s, pendingEntry, position } = getIndexedSlotState('เช้า', 'ส่งยา สอ.', i);
 
       return (
         <div className={cn('overflow-hidden [.exporting-pdf_&]:overflow-visible flex flex-wrap content-center items-center justify-center h-full w-full p-0.5 bg-white cursor-pointer', fixedRowH, bb, cls)}>
           {s && renderShiftBadge(s, ctx)}
           {!s && pendingEntry && renderPendingAddBadge(pendingEntry.add, pendingEntry.globalIndex)}
-          {!s && !pendingEntry && renderAddBtn('เช้า', 'ส่งยา สอ.')}
+          {!s && !pendingEntry && renderAddBtn('เช้า', 'ส่งยา สอ.', position)}
         </div>
       );
     };

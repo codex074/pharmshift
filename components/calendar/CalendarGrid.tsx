@@ -6,6 +6,7 @@ import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
 import { format } from 'date-fns';
 import { DEPT_COLORS } from '@/lib/types';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
+import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 // ── Shared border / layout helpers ─────────────────────────────────────────
@@ -267,9 +268,9 @@ function renderPendingAddBadge(add: PendingAdd, globalIndex: number, ctx: Render
   );
 }
 
-function renderAddButton(dateStr: string, shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string) {
+function renderAddButton(dateStr: string, shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string, buttonLabel?: string) {
   if (!ctx.isEditMode || !ctx.onAddShift) return null;
-  const label = position ? `+${position}` : '+';
+  const label = buttonLabel ?? (position ? `+${position}` : '+');
   return (
     <button
       onClick={(e) => {
@@ -355,6 +356,67 @@ function renderPersonalShift(s: Shift | undefined, ctx: RenderContext) {
   return renderShiftBadge(s, ctx);
 }
 
+type IndexedSlot =
+  | { type: 'real'; shift: Shift }
+  | { type: 'pending'; add: PendingAdd; globalIdx: number }
+  | null;
+
+function buildIndexedSlots(
+  dateStr: string,
+  shifts: Shift[],
+  ctx: RenderContext,
+  shiftType: ShiftType,
+  deptName: string,
+  positions: string[],
+): IndexedSlot[] {
+  const matching = shifts.filter(s => s.shift_type === shiftType && getDeptName(s) === deptName);
+  const pendingItems = (ctx.pendingAdds || [])
+    .map((add, globalIdx) => ({ add, globalIdx }))
+    .filter(({ add }) => add.date === dateStr && add.shift_type === shiftType && add.department === deptName);
+
+  const usedShiftIds = new Set<string>();
+  const usedPendingIndexes = new Set<number>();
+  let legacyShiftCursor = 0;
+  let legacyPendingCursor = 0;
+
+  return positions.map((position) => {
+    const exactShift = matching.find(s => s.position === position && !usedShiftIds.has(s.id));
+    if (exactShift) {
+      usedShiftIds.add(exactShift.id);
+      return { type: 'real', shift: exactShift };
+    }
+
+    const exactPending = pendingItems.find(item =>
+      (item.add.position || '') === position && !usedPendingIndexes.has(item.globalIdx)
+    );
+    if (exactPending) {
+      usedPendingIndexes.add(exactPending.globalIdx);
+      return { type: 'pending', ...exactPending };
+    }
+
+    const legacyShifts = matching
+      .filter(s => !s.position && !usedShiftIds.has(s.id))
+      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    const legacyShift = legacyShifts[legacyShiftCursor];
+    if (legacyShift) {
+      legacyShiftCursor += 1;
+      usedShiftIds.add(legacyShift.id);
+      return { type: 'real', shift: legacyShift };
+    }
+
+    const legacyPendingItems = pendingItems
+      .filter(item => !(item.add.position || '') && !usedPendingIndexes.has(item.globalIdx));
+    const legacyPending = legacyPendingItems[legacyPendingCursor];
+    if (legacyPending) {
+      legacyPendingCursor += 1;
+      usedPendingIndexes.add(legacyPending.globalIdx);
+      return { type: 'pending', ...legacyPending };
+    }
+
+    return null;
+  });
+}
+
 function renderRungAroonBlocks(day: CalendarDay, ctx: RenderContext, gridArea = '5 / 1 / 8 / 2') {
   const dateStr = format(day.date, 'yyyy-MM-dd');
   const positions = ['OPD', 'ER', 'HIV'];
@@ -391,64 +453,22 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   const isSundayOrHoliday = dow === 0 || day.isHoliday;
   const isSat = dow === 6 && !day.isHoliday;
 
-  const surgShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG');
-  const chemoShifts = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'Chemo');
-
-  // SURG pending adds for this cell (with original index in ctx.pendingAdds for remove callback)
-  const surgPendingItems = (ctx.pendingAdds || [])
-    .map((add, globalIdx) => ({ add, globalIdx }))
-    .filter(({ add: a }) =>
-      a.date === dateStr && a.shift_type === 'เช้า' && a.department === 'SURG' && (a.position || '') === ''
-    );
-
-  // Build unified slot content: real shifts fill first, remaining slots filled by pending adds
-  // slot0 → real[0]  OR pending[0]  OR null (show +)
-  // slot1 → real[1]  OR pending[0 or 1]  OR null (show +)
-  type SurgSlot =
-    | { type: 'real'; shift: (typeof surgShifts)[0] }
-    | { type: 'pending'; add: (typeof surgPendingItems)[0]['add']; globalIdx: number }
-    | null;
-
-  const surgSlot0: SurgSlot = surgShifts[0]
-    ? { type: 'real', shift: surgShifts[0] }
-    : surgPendingItems[0]
-    ? { type: 'pending', ...surgPendingItems[0] }
-    : null;
-
-  // How many pending adds were consumed by slot 0?
-  const pendingConsumedBySlot0 = surgShifts[0] ? 0 : surgPendingItems[0] ? 1 : 0;
-
-  const surgSlot1: SurgSlot = surgShifts[1]
-    ? { type: 'real', shift: surgShifts[1] }
-    : surgPendingItems[pendingConsumedBySlot0]
-    ? { type: 'pending', ...surgPendingItems[pendingConsumedBySlot0] }
-    : null;
-
-  // Chemo slot logic (same pattern as SURG — 1 person per slot)
-  const chemoPendingItems = (ctx.pendingAdds || [])
-    .map((add, globalIdx) => ({ add, globalIdx }))
-    .filter(({ add: a }) =>
-      a.date === dateStr && a.shift_type === 'เช้า' && a.department === 'Chemo' && (a.position || '') === ''
-    );
-
-  type ChemoSlot =
-    | { type: 'real'; shift: (typeof chemoShifts)[0] }
-    | { type: 'pending'; add: (typeof chemoPendingItems)[0]['add']; globalIdx: number }
-    | null;
-
-  const chemoSlot0: ChemoSlot = chemoShifts[0]
-    ? { type: 'real', shift: chemoShifts[0] }
-    : chemoPendingItems[0]
-    ? { type: 'pending', ...chemoPendingItems[0] }
-    : null;
-
-  const pendingConsumedByChemoSlot0 = chemoShifts[0] ? 0 : chemoPendingItems[0] ? 1 : 0;
-
-  const chemoSlot1: ChemoSlot = chemoShifts[1]
-    ? { type: 'real', shift: chemoShifts[1] }
-    : chemoPendingItems[pendingConsumedByChemoSlot0]
-    ? { type: 'pending', ...chemoPendingItems[pendingConsumedByChemoSlot0] }
-    : null;
+  const [surgSlot0, surgSlot1] = buildIndexedSlots(
+    dateStr,
+    day.shifts,
+    ctx,
+    'เช้า',
+    'SURG',
+    [0, 1].map(index => getIndexedSlotPosition({ roleGroup: 'pharmacist', shiftType: 'เช้า', department: 'SURG', index })),
+  );
+  const [chemoSlot0, chemoSlot1] = buildIndexedSlots(
+    dateStr,
+    day.shifts,
+    ctx,
+    'เช้า',
+    'Chemo',
+    [0, 1].map(index => getIndexedSlotPosition({ roleGroup: 'pharmacist', shiftType: 'เช้า', department: 'Chemo', index })),
+  );
 
   // Weekend bg tint
   const dateBg = isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700';
@@ -470,13 +490,13 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
         <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
           {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
           {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
-          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx, 's1', '+')}
         </div>
         {/* SURG slot ล่าง */}
         <div className={cn(nameCell('chao'), 'flex-col')}>
           {surgSlot1?.type === 'real'    && renderPersonalShift(surgSlot1.shift, ctx)}
           {surgSlot1?.type === 'pending' && renderPendingAddBadge(surgSlot1.add, surgSlot1.globalIdx, ctx)}
-          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx)}
+          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx, 's2', '+')}
         </div>
       </div>
       <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 3 / 4 / 4' }}>
@@ -504,12 +524,12 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
         <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
           {chemoSlot0?.type === 'real'    && renderPersonalShift(chemoSlot0.shift, ctx)}
           {chemoSlot0?.type === 'pending' && renderPendingAddBadge(chemoSlot0.add, chemoSlot0.globalIdx, ctx)}
-          {!chemoSlot0                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
+          {!chemoSlot0                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx, 'ch1', '+')}
         </div>
         <div className={cn(nameCell('chao'), 'flex-col')}>
           {chemoSlot1?.type === 'real'    && renderPersonalShift(chemoSlot1.shift, ctx)}
           {chemoSlot1?.type === 'pending' && renderPendingAddBadge(chemoSlot1.add, chemoSlot1.globalIdx, ctx)}
-          {!chemoSlot1                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx)}
+          {!chemoSlot1                    && renderAddButton(dateStr, 'เช้า', 'Chemo', ctx, 'ch2', '+')}
         </div>
       </div>
 
@@ -522,33 +542,14 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
 function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContext, onDayClick: any }) {
   const dayNum = format(day.date, 'd');
   const dateStr = format(day.date, 'yyyy-MM-dd');
-  const smcShifts = day.shifts.filter(s => s.shift_type === 'บ่าย' && getDeptName(s) === 'SMC');
-
-  // SMC slot logic (same pattern as SURG)
-  const smcPendingItems = (ctx.pendingAdds || [])
-    .map((add, globalIdx) => ({ add, globalIdx }))
-    .filter(({ add: a }) =>
-      a.date === dateStr && a.shift_type === 'บ่าย' && a.department === 'SMC' && (a.position || '') === ''
-    );
-
-  type SmcSlot =
-    | { type: 'real'; shift: (typeof smcShifts)[0] }
-    | { type: 'pending'; add: (typeof smcPendingItems)[0]['add']; globalIdx: number }
-    | null;
-
-  const smcSlot0: SmcSlot = smcShifts[0]
-    ? { type: 'real', shift: smcShifts[0] }
-    : smcPendingItems[0]
-    ? { type: 'pending', ...smcPendingItems[0] }
-    : null;
-
-  const pendingConsumedBySmcSlot0 = smcShifts[0] ? 0 : smcPendingItems[0] ? 1 : 0;
-
-  const smcSlot1: SmcSlot = smcShifts[1]
-    ? { type: 'real', shift: smcShifts[1] }
-    : smcPendingItems[pendingConsumedBySmcSlot0]
-    ? { type: 'pending', ...smcPendingItems[pendingConsumedBySmcSlot0] }
-    : null;
+  const [smcSlot0, smcSlot1] = buildIndexedSlots(
+    dateStr,
+    day.shifts,
+    ctx,
+    'บ่าย',
+    'SMC',
+    [0, 1].map(index => getIndexedSlotPosition({ roleGroup: 'pharmacist', shiftType: 'บ่าย', department: 'SMC', index })),
+  );
 
   return (
     <div className={cn("grid grid-cols-4 h-full", DAY_GRID_ROWS)} onClick={() => onDayClick(day)}>
@@ -565,13 +566,13 @@ function MonThuGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCon
       <div className={cn(nameCell('bai'), 'flex-col border-b border-gray-200')} style={{ gridArea: '2 / 2 / 3 / 3' }}>
         {smcSlot0?.type === 'real'    && renderPersonalShift(smcSlot0.shift, ctx)}
         {smcSlot0?.type === 'pending' && renderPendingAddBadge(smcSlot0.add, smcSlot0.globalIdx, ctx)}
-        {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+        {!smcSlot0                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx, 'smc1', '+')}
       </div>
       {/* SMC slot ล่าง */}
       <div className={cn(nameCell('bai'), 'flex-col')} style={{ gridArea: '3 / 2 / 4 / 3' }}>
         {smcSlot1?.type === 'real'    && renderPersonalShift(smcSlot1.shift, ctx)}
         {smcSlot1?.type === 'pending' && renderPendingAddBadge(smcSlot1.add, smcSlot1.globalIdx, ctx)}
-        {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx)}
+        {!smcSlot1                    && renderAddButton(dateStr, 'บ่าย', 'SMC', ctx, 'smc2', '+')}
       </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>

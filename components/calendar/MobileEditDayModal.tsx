@@ -6,6 +6,7 @@ import { Pencil, Plus, Trash2, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarDay, Shift, ShiftType, User, UserRole } from '@/lib/types';
 import { SHIFT_CONFIG } from '@/lib/types';
+import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
 interface MobileEditDayModalProps {
@@ -48,11 +49,12 @@ function sortShiftsForSlot(a: Shift, b: Shift) {
   return (a.position || '').localeCompare(b.position || '', 'th', { numeric: true });
 }
 
-function rangeLabels(prefix: string, count: number, shiftType: ShiftType, department: string): SlotConfig[] {
+function rangeLabels(prefix: string, count: number, shiftType: ShiftType, department: string, roleGroup?: UserRole): SlotConfig[] {
   return Array.from({ length: count }, (_, index) => ({
     label: count === 1 ? prefix : `${prefix} ${index + 1}`,
     shiftType,
     department,
+    position: getIndexedSlotPosition({ roleGroup, shiftType, department, index }) || undefined,
     index,
   }));
 }
@@ -73,11 +75,11 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
       return [
         { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
           { label: 'โครงการ', shiftType: 'เช้า', department: 'โครงการ', index: 0 },
-          ...rangeLabels('SURG', 2, 'เช้า', 'SURG'),
+          ...rangeLabels('SURG', 2, 'เช้า', 'SURG', roleGroup),
           { label: 'MED D/C', shiftType: 'เช้า', department: 'MED', position: 'D/C' },
           { label: 'MED Cont', shiftType: 'เช้า', department: 'MED', position: 'Cont' },
           { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
-          ...rangeLabels('Chemo', 2, 'เช้า', 'Chemo'),
+          ...rangeLabels('Chemo', 2, 'เช้า', 'Chemo', roleGroup),
         ]},
         { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
           { label: 'บ่าย ER', shiftType: 'บ่าย', department: 'ER', index: 0 },
@@ -93,8 +95,8 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
       rungSlots.length > 0 ? { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: rungSlots } : null,
       { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
         { label: 'โครงการ', shiftType: 'บ่าย', department: 'โครงการ', index: 0 },
-        !isFriday ? { label: 'SMC 1', shiftType: 'บ่าย', department: 'SMC', index: 0 } : null,
-        !isFriday ? { label: 'SMC 2', shiftType: 'บ่าย', department: 'SMC', index: 1 } : null,
+        !isFriday ? rangeLabels('SMC', 2, 'บ่าย', 'SMC', roleGroup)[0] : null,
+        !isFriday ? rangeLabels('SMC', 2, 'บ่าย', 'SMC', roleGroup)[1] : null,
         { label: 'บ่าย ER', shiftType: 'บ่าย', department: 'ER', index: 0 },
         { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
       ].filter(Boolean) as SlotConfig[] },
@@ -109,9 +111,9 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
       return [
         { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
           { label: 'โครงการ', shiftType: 'เช้า', department: 'โครงการ', index: 0 },
-          ...rangeLabels('SURG', 2, 'เช้า', 'SURG'),
+          ...rangeLabels('SURG', 2, 'เช้า', 'SURG', roleGroup),
           { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
-          ...rangeLabels('MED', 2, 'เช้า', 'MED'),
+          ...rangeLabels('MED', 2, 'เช้า', 'MED', roleGroup),
         ]},
         { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
           { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
@@ -124,10 +126,14 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     }
 
     return [
-      { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: rangeLabels('รุ่งอรุณ', 3, 'รุ่งอรุณ', 'รุ่งอรุณ') },
+      { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: [
+        { label: 'รุ่ง OPD', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'OPD' },
+        { label: 'รุ่ง ER', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'ER' },
+        { label: 'รุ่ง HIV', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'HIV' },
+      ] },
       { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
         { label: 'โครงการ', shiftType: 'บ่าย', department: 'โครงการ', index: 0 },
-        ...rangeLabels('SMC', 2, 'บ่าย', 'SMC'),
+        ...rangeLabels('SMC', 2, 'บ่าย', 'SMC', roleGroup),
         { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
         { label: 'บ่าย ER', shiftType: 'บ่าย', department: 'ER', index: 0 },
       ]},
@@ -141,15 +147,15 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     const isSat = dow === 6 && !day.isHoliday;
     return [
       { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
-        ...rangeLabels('โครงการ', 2, 'เช้า', 'โครงการ'),
-        ...rangeLabels('SURG', 3, 'เช้า', 'SURG'),
-        ...rangeLabels('MED', dow === 0 && !day.isHoliday ? 4 : 3, 'เช้า', 'MED'),
+        ...rangeLabels('โครงการ', 2, 'เช้า', 'โครงการ', roleGroup),
+        ...rangeLabels('SURG', 3, 'เช้า', 'SURG', roleGroup),
+        ...rangeLabels('MED', dow === 0 && !day.isHoliday ? 4 : 3, 'เช้า', 'MED', roleGroup),
         { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
-        ...(isSat ? [{ label: 'ส่งยา สอ.', shiftType: 'เช้า' as ShiftType, department: 'ส่งยา สอ.', index: 0 }] : []),
+        ...(isSat ? rangeLabels('ส่งยา สอ.', 1, 'เช้า', 'ส่งยา สอ.', roleGroup) : []),
       ]},
       { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
         { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
-        ...rangeLabels('บ่าย ER', 2, 'บ่าย', 'ER'),
+        ...rangeLabels('บ่าย ER', 2, 'บ่าย', 'ER', roleGroup),
       ]},
       { id: 'night', title: 'ดึก', shiftType: 'ดึก', slots: [
         { label: 'ดึก ER', shiftType: 'ดึก', department: 'ER', index: 0 },
@@ -159,10 +165,10 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
 
   return [
     { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
-      ...rangeLabels('โครงการ', 2, 'บ่าย', 'โครงการ'),
+      ...rangeLabels('โครงการ', 2, 'บ่าย', 'โครงการ', roleGroup),
       { label: 'บ่าย MED', shiftType: 'บ่าย', department: 'MED', index: 0 },
-      ...rangeLabels('บ่าย ER', 2, 'บ่าย', 'ER'),
-      ...(!isFriday ? rangeLabels('SMC', 2, 'บ่าย', 'SMC') : []),
+      ...rangeLabels('บ่าย ER', 2, 'บ่าย', 'ER', roleGroup),
+      ...(!isFriday ? rangeLabels('SMC', 2, 'บ่าย', 'SMC', roleGroup) : []),
     ]},
     { id: 'rung', title: 'รุ่งอรุณ', shiftType: 'รุ่งอรุณ', slots: [
       { label: 'รุ่ง OPD', shiftType: 'รุ่งอรุณ', department: 'รุ่งอรุณ', position: 'OPD' },
@@ -177,13 +183,23 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
 
 function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: PendingAdd[]) {
   if (slot.position) {
-    const shift = day.shifts.find(
+    const exactShift = day.shifts.find(
       (item) =>
         item.shift_type === slot.shiftType &&
         getDeptName(item) === slot.department &&
         (item.position || '') === slot.position,
     );
-    const pendingEntry = pendingAdds
+    const matchingLegacyShifts = day.shifts
+      .filter(
+        (item) =>
+          item.shift_type === slot.shiftType &&
+          getDeptName(item) === slot.department &&
+          !(item.position || ''),
+      )
+      .sort(sortShiftsForSlot);
+    const shift = exactShift || matchingLegacyShifts[slot.index ?? 0];
+
+    const exactPendingEntry = pendingAdds
       .map((add, globalIndex) => ({ add, globalIndex }))
       .find(
         ({ add }) =>
@@ -192,6 +208,18 @@ function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: Pendi
           add.department === slot.department &&
           (add.position || '') === slot.position,
       );
+    const matchingLegacyPending = pendingAdds
+      .map((add, globalIndex) => ({ add, globalIndex }))
+      .filter(
+        ({ add }) =>
+          add.date === format(day.date, 'yyyy-MM-dd') &&
+          add.shift_type === slot.shiftType &&
+          add.department === slot.department &&
+          !add.position,
+      );
+    const pendingEntry = !shift
+      ? exactPendingEntry || matchingLegacyPending[slot.index ?? 0]
+      : undefined;
 
     return { shift, pendingEntry, canAdd: !shift && !pendingEntry };
   }

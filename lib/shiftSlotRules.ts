@@ -59,3 +59,31 @@ export function afternoonMedSlotKey(slot: ShiftSlotLike, role?: string | null) {
     'MED',
   ].join('|');
 }
+
+export function getIndexedSlotPosition(input: {
+  roleGroup?: string | null;
+  shiftType: string;
+  department: string;
+  index: number;
+}) {
+  const slotNo = input.index + 1;
+  const department = normalizeDepartmentName(input.department);
+  const roleGroup = input.roleGroup || '';
+
+  if (input.shiftType === 'บ่าย' && department === 'SMC') return `smc${slotNo}`;
+  if (input.shiftType === 'เช้า' && department === 'SURG') return `s${slotNo}`;
+  if (input.shiftType === 'เช้า' && department === 'Chemo') return `ch${slotNo}`;
+
+  if (roleGroup === 'officer') {
+    if (department === 'โครงการ') return `ext${slotNo}`;
+    if (input.shiftType === 'เช้า' && department === 'MED') return `m${slotNo}`;
+    if (input.shiftType === 'บ่าย' && department === 'ER') return `บe${slotNo}`;
+    if (input.shiftType === 'เช้า' && department === 'ส่งยา สอ.') return `ส${slotNo}`;
+  }
+
+  if (roleGroup === 'pharmacy_technician') {
+    if (input.shiftType === 'เช้า' && department === 'MED') return `m${slotNo}`;
+  }
+
+  return '';
+}
