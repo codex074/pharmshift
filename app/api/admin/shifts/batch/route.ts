@@ -5,6 +5,13 @@ import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
 import { writeAuditLogs } from '@/lib/auditLog';
+import {
+  AFTERNOON_MED_SLOT_FULL_MESSAGE,
+  DUPLICATE_SHIFT_MESSAGE,
+  afternoonMedSlotKey,
+  isAfternoonMedSlot,
+  normalizeShiftPosition,
+} from '@/lib/shiftSlotRules';
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -52,6 +59,10 @@ function formatShiftArea(input: {
 function normalizeBatchError(err: any): string {
   const raw = err?.message || '';
 
+  if (raw.includes('AFTERNOON_MED_SLOT_FULL')) {
+    return AFTERNOON_MED_SLOT_FULL_MESSAGE;
+  }
+
   if (err?.code === '42883' || raw.includes('apply_admin_shift_changes_atomic')) {
     return 'ยังไม่ได้ติดตั้งฟังก์ชันฐานข้อมูลสำหรับบันทึก audit log กรุณารัน SQL migration ล่าสุดก่อน';
   }
@@ -65,6 +76,27 @@ function normalizeBatchError(err: any): string {
   }
 
   return raw || 'ไม่สามารถบันทึกการเปลี่ยนแปลงเวรได้';
+}
+
+function joinedUserRole(row: any) {
+  const user = Array.isArray(row?.user) ? row.user[0] : row?.user;
+  return user?.role || '';
+}
+
+function exactAddKey(input: {
+  user_id?: string | null;
+  date?: string | null;
+  shift_type?: string | null;
+  department_id?: number | null;
+  position?: string | null;
+}) {
+  return [
+    input.user_id || '',
+    input.date || '',
+    input.shift_type || '',
+    input.department_id || '',
+    normalizeShiftPosition(input.position),
+  ].join('|');
 }
 
 export async function POST(req: NextRequest) {
@@ -136,6 +168,98 @@ export async function POST(req: NextRequest) {
     const shiftMap = new Map((shiftRows || []).map((row: any) => [row.id, row]));
     const userMap = new Map((userRows || []).map((row: any) => [row.id, row]));
     const departmentMap = new Map((departmentRows || []).map((row: any) => [row.id, row.name]));
+
+    if (adds.some((add: any) => !userMap.has(add.user_id) || !departmentMap.has(add.department_id))) {
+      return NextResponse.json({ error: 'Invalid add shift payload' }, { status: 400 });
+    }
+
+    if (adds.length > 0) {
+      const deleteIdSet = new Set(deleteIds);
+      const seenExactAdds = new Set<string>();
+      const seenAfternoonMedAdds = new Set<string>();
+
+      for (const add of adds) {
+        const exactKey = exactAddKey(add);
+        if (seenExactAdds.has(exactKey)) {
+          return NextResponse.json({ error: DUPLICATE_SHIFT_MESSAGE }, { status: 409 });
+        }
+        seenExactAdds.add(exactKey);
+
+        const departmentName = departmentMap.get(add.department_id) || '';
+        if (isAfternoonMedSlot({ date: add.date, shift_type: add.shift_type, department: departmentName, position: add.position })) {
+          const role = userMap.get(add.user_id)?.role || '';
+          const medKey = afternoonMedSlotKey({ date: add.date, shift_type: add.shift_type, department: departmentName }, role);
+          if (seenAfternoonMedAdds.has(medKey)) {
+            return NextResponse.json({ error: AFTERNOON_MED_SLOT_FULL_MESSAGE }, { status: 409 });
+          }
+          seenAfternoonMedAdds.add(medKey);
+        }
+      }
+
+      const addDates = Array.from(new Set(adds.map((add: any) => add.date)));
+      const addUsers = Array.from(new Set(adds.map((add: any) => add.user_id)));
+      const addShiftTypes = Array.from(new Set(adds.map((add: any) => add.shift_type)));
+
+      const { data: existingPotential, error: existingPotentialErr } = await supa
+        .from('shifts')
+        .select('id, date, shift_type, position, user_id, department_id')
+        .in('date', addDates)
+        .in('user_id', addUsers)
+        .in('shift_type', addShiftTypes);
+
+      if (existingPotentialErr) throw existingPotentialErr;
+
+      const existingExactKeys = new Set(
+        (existingPotential || [])
+          .filter((row: any) => !deleteIdSet.has(row.id))
+          .map((row: any) => exactAddKey(row)),
+      );
+
+      if (adds.some((add: any) => existingExactKeys.has(exactAddKey(add)))) {
+        return NextResponse.json({ error: DUPLICATE_SHIFT_MESSAGE }, { status: 409 });
+      }
+
+      const afternoonMedAdds = adds
+        .map((add: any) => ({
+          add,
+          departmentName: departmentMap.get(add.department_id) || '',
+          role: userMap.get(add.user_id)?.role || '',
+        }))
+        .filter(({ add, departmentName }: any) =>
+          isAfternoonMedSlot({ date: add.date, shift_type: add.shift_type, department: departmentName, position: add.position })
+        );
+
+      if (afternoonMedAdds.length > 0) {
+        const medDates = Array.from(new Set(afternoonMedAdds.map(({ add }: any) => add.date)));
+        const medDepartmentIds = Array.from(new Set(afternoonMedAdds.map(({ add }: any) => add.department_id)));
+
+        const { data: existingMedRows, error: existingMedErr } = await supa
+          .from('shifts')
+          .select('id, date, shift_type, department_id, user:users!user_id(role)')
+          .eq('shift_type', 'บ่าย')
+          .in('date', medDates)
+          .in('department_id', medDepartmentIds);
+
+        if (existingMedErr) throw existingMedErr;
+
+        const existingMedKeys = new Set(
+          (existingMedRows || [])
+            .filter((row: any) => !deleteIdSet.has(row.id))
+            .map((row: any) =>
+              afternoonMedSlotKey(
+                { date: row.date, shift_type: row.shift_type, department: 'MED' },
+                joinedUserRole(row),
+              )
+            ),
+        );
+
+        if (afternoonMedAdds.some(({ add, role }: any) =>
+          existingMedKeys.has(afternoonMedSlotKey({ date: add.date, shift_type: add.shift_type, department: 'MED' }, role))
+        )) {
+          return NextResponse.json({ error: AFTERNOON_MED_SLOT_FULL_MESSAGE }, { status: 409 });
+        }
+      }
+    }
 
     if (session.role !== 'admin') {
       if (shiftIds.length) {

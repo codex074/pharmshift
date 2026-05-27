@@ -39,6 +39,13 @@ import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types'
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike, canManageRoleGroup } from '@/lib/types';
 import { formatThaiMonth } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import {
+  AFTERNOON_MED_SLOT_FULL_MESSAGE,
+  DUPLICATE_SHIFT_MESSAGE,
+  afternoonMedSlotKey,
+  isAfternoonMedSlot,
+  userShiftSlotKey,
+} from '@/lib/shiftSlotRules';
 
 export default function CalendarPage() {
   const now = new Date();
@@ -242,6 +249,81 @@ export default function CalendarPage() {
   }
 
   function handleConfirmAdd(add: PendingAdd) {
+    const addSlot = {
+      date: add.date,
+      shift_type: add.shift_type,
+      department: add.department,
+      position: add.position,
+      userId: add.user.id,
+    };
+    const addUserSlotKey = userShiftSlotKey(addSlot);
+
+    const alreadyPendingSameUserSlot = pendingAdds.some((pending) =>
+      userShiftSlotKey({
+        date: pending.date,
+        shift_type: pending.shift_type,
+        department: pending.department,
+        position: pending.position,
+        userId: pending.user.id,
+      }) === addUserSlotKey
+    );
+
+    const alreadyExistingSameUserSlot = shifts.some((shift) =>
+      !pendingDeletes.has(shift.id) &&
+      userShiftSlotKey({
+        date: shift.date,
+        shift_type: shift.shift_type,
+        department: shift.department?.name || shift.department_name || '',
+        position: shift.position || '',
+        userId: shift.user_id,
+      }) === addUserSlotKey
+    );
+
+    if (alreadyPendingSameUserSlot || alreadyExistingSameUserSlot) {
+      toastError(DUPLICATE_SHIFT_MESSAGE);
+      setAddingShiftContext(null);
+      return;
+    }
+
+    if (isAfternoonMedSlot(addSlot)) {
+      const addMedKey = afternoonMedSlotKey(addSlot, add.user.role);
+      const alreadyPendingMed = pendingAdds.some((pending) =>
+        isAfternoonMedSlot({
+          date: pending.date,
+          shift_type: pending.shift_type,
+          department: pending.department,
+          position: pending.position,
+        }) &&
+        afternoonMedSlotKey({
+          date: pending.date,
+          shift_type: pending.shift_type,
+          department: pending.department,
+          position: pending.position,
+        }, pending.user.role) === addMedKey
+      );
+      const alreadyExistingMed = shifts.some((shift) =>
+        !pendingDeletes.has(shift.id) &&
+        isAfternoonMedSlot({
+          date: shift.date,
+          shift_type: shift.shift_type,
+          department: shift.department?.name || shift.department_name || '',
+          position: shift.position || '',
+        }) &&
+        afternoonMedSlotKey({
+          date: shift.date,
+          shift_type: shift.shift_type,
+          department: shift.department?.name || shift.department_name || '',
+          position: shift.position || '',
+        }, (shift.user as any)?.role || effectiveRoleGroup) === addMedKey
+      );
+
+      if (alreadyPendingMed || alreadyExistingMed) {
+        toastError(AFTERNOON_MED_SLOT_FULL_MESSAGE);
+        setAddingShiftContext(null);
+        return;
+      }
+    }
+
     setPendingAdds(prev => [...prev, add]);
     setAddingShiftContext(null);
   }

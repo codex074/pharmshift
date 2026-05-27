@@ -36,7 +36,9 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectingUserId, setSelectingUserId] = useState<string | null>(null);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const selectingUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -68,56 +70,70 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
   }, [roleGroup]);
 
   async function handleSelectUser(user: User) {
-    // Check for conflicting shifts on the same date
-    const { data: existingShifts } = await supabase
-      .from('shifts')
-      .select('id, shift_type, department:departments(name), position')
-      .eq('user_id', user.id)
-      .eq('date', context.date);
+    if (selectingUserIdRef.current) return;
 
-    if (existingShifts && existingShifts.length > 0) {
-      const conflicts = existingShifts.filter(s =>
-        shiftsOverlap(s.shift_type as ShiftType, context.shift_type)
-      );
-      if (conflicts.length > 0) {
-        const conflictDesc = conflicts
-          .map(s => `${s.shift_type}${(s as any).department?.name ? ` (${(s as any).department.name}${(s as any).position ? `/${(s as any).position}` : ''})` : ''}`)
-          .join(', ');
-        const ok = await confirmAction({
-          title: 'พบเวรซ้อนทับ!',
-          text: `${userFullName(user)} มีเวรที่ทับซ้อนกันในวันที่ ${context.date} อยู่แล้ว: ${conflictDesc}\n\nต้องการเพิ่มเวรซ้อนทับหรือไม่?`,
-          confirmText: 'เพิ่มต่อไป',
-          cancelText: 'ยกเลิก',
-          isDanger: true,
-        });
-        if (!ok) return;
+    selectingUserIdRef.current = user.id;
+    setSelectingUserId(user.id);
+    let added = false;
+
+    try {
+      // Check for conflicting shifts on the same date
+      const { data: existingShifts } = await supabase
+        .from('shifts')
+        .select('id, shift_type, department:departments(name), position')
+        .eq('user_id', user.id)
+        .eq('date', context.date);
+
+      if (existingShifts && existingShifts.length > 0) {
+        const conflicts = existingShifts.filter(s =>
+          shiftsOverlap(s.shift_type as ShiftType, context.shift_type)
+        );
+        if (conflicts.length > 0) {
+          const conflictDesc = conflicts
+            .map(s => `${s.shift_type}${(s as any).department?.name ? ` (${(s as any).department.name}${(s as any).position ? `/${(s as any).position}` : ''})` : ''}`)
+            .join(', ');
+          const ok = await confirmAction({
+            title: 'พบเวรซ้อนทับ!',
+            text: `${userFullName(user)} มีเวรที่ทับซ้อนกันในวันที่ ${context.date} อยู่แล้ว: ${conflictDesc}\n\nต้องการเพิ่มเวรซ้อนทับหรือไม่?`,
+            confirmText: 'เพิ่มต่อไป',
+            cancelText: 'ยกเลิก',
+            isDanger: true,
+          });
+          if (!ok) return;
+        }
+      }
+
+      // Fetch department_id from DB
+      const { data: dept } = await supabase
+        .from('departments')
+        .select('id')
+        .eq('name', context.department)
+        .single();
+
+      if (!dept) {
+        toastError(`ไม่พบแผนก "${context.department}" ในระบบ`);
+        return;
+      }
+
+      const dateParts = context.date.split('-');
+      const monthYear = `${dateParts[0]}-${dateParts[1]}`;
+
+      onAdd({
+        date: context.date,
+        shift_type: context.shift_type,
+        department: context.department,
+        department_id: dept.id,
+        position: context.position,
+        user,
+        month_year: monthYear,
+      });
+      added = true;
+    } finally {
+      if (!added) {
+        selectingUserIdRef.current = null;
+        setSelectingUserId(null);
       }
     }
-
-    // Fetch department_id from DB
-    const { data: dept } = await supabase
-      .from('departments')
-      .select('id')
-      .eq('name', context.department)
-      .single();
-
-    if (!dept) {
-      toastError(`ไม่พบแผนก "${context.department}" ในระบบ`);
-      return;
-    }
-
-    const dateParts = context.date.split('-');
-    const monthYear = `${dateParts[0]}-${dateParts[1]}`;
-
-    onAdd({
-      date: context.date,
-      shift_type: context.shift_type,
-      department: context.department,
-      department_id: dept.id,
-      position: context.position,
-      user,
-      month_year: monthYear,
-    });
   }
 
   const filteredUsers = users.filter(usr =>
@@ -176,18 +192,24 @@ export function AdminAddShiftModal({ context, roleGroup, onClose, onAdd }: Admin
                 ไม่พบรายชื่อในระบบ
               </div>
             ) : (
-              filteredUsers.map(usr => (
+              filteredUsers.map(usr => {
+                const isSelecting = selectingUserId === usr.id;
+                return (
                 <button
                   key={usr.id}
+                  type="button"
                   onClick={() => handleSelectUser(usr)}
-                  className="w-full text-left px-4 py-3 hover:bg-green-50 transition-colors flex items-center justify-between"
+                  disabled={selectingUserId !== null}
+                  aria-busy={isSelecting}
+                  className="w-full text-left px-4 py-3 hover:bg-green-50 transition-colors flex items-center justify-between disabled:cursor-wait disabled:opacity-60"
                 >
                   <div>
                     <div className="font-medium text-sm text-gray-800">{userFullName(usr)} {usr.nickname ? `(${usr.nickname})` : ''}</div>
                   </div>
-                  <Plus className="w-4 h-4 text-green-500" />
+                  {isSelecting ? <Loader2 className="w-4 h-4 text-green-500 animate-spin" /> : <Plus className="w-4 h-4 text-green-500" />}
                 </button>
-              ))
+                );
+              })
             )}
           </div>
         </div>

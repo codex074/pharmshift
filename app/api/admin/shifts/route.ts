@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import { AFTERNOON_MED_SLOT_FULL_MESSAGE, isAfternoonMedSlot } from '@/lib/shiftSlotRules';
 
 // GET  /api/admin/shifts?month=2026-03&role=pharmacist&dept_id=5&page=0
 export async function GET(req: NextRequest) {
@@ -98,18 +99,56 @@ export async function PUT(req: NextRequest) {
     if (!id) return NextResponse.json({ error: 'id is required' }, { status: 400 });
 
     const supabase = createSupabaseServer();
+    const { data: shiftRow, error: shiftRowErr } = await supabase
+      .from('shifts')
+      .select('date, user:users!user_id(role)')
+      .eq('id', id)
+      .single();
+    if (shiftRowErr || !shiftRow) {
+      return NextResponse.json({ error: 'Shift not found' }, { status: 404 });
+    }
+
+    const shiftUser: any = (shiftRow as any)?.user;
+    const targetRole = (Array.isArray(shiftUser) ? shiftUser[0]?.role : shiftUser?.role) as UserRole | undefined;
+
     if (session.role !== 'admin') {
-      const { data: shiftRow } = await supabase
-        .from('shifts')
-        .select('user:users!user_id(role)')
-        .eq('id', id)
-        .single();
-      const shiftUser: any = shiftRow?.user;
-      const targetRole = (Array.isArray(shiftUser) ? shiftUser[0]?.role : shiftUser?.role) as UserRole | undefined;
       if (!targetRole || !canManageRoleGroup(session, targetRole)) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
       }
     }
+
+    if (department_id) {
+      const { data: departmentRow, error: departmentErr } = await supabase
+        .from('departments')
+        .select('name')
+        .eq('id', department_id)
+        .single();
+      if (departmentErr || !departmentRow) {
+        return NextResponse.json({ error: 'Department not found' }, { status: 400 });
+      }
+
+      if (isAfternoonMedSlot({ shift_type, department: departmentRow.name, position })) {
+        const { data: occupiedRows, error: occupiedErr } = await supabase
+          .from('shifts')
+          .select('id, user:users!user_id(role)')
+          .eq('date', shiftRow.date)
+          .eq('shift_type', 'บ่าย')
+          .eq('department_id', department_id)
+          .neq('id', id);
+
+        if (occupiedErr) throw occupiedErr;
+
+        const hasSameRoleMedShift = (occupiedRows || []).some((row: any) => {
+          const user = Array.isArray(row.user) ? row.user[0] : row.user;
+          return user?.role && user.role === targetRole;
+        });
+
+        if (hasSameRoleMedShift) {
+          return NextResponse.json({ error: AFTERNOON_MED_SLOT_FULL_MESSAGE }, { status: 409 });
+        }
+      }
+    }
+
     const { error } = await supabase
       .from('shifts')
       .update({ shift_type, department_id, position: position || null })
@@ -119,7 +158,10 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('Admin shifts PUT error:', err);
-    return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 });
+    const message = err.message?.includes('AFTERNOON_MED_SLOT_FULL')
+      ? AFTERNOON_MED_SLOT_FULL_MESSAGE
+      : err.message || 'Internal server error';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

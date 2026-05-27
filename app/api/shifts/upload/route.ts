@@ -3,6 +3,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import {
+  AFTERNOON_MED_SLOT_FULL_MESSAGE,
+  afternoonMedSlotKey,
+  isAfternoonMedSlot,
+} from '@/lib/shiftSlotRules';
 import * as XLSX from 'xlsx';
 
 type ShiftDateContext = {
@@ -191,13 +196,16 @@ export async function POST(req: NextRequest) {
     const holidaySet = new Set((holidays || []).map((h: { date: string }) => h.date));
 
     const deptMap = new Map<string, number>();
+    const deptNameById = new Map<number, string>();
     departments.forEach((d) => deptMap.set(d.name.toLowerCase(), d.id));
+    departments.forEach((d) => deptNameById.set(d.id, d.name));
 
     // Ensure Chemo exists
     if (!deptMap.has('chemo')) {
       const { data: newDept } = await supabase.from('departments').insert({ name: 'Chemo' }).select('id, name').single();
       if (newDept) {
         deptMap.set('chemo', newDept.id);
+        deptNameById.set(newDept.id, newDept.name);
       }
     }
 
@@ -206,6 +214,7 @@ export async function POST(req: NextRequest) {
       const { data: newDept } = await supabase.from('departments').insert({ name: 'ส่งยา สอ.' }).select('id, name').single();
       if (newDept) {
         deptMap.set('ส่งยา สอ.', newDept.id);
+        deptNameById.set(newDept.id, newDept.name);
       }
     }
 
@@ -302,6 +311,29 @@ export async function POST(req: NextRequest) {
 
     const finalRecordsToInsert = Array.from(uniqueRecordsMap.values());
 
+    const afternoonMedSlots = new Set<string>();
+    const afternoonMedErrors: string[] = [];
+    finalRecordsToInsert.forEach((record) => {
+      const departmentName = deptNameById.get(record.department_id) || '';
+      if (!isAfternoonMedSlot({ date: record.date, shift_type: record.shift_type, department: departmentName, position: record.position })) {
+        return;
+      }
+
+      const key = afternoonMedSlotKey({ date: record.date, shift_type: record.shift_type, department: departmentName }, sheetRole);
+      if (afternoonMedSlots.has(key)) {
+        afternoonMedErrors.push(`${record.date}: เวรบ่าย MED มีมากกว่า 1 คนในไฟล์`);
+        return;
+      }
+      afternoonMedSlots.add(key);
+    });
+
+    if (afternoonMedErrors.length > 0) {
+      return NextResponse.json(
+        { error: AFTERNOON_MED_SLOT_FULL_MESSAGE, details: afternoonMedErrors },
+        { status: 400 }
+      );
+    }
+
     if (duplicateErrors.length > 0) {
       console.warn("Skipped duplicate shifts in Excel:", duplicateErrors);
       errors.push(...duplicateErrors);
@@ -328,7 +360,10 @@ export async function POST(req: NextRequest) {
       const { error: insertError } = await supabase.from('shifts').insert(batch);
       if (insertError) {
         console.error('Insert error:', insertError);
-        return NextResponse.json({ error: 'Database insert failed', details: [insertError.message] }, { status: 500 });
+        const message = insertError.message?.includes('AFTERNOON_MED_SLOT_FULL')
+          ? AFTERNOON_MED_SLOT_FULL_MESSAGE
+          : 'Database insert failed';
+        return NextResponse.json({ error: message, details: [insertError.message] }, { status: 500 });
       }
     }
 

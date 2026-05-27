@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import { AFTERNOON_MED_SLOT_FULL_MESSAGE } from '@/lib/shiftSlotRules';
 
 const supa = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,6 +18,10 @@ type OwnerEditPayload = {
 
 function normalizeOwnerEditError(err: any): string {
   const raw = err?.message || '';
+
+  if (raw.includes('AFTERNOON_MED_SLOT_FULL')) {
+    return AFTERNOON_MED_SLOT_FULL_MESSAGE;
+  }
 
   if (err?.code === '42883' || raw.includes('apply_shift_owner_edits_atomic')) {
     return 'ยังไม่ได้ติดตั้งฟังก์ชันฐานข้อมูลสำหรับบันทึกการสลับเวร กรุณารัน SQL migration ล่าสุดก่อน';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { supabase } from '@/lib/supabase';
@@ -36,6 +36,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const loadingRef = useRef(false);
 
   const deletes = Array.from(pendingDeletes).map(id => allShifts.find(s => s.id === id)).filter(Boolean) as Shift[];
   const edits = Object.keys(pendingEdits).map(id => ({
@@ -110,10 +111,12 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
   }
 
   async function handleConfirm() {
+    if (loadingRef.current) return;
     if (!password) { toastError('กรุณากรอกรหัสผ่าน'); return; }
     if (currentUser?.password && currentUser.password !== password) {
       toastError('รหัสผ่านไม่ถูกต้อง'); return;
     }
+    loadingRef.current = true;
     setLoading(true);
     const now = new Date();
     const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
@@ -327,6 +330,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       console.error(err);
       toastError(err.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
     } finally {
+      loadingRef.current = false;
       setLoading(false);
     }
   }
