@@ -14,6 +14,13 @@ interface Props {
   defaultYear: number;
 }
 
+function getPrevMonthLastDayNightShiftDate(year: number, month: number) {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const lastDayOfPrevMonth = new Date(year, month - 1, 0).getDate();
+  return `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
+}
+
 export function CompensationExportModal({ onClose, defaultMonth, defaultYear }: Props) {
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState<number>(defaultMonth);
@@ -41,13 +48,30 @@ export function CompensationExportModal({ onClose, defaultMonth, defaultYear }: 
         throw new Error('ไม่สามารถดึงข้อมูลเวรจากฐานข้อมูลได้');
       }
 
-      if (!shiftsData || shiftsData.length === 0) {
+      const prevDukDate = getPrevMonthLastDayNightShiftDate(year, month);
+      const { data: prevDukData, error: prevDukError } = await supabase
+        .from('shifts')
+        .select(`
+          *,
+          department:departments(id, name),
+          user:users!user_id(id, f_name, l_name, nickname, prefix, profile_image, role, pha_id, salary_number)
+        `)
+        .eq('date', prevDukDate)
+        .eq('shift_type', 'ดึก');
+
+      if (prevDukError) {
+        throw new Error('ไม่สามารถดึงข้อมูลเวรดึกต้นเดือนได้');
+      }
+
+      const exportShifts = [...((shiftsData || []) as any[]), ...((prevDukData || []) as any[])];
+
+      if (exportShifts.length === 0) {
         throw new Error('ไม่พบข้อมูลเวรในเดือนและปีที่ระบุ');
       }
 
       // Ensure that we get all roles, and they will be sorted inside `exportCompensationExcel` 
       // (which we will update to sort by role first, then pha_id).
-      await exportCompensationExcel(shiftsData as any, year, month);
+      await exportCompensationExcel(exportShifts as any, year, month);
       await postAuditLog({
         action: 'export_report',
         description: `ดึงรายงานค่าตอบแทน เดือน ${year}-${String(month).padStart(2, '0')}`,

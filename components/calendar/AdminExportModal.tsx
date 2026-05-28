@@ -49,6 +49,13 @@ interface Props {
   defaultYear: number;
 }
 
+function getPrevMonthLastDayNightShiftDate(year: number, month: number) {
+  const prevMonth = month === 1 ? 12 : month - 1;
+  const prevYear = month === 1 ? year - 1 : year;
+  const lastDayOfPrevMonth = new Date(year, month - 1, 0).getDate();
+  return `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
+}
+
 export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) {
   const [loading, setLoading] = useState(false);
   const [month, setMonth] = useState(defaultMonth);
@@ -90,22 +97,44 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
         .order('date', { ascending: true });
 
       if (shiftsError) throw new Error('ไม่สามารถดึงข้อมูลเวรได้');
-      if (!shiftsData?.length) throw new Error('ไม่พบข้อมูลเวรในเดือนที่ระบุ');
+      const currentMonthShifts = (shiftsData || []) as any[];
+
+      // เวรดึกลงข้อมูลตามคืนที่เริ่ม แต่ export ค่าตอบแทน/หลักฐานนับเป็นวันที่ออกเวร
+      // จึงต้องดึง ดึก วันสุดท้ายของเดือนก่อนหน้า เพื่อให้ไปแสดงในวันที่ 1 ของเดือนนี้
+      const prevDukDate = getPrevMonthLastDayNightShiftDate(year, month);
+      const { data: prevDukData, error: prevDukError } = await supabase
+        .from('shifts')
+        .select(`
+          id, date, shift_type, position, user_id, original_user_id, month_year,
+          department:departments(id, name),
+          user:users!user_id(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number),
+          original_user:users!original_user_id(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
+        `)
+        .eq('date', prevDukDate)
+        .eq('shift_type', 'ดึก');
+
+      if (prevDukError) throw new Error('ไม่สามารถดึงข้อมูลเวรดึกต้นเดือนได้');
+
+      const prevDukShifts = (prevDukData || []) as any[];
 
       // กรอง role ตามที่เลือก
       const filteredShifts = hasRoleFilter
-        ? shiftsData.filter((s: any) => selectedRoles.has(s.user?.role))
-        : shiftsData;
+        ? currentMonthShifts.filter((s: any) => selectedRoles.has(s.user?.role))
+        : currentMonthShifts;
+      const filteredPrevDukShifts = hasRoleFilter
+        ? prevDukShifts.filter((s: any) => selectedRoles.has(s.user?.role))
+        : prevDukShifts;
+      const exportShifts = [...(filteredShifts as any[]), ...filteredPrevDukShifts];
 
-      if (hasRoleFilter && !filteredShifts.length) {
-        throw new Error('ไม่พบข้อมูลเวรของ Role ที่เลือกในเดือนนี้');
+      if (!exportShifts.length) {
+        throw new Error(hasRoleFilter ? 'ไม่พบข้อมูลเวรของ Role ที่เลือกในเดือนนี้' : 'ไม่พบข้อมูลเวรในเดือนที่ระบุ');
       }
 
       if (selected === 'compensation') {
-        await exportCompensationExcel(filteredShifts as any, year, month);
+        await exportCompensationExcel(exportShifts as any, year, month);
       } else {
         const userIds = new Set<string>();
-        filteredShifts.forEach((s: any) => {
+        exportShifts.forEach((s: any) => {
           if (s.user_id) userIds.add(s.user_id);
           if (s.original_user_id) userIds.add(s.original_user_id);
         });
@@ -116,40 +145,14 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           .in('id', Array.from(userIds));
 
         if (selected === 'sign-sheet') {
-          // ดึงเวรดึกวันสุดท้ายของเดือนก่อนหน้า
-          // เพื่อให้แสดงในวันที่ 1 ของเดือนปัจจุบัน (ดึก advance date +1 วัน)
-          const prevMonth = month === 1 ? 12 : month - 1;
-          const prevYear = month === 1 ? year - 1 : year;
-          const lastDayOfPrevMonth = new Date(year, month - 1, 0).getDate();
-          const lastDayStr = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
-
-          const { data: prevDukData } = await supabase
-            .from('shifts')
-            .select(`
-              id, date, shift_type, position, user_id, original_user_id, month_year,
-              department:departments(id, name),
-              user:users!original_user_id(id, f_name, l_name, nickname, prefix, role, pha_id, salary_number)
-            `)
-            .eq('date', lastDayStr)
-            .eq('shift_type', 'ดึก');
-
-          const prevDukShifts = (prevDukData || []) as any[];
-          const allSignSheetShifts = [...(filteredShifts as any[]), ...prevDukShifts];
-
-          // รวม userIds จากเวรเดือนก่อนด้วย
-          prevDukShifts.forEach((s: any) => {
-            if (s.user_id) userIds.add(s.user_id);
-            if (s.original_user_id) userIds.add(s.original_user_id);
-          });
-
           const { data: allUsersData } = await supabase
             .from('users')
             .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
             .in('id', Array.from(userIds));
 
-          await exportSignSheet(allSignSheetShifts, allUsersData || [], year, month);
+          await exportSignSheet(exportShifts, allUsersData || [], year, month);
         } else {
-          await exportEvidenceExcel(filteredShifts as any, usersData || [], year, month);
+          await exportEvidenceExcel(exportShifts as any, usersData || [], year, month);
         }
       }
 
