@@ -76,13 +76,8 @@ function nonBlankCountFormula(rowNumber: number) {
   return `COUNTA(${dayRange(rowNumber)})`;
 }
 
-function delimitedCodeCountFormula(rowNumber: number) {
-  const range = dayRange(rowNumber);
-  return `SUMPRODUCT(--(${range}<>""),LEN(${range})-LEN(SUBSTITUTE(${range},"/",""))+1)`;
-}
-
 function guardedFormula(formula: string, rowNumber: number) {
-  return `IF(COUNTA(${dayRange(rowNumber)})=0,"",${formula})`;
+  return `IF(${nonBlankCountFormula(rowNumber)}=0,0,${formula})`;
 }
 
 function getShiftCode(s: Shift): string {
@@ -341,6 +336,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     worksheet.getColumn('salaryNo').font = { name: 'TH SarabunPSK', size: 16 };
     
     const isRegularShift = config.name === 'เช้า-บ่าย-ดึก';
+    const isHourlySheet = config.rateColLabel.includes('ต่อชม.');
     const rowsPerPage = isRegularShift ? 10 : 15;
     const totalPages = Math.ceil(rowsData.length / rowsPerPage) || 1;
 
@@ -466,27 +462,38 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
                                 row.role === 'pharmacy_technician' ? 'จพ.เภสัช' : 'เจ้าหน้าที่';
           const rate = config.getRate(row.role);
 
-          const slot1: (string | '')[] = [];
-          const slot2: (string | '')[] = [];
-          let count1 = 0;
-          let count2 = 0;
+          const slot1: (string | null)[] = [];
+          const slot2: (string | null)[] = [];
+          let shiftedMorningCount = 0;
+          let afternoonCount = 0;
 
-          // แถวบน = ดึก + เช้า (ถ้ามีทั้งคู่ในวันเดียว ใช้ "/" คั่น), แถวล่าง = บ่าย
+          // แถวบน = ดึก (หรือเช้า ถ้าไม่มีดึก), แถวล่าง = เช้าหลังดึก + บ่าย
           for (let i = 1; i <= 31; i++) {
             const entries = (row.days[i] || []).slice().sort((a, b) => getEntryOrder(a) - getEntryOrder(b));
-            const morningEntries = entries.filter(e => getEntryOrder(e) <= 1); // ด, ช
-            const afternoon = entries.find(e => getEntryOrder(e) === 2); // บ
-            const morningCode = morningEntries.map(e => e.code || '').filter(Boolean).join('/');
-            slot1.push(morningCode);
-            slot2.push(afternoon?.code || '');
-            count1 += morningEntries.length;
-            if (afternoon?.code) count2++;
+            const nightCodes = entries.filter(e => e.code === 'ด').map(e => e.code || '').filter(Boolean);
+            const morningCodes = entries.filter(e => {
+              const order = getEntryOrder(e);
+              return order === 1;
+            }).map(e => e.code || '').filter(Boolean);
+            const afternoonCodes = entries.filter(e => getEntryOrder(e) === 2).map(e => e.code || '').filter(Boolean);
+
+            const hasNight = nightCodes.length > 0;
+            const topCodes = hasNight ? nightCodes : morningCodes;
+            const bottomCodes = hasNight ? [...morningCodes, ...afternoonCodes] : afternoonCodes;
+
+            if (hasNight && morningCodes.length > 0) shiftedMorningCount++;
+            if (afternoonCodes.length > 0) afternoonCount++;
+
+            slot1.push(topCodes.join('/') || null);
+            slot2.push(bottomCodes.join('/') || null);
           }
 
+          const count1 = slot1.filter(Boolean).length + shiftedMorningCount;
+          const count2 = afternoonCount;
           const total1 = count1 * rate;
           const total2 = count2 * rate;
 
-          const buildRow = (slotVals: (string | '')[], cnt: number, total: number, isFirst: boolean) => {
+          const buildRow = (slotVals: (string | null)[], isFirst: boolean) => {
             const rowValues: any[] = [
               isFirst ? runningSeq : '',
               isFirst ? row.salaryNumber : '',
@@ -501,17 +508,6 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
             if (!isEvidence) rowValues.push('');
 
             const dRow = worksheet.addRow(rowValues);
-            const totalFormula = isFirst
-              ? delimitedCodeCountFormula(dRow.number)
-              : nonBlankCountFormula(dRow.number);
-            dRow.getCell(totalValueCol).value = {
-              formula: guardedFormula(totalFormula, dRow.number),
-              result: cnt > 0 ? cnt : '',
-            } as any;
-            dRow.getCell(amountCol).value = {
-              formula: `IF(${totalValueColLetter}${dRow.number}="","",${totalValueColLetter}${dRow.number}*${rateColLetter}${dRow.number})`,
-              result: total > 0 ? total : '',
-            } as any;
             dRow.height = 22;
             dRow.font = { name: 'TH SarabunPSK', size: 16 };
             dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -524,8 +520,29 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
             return dRow;
           };
 
-          const r1 = buildRow(slot1, count1, total1, true);
-          const r2 = buildRow(slot2, count2, total2, false);
+          const r1 = buildRow(slot1, true);
+          const r2 = buildRow(slot2, false);
+          const shiftedMorningFormula = `COUNTIF(${dayRange(r2.number)},"*ช*")`;
+          const afternoonFormula = `COUNTIF(${dayRange(r2.number)},"*บ*")`;
+          const totalFormula1 = `${nonBlankCountFormula(r1.number)}+${shiftedMorningFormula}`;
+          const totalFormula2 = afternoonFormula;
+
+          r1.getCell(totalValueCol).value = {
+            formula: guardedFormula(totalFormula1, r1.number),
+            result: count1,
+          } as any;
+          r1.getCell(amountCol).value = {
+            formula: `${totalValueColLetter}${r1.number}*${rateColLetter}${r1.number}`,
+            result: total1,
+          } as any;
+          r2.getCell(totalValueCol).value = {
+            formula: guardedFormula(totalFormula2, r2.number),
+            result: count2,
+          } as any;
+          r2.getCell(amountCol).value = {
+            formula: `${totalValueColLetter}${r2.number}*${rateColLetter}${r2.number}`,
+            result: total2,
+          } as any;
           pageTotalRows.push(r1.number, r2.number);
 
           // Merge seq, salaryNo, firstName, lastName, position across the 2 rows
@@ -549,10 +566,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
             const entries = row.days[i] || [];
             if (config.getCode) {
               const codes = entries.map(e => e.code || '').filter(Boolean).join('/');
-              rowValues.push(codes || '');
+              rowValues.push(codes || null);
             } else {
               const sumVal = entries.reduce((acc, curr) => acc + curr.val, 0);
-              rowValues.push(sumVal > 0 ? sumVal : '');
+              rowValues.push(sumVal > 0 ? sumVal : null);
             }
           }
 
@@ -561,15 +578,15 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
           if (!isEvidence) rowValues.push('');
 
           const dRow = worksheet.addRow(rowValues);
-          const totalFormula = config.getCode
-            ? nonBlankCountFormula(dRow.number)
-            : `SUM(${dayRange(dRow.number)})`;
+          const totalFormula = isHourlySheet
+            ? `SUM(${dayRange(dRow.number)})`
+            : nonBlankCountFormula(dRow.number);
           dRow.getCell(totalValueCol).value = {
             formula: guardedFormula(totalFormula, dRow.number),
             result: row.totalValue,
           } as any;
           dRow.getCell(amountCol).value = {
-            formula: `IF(${totalValueColLetter}${dRow.number}="","",${totalValueColLetter}${dRow.number}*${rateColLetter}${dRow.number})`,
+            formula: `${totalValueColLetter}${dRow.number}*${rateColLetter}${dRow.number}`,
             result: row.totalAmount,
           } as any;
           pageTotalRows.push(dRow.number);
@@ -600,10 +617,10 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
         ...pageTotalRows,
       ];
       const totalValueFormula = formulaRows.length
-        ? `SUM(${formulaRows.map((rowNumber) => `${totalValueColLetter}${rowNumber}`).join(',')})`
+        ? `SUM(${totalValueColLetter}${formulaRows[0]}:${totalValueColLetter}${formulaRows[formulaRows.length - 1]})`
         : '0';
       const amountFormula = formulaRows.length
-        ? `SUM(${formulaRows.map((rowNumber) => `${amountColLetter}${rowNumber}`).join(',')})`
+        ? `SUM(${amountColLetter}${formulaRows[0]}:${amountColLetter}${formulaRows[formulaRows.length - 1]})`
         : '0';
       const summaryValues = new Array(totalCols).fill('');
       summaryValues[0] = toThaiBahtText(grandTotalAmount);
