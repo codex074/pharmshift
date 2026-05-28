@@ -57,6 +57,34 @@ function getDeptName(s: Shift) {
   return s.department?.name || s.department_name || '';
 }
 
+function excelCol(colNumber: number): string {
+  let n = colNumber;
+  let result = '';
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    result = String.fromCharCode(65 + rem) + result;
+    n = Math.floor((n - 1) / 26);
+  }
+  return result;
+}
+
+function dayRange(rowNumber: number) {
+  return `G${rowNumber}:AK${rowNumber}`;
+}
+
+function nonBlankCountFormula(rowNumber: number) {
+  return `COUNTA(${dayRange(rowNumber)})`;
+}
+
+function delimitedCodeCountFormula(rowNumber: number) {
+  const range = dayRange(rowNumber);
+  return `SUMPRODUCT(--(${range}<>""),LEN(${range})-LEN(SUBSTITUTE(${range},"/",""))+1)`;
+}
+
+function guardedFormula(formula: string, rowNumber: number) {
+  return `IF(COUNTA(${dayRange(rowNumber)})=0,"",${formula})`;
+}
+
 function getShiftCode(s: Shift): string {
   const dept = getDeptName(s).toUpperCase();
   if (s.shift_type === 'ดึก') return 'ด';
@@ -287,6 +315,9 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     const lastColLetter = isEvidence ? 'AM' : 'AN';
     const amountCol = 39;
     const totalValueCol = 38;
+    const totalValueColLetter = excelCol(totalValueCol);
+    const amountColLetter = excelCol(amountCol);
+    const rateColLetter = excelCol(6);
     const summaryMergeEnd = 'AK';
 
     const columns = [
@@ -325,9 +356,12 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
     let grandTotalValue = 0;
     let grandTotalAmount = 0;
+    let previousSummaryRowNumber: number | null = null;
 
     for (let page = 0; page < totalPages; page++) {
       const pageData = rowsData.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
+      const pageTotalRows: number[] = [];
+      let carriedRowNumber: number | null = null;
 
       if (page > 0) {
         worksheet.addRow([]); // empty row separator
@@ -355,9 +389,14 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
       if (page > 0) {
         const carriedRow = worksheet.addRow([]);
+        carriedRowNumber = carriedRow.number;
         carriedRow.getCell(33).value = 'ยอดยกมา';
-        carriedRow.getCell(totalValueCol).value = grandTotalValue;
-        carriedRow.getCell(amountCol).value = grandTotalAmount;
+        carriedRow.getCell(totalValueCol).value = previousSummaryRowNumber
+          ? { formula: `${totalValueColLetter}${previousSummaryRowNumber}`, result: grandTotalValue }
+          : grandTotalValue;
+        carriedRow.getCell(amountCol).value = previousSummaryRowNumber
+          ? { formula: `${amountColLetter}${previousSummaryRowNumber}`, result: grandTotalAmount }
+          : grandTotalAmount;
         carriedRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
         carriedRow.eachCell((cell, colNumber) => {
           if (colNumber === amountCol) cell.numFmt = '#,##0.00';
@@ -457,11 +496,22 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
               rate,
             ];
             for (const v of slotVals) rowValues.push(v);
-            rowValues.push(cnt > 0 ? cnt : '');
-            rowValues.push(total > 0 ? total : '');
+            rowValues.push('');
+            rowValues.push('');
             if (!isEvidence) rowValues.push('');
 
             const dRow = worksheet.addRow(rowValues);
+            const totalFormula = isFirst
+              ? delimitedCodeCountFormula(dRow.number)
+              : nonBlankCountFormula(dRow.number);
+            dRow.getCell(totalValueCol).value = {
+              formula: guardedFormula(totalFormula, dRow.number),
+              result: cnt > 0 ? cnt : '',
+            } as any;
+            dRow.getCell(amountCol).value = {
+              formula: `IF(${totalValueColLetter}${dRow.number}="","",${totalValueColLetter}${dRow.number}*${rateColLetter}${dRow.number})`,
+              result: total > 0 ? total : '',
+            } as any;
             dRow.height = 22;
             dRow.font = { name: 'TH SarabunPSK', size: 16 };
             dRow.eachCell({ includeEmpty: true }, (cell, colNumber) => {
@@ -476,6 +526,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
           const r1 = buildRow(slot1, count1, total1, true);
           const r2 = buildRow(slot2, count2, total2, false);
+          pageTotalRows.push(r1.number, r2.number);
 
           // Merge seq, salaryNo, firstName, lastName, position across the 2 rows
           for (const col of [1, 2, 3, 4, 5]) {
@@ -505,11 +556,23 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
             }
           }
 
-          rowValues.push(row.totalValue);
-          rowValues.push(row.totalAmount);
+          rowValues.push('');
+          rowValues.push('');
           if (!isEvidence) rowValues.push('');
 
           const dRow = worksheet.addRow(rowValues);
+          const totalFormula = config.getCode
+            ? nonBlankCountFormula(dRow.number)
+            : `SUM(${dayRange(dRow.number)})`;
+          dRow.getCell(totalValueCol).value = {
+            formula: guardedFormula(totalFormula, dRow.number),
+            result: row.totalValue,
+          } as any;
+          dRow.getCell(amountCol).value = {
+            formula: `IF(${totalValueColLetter}${dRow.number}="","",${totalValueColLetter}${dRow.number}*${rateColLetter}${dRow.number})`,
+            result: row.totalAmount,
+          } as any;
+          pageTotalRows.push(dRow.number);
           dRow.height = 22;
           dRow.font = { name: 'TH SarabunPSK', size: 16 };
 
@@ -532,12 +595,23 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
       });
 
       // 5. Summary Row (Thai Baht Text)
+      const formulaRows = [
+        ...(carriedRowNumber ? [carriedRowNumber] : []),
+        ...pageTotalRows,
+      ];
+      const totalValueFormula = formulaRows.length
+        ? `SUM(${formulaRows.map((rowNumber) => `${totalValueColLetter}${rowNumber}`).join(',')})`
+        : '0';
+      const amountFormula = formulaRows.length
+        ? `SUM(${formulaRows.map((rowNumber) => `${amountColLetter}${rowNumber}`).join(',')})`
+        : '0';
       const summaryValues = new Array(totalCols).fill('');
       summaryValues[0] = toThaiBahtText(grandTotalAmount);
-      summaryValues[totalValueCol - 1] = grandTotalValue;
-      summaryValues[amountCol - 1] = grandTotalAmount;
+      summaryValues[totalValueCol - 1] = { formula: totalValueFormula, result: grandTotalValue };
+      summaryValues[amountCol - 1] = { formula: amountFormula, result: grandTotalAmount };
 
       const summaryRow = worksheet.addRow(summaryValues);
+      previousSummaryRowNumber = summaryRow.number;
       summaryRow.height = 25;
       worksheet.mergeCells(`A${summaryRow.number}:${summaryMergeEnd}${summaryRow.number}`);
       summaryRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
