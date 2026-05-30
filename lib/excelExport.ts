@@ -3,6 +3,12 @@ import { saveAs } from 'file-saver';
 import { Shift } from './types';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import {
+  compensationRatesToRows,
+  getCompensationRate,
+  normalizeCompensationRates,
+  type CompensationRatesMap,
+} from './compensation';
 
 // Helper to get total days in a month
 function getDaysInMonth(year: number, month: number) {
@@ -151,7 +157,8 @@ export async function exportEvidenceExcel(
   shifts: Shift[],
   users: ExportUserInfo[],
   year: number,
-  month: number
+  month: number,
+  compensationRates?: CompensationRatesMap,
 ) {
   // Build usersMap for quick lookup
   const usersMap = new Map(users.map((u) => [u.id, u]));
@@ -197,7 +204,7 @@ export async function exportEvidenceExcel(
     };
   }).filter((s) => !!s.user_id && evidenceUserIds.has(s.user_id));
 
-  await exportCompensationExcel(resolvedShifts, year, month, true, users);
+  await exportCompensationExcel(resolvedShifts, year, month, true, users, compensationRates);
 }
 
 export async function exportCompensationExcel(
@@ -206,10 +213,14 @@ export async function exportCompensationExcel(
   month: number,
   isEvidence = false,
   evidenceUsers: ExportUserInfo[] = [],
+  compensationRates?: CompensationRatesMap,
 ) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'NTogether';
   workbook.created = new Date();
+  const rateMap = normalizeCompensationRates(
+    compensationRates ? compensationRatesToRows(compensationRates) : undefined,
+  );
 
   const monthName = format(new Date(year, month - 1), 'MMMM', { locale: th });
   const bweYear = year + 543;
@@ -227,7 +238,7 @@ export async function exportCompensationExcel(
       title: `${titlePrefix} (เวรรุ่งอรุณ)`,
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
-      getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
+      getRate: (role: string) => getCompensationRate(rateMap, 'rung_arun', role),
       filter: (s: Shift) => s.shift_type === 'รุ่งอรุณ',
       getValue: () => 1.5, // 1.5 hours per shift
       note: 'คลินิกรุ่งอรุณ 07.00 น.- 08.30 น. (ยกเว้นวันเสาร์,อาทิตย์และวันหยุดราชการ)',
@@ -237,7 +248,7 @@ export async function exportCompensationExcel(
       title: `${titlePrefix}  (เวรโครงการพิเศษ)`,
       rateColLabel: 'อัตรา\nต่อชม.',
       totalColLabel: 'รวม\n\nชม.',
-      getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
+      getRate: (role: string) => getCompensationRate(rateMap, 'project', role),
       filter: (s: Shift) => getDeptName(s) === 'โครงการ',
       getValue: () => 4, // 4 hours per shift
       note: 'โครงการพิเศษ (คพ) คลินิกนอกเวลาราชการ 16.30 น. - 20.30 น. ยกเว้นวันเสาร์, อาทิตย์ และวันหยุดราชการ  =  08.30 น. - 12.30 น.',
@@ -247,7 +258,7 @@ export async function exportCompensationExcel(
       title: `${titlePrefix}  (เช้า บ่าย ดึก)`,
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      getRate: (role: string) => role === 'officer' ? 330 : role === 'pharmacy_technician' ? 520 : 780,
+      getRate: (role: string) => getCompensationRate(rateMap, 'regular', role),
       filter: (s: Shift) => ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) && !['โครงการ', 'SMC', 'Chemo'].includes(getDeptName(s)),
       getValue: () => 1, // 1 shift
       getCode: getShiftCode,
@@ -258,7 +269,7 @@ export async function exportCompensationExcel(
       title: `${titlePrefix} (พิเศษ SMC)`,
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      getRate: (role: string) => role === 'officer' ? 375 : role === 'pharmacy_technician' ? 600 : 900,
+      getRate: (role: string) => getCompensationRate(rateMap, 'smc', role),
       filter: (s: Shift) => getDeptName(s) === 'SMC',
       getValue: () => 1, // 1 shift
       getCode: () => 'บ',
@@ -271,7 +282,7 @@ export async function exportCompensationExcel(
         : 'หลักฐานการจ่ายเงินค่าตอบแทนการปฏิบัติงานนอกเวลาราชการ ของเจ้าหน้าที่....งานผลิตยาปราศจากเชื้อ...(เคมีบำบัด).....โรงพยาบาลอุตรดิตถ์',
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
-      getRate: (role: string) => 390,
+      getRate: (role: string) => getCompensationRate(rateMap, 'chemo', role),
       filter: (s: Shift) => getDeptName(s) === 'Chemo',
       getValue: () => 1, // 1 shift
       note: 'ช่วงเวลาปฏิบัติงาน 08.30 น. - 12.30 น.',

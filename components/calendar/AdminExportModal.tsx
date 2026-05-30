@@ -9,6 +9,7 @@ import { exportCompensationExcel, exportEvidenceExcel } from '@/lib/excelExport'
 import { exportSignSheet } from '@/lib/signSheetExport';
 import { cn } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
+import { normalizeCompensationRates } from '@/lib/compensation';
 
 type ExportType = 'compensation' | 'sign-sheet' | 'evidence';
 type UserRole = 'pharmacist' | 'pharmacy_technician' | 'officer';
@@ -59,6 +60,13 @@ function getPrevMonthLastDayNightShiftDate(year: number, month: number) {
 function getShiftRoleForExport(shift: any, exportType: ExportType) {
   if (exportType === 'compensation') return shift.user?.role;
   return shift.original_user?.role || shift.user?.role;
+}
+
+async function fetchCompensationRates() {
+  const res = await fetch('/api/admin/compensation-rates');
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'ไม่สามารถดึงอัตราค่าตอบแทนได้');
+  return normalizeCompensationRates(data.rates);
 }
 
 export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) {
@@ -136,8 +144,10 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
       }
 
       if (selected === 'compensation') {
-        await exportCompensationExcel(exportShifts as any, year, month);
+        const compensationRates = await fetchCompensationRates();
+        await exportCompensationExcel(exportShifts as any, year, month, false, [], compensationRates);
       } else if (selected === 'evidence') {
+        const compensationRates = await fetchCompensationRates();
         const { data: eligibleUsersData, error: eligibleUsersError } = await supabase
           .from('users')
           .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname, is_active, is_readonly')
@@ -153,7 +163,7 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           throw new Error('ไม่พบผู้ใช้ Active ที่ไม่ใช่ Read-only ใน Role ที่เลือก');
         }
 
-        await exportEvidenceExcel(exportShifts as any, eligibleUsers, year, month);
+        await exportEvidenceExcel(exportShifts as any, eligibleUsers, year, month, compensationRates);
       } else {
         const userIds = new Set<string>();
         exportShifts.forEach((s: any) => {

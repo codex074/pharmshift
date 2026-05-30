@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { toastError } from '@/lib/swal';
 import { exportCompensationExcel } from '@/lib/excelExport';
 import { postAuditLog } from '@/lib/auditLogClient';
+import { normalizeCompensationRates } from '@/lib/compensation';
 
 interface Props {
   onClose: () => void;
@@ -69,9 +70,21 @@ export function CompensationExportModal({ onClose, defaultMonth, defaultYear }: 
         throw new Error('ไม่พบข้อมูลเวรในเดือนและปีที่ระบุ');
       }
 
-      // Ensure that we get all roles, and they will be sorted inside `exportCompensationExcel` 
-      // (which we will update to sort by role first, then pha_id).
-      await exportCompensationExcel(exportShifts as any, year, month);
+      // Ensure that we get all roles, then sort by role and pha_id inside the exporter.
+      const ratesRes = await fetch('/api/admin/compensation-rates');
+      const ratesData = await ratesRes.json().catch(() => ({}));
+      if (!ratesRes.ok) {
+        throw new Error(ratesData.error || 'ไม่สามารถดึงอัตราค่าตอบแทนได้');
+      }
+
+      await exportCompensationExcel(
+        exportShifts as any,
+        year,
+        month,
+        false,
+        [],
+        normalizeCompensationRates(ratesData.rates),
+      );
       await postAuditLog({
         action: 'export_report',
         description: `ดึงรายงานค่าตอบแทน เดือน ${year}-${String(month).padStart(2, '0')}`,

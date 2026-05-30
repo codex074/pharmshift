@@ -1,64 +1,21 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { X, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
+import {
+  COMPENSATION_CATEGORIES,
+  getCompensationRate,
+  normalizeCompensationRates,
+  type CompensationRatesMap,
+} from '@/lib/compensation';
 
-// Ported compensation rules from excelExport.ts
 function getDeptName(s: Shift) {
   return s.department?.name || s.department_name || '';
 }
-
-const COMPENSATION_RULES = [
-  {
-    name: 'เวรรุ่งอรุณ',
-    rateLabel: 'อัตรา/ชม.',
-    unitLabel: 'ชั่วโมง',
-    getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
-    filter: (s: Shift) => s.shift_type === 'รุ่งอรุณ',
-    getValue: () => 1.5,
-    color: 'bg-orange-50 text-orange-700 border-orange-100',
-  },
-  {
-    name: 'เวรโครงการพิเศษ',
-    rateLabel: 'อัตรา/ชม.',
-    unitLabel: 'ชั่วโมง',
-    getRate: (role: string) => role === 'officer' ? 56.25 : role === 'pharmacy_technician' ? 90 : 135,
-    filter: (s: Shift) => getDeptName(s) === 'โครงการ',
-    getValue: () => 4,
-    color: 'bg-sky-50 text-sky-700 border-sky-100',
-  },
-  {
-    name: 'เช้า-บ่าย-ดึก',
-    rateLabel: 'อัตรา/เวร',
-    unitLabel: 'เวร',
-    getRate: (role: string) => role === 'officer' ? 330 : role === 'pharmacy_technician' ? 520 : 780,
-    filter: (s: Shift) => ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) && !['โครงการ', 'SMC', 'Chemo'].includes(getDeptName(s)),
-    getValue: () => 1,
-    color: 'bg-indigo-50 text-indigo-700 border-indigo-100',
-  },
-  {
-    name: 'พิเศษ SMC',
-    rateLabel: 'อัตรา/เวร',
-    unitLabel: 'เวร',
-    getRate: (role: string) => role === 'officer' ? 375 : role === 'pharmacy_technician' ? 600 : 900,
-    filter: (s: Shift) => getDeptName(s) === 'SMC',
-    getValue: () => 1,
-    color: 'bg-pink-50 text-pink-700 border-pink-100',
-  },
-  {
-    name: 'งานเคมีบำบัด (Chemo)',
-    rateLabel: 'อัตรา/เวร',
-    unitLabel: 'เวร',
-    getRate: () => 390,
-    filter: (s: Shift) => getDeptName(s) === 'Chemo',
-    getValue: () => 1,
-    color: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-  },
-];
 
 interface CompensationModalProps {
   isOpen: boolean;
@@ -78,6 +35,32 @@ export function CompensationModal({
   year,
 }: CompensationModalProps) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
+  const [rates, setRates] = useState<CompensationRatesMap>(() => normalizeCompensationRates());
+  const [rateLoadError, setRateLoadError] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let cancelled = false;
+    setRateLoadError(false);
+
+    fetch('/api/admin/compensation-rates')
+      .then(async (res) => {
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch compensation rates');
+        if (!cancelled) setRates(normalizeCompensationRates(data.rates));
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRates(normalizeCompensationRates());
+          setRateLoadError(true);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen]);
 
   if (!isOpen || !currentUser) return null;
 
@@ -88,12 +71,12 @@ export function CompensationModal({
   let grandTotalValue = 0;
   let grandTotalAmount = 0;
 
-  const breakdown = COMPENSATION_RULES.map(rule => {
+  const breakdown = COMPENSATION_CATEGORIES.map(rule => {
     const relevantShifts = shifts.filter(rule.filter);
     
     // Sum units
-    const totalUnits = relevantShifts.reduce((acc, curr) => acc + rule.getValue(), 0);
-    const rate = rule.getRate(role);
+    const totalUnits = relevantShifts.reduce((acc) => acc + rule.unitValue, 0);
+    const rate = getCompensationRate(rates, rule.key, role);
     const totalAmount = totalUnits * rate;
 
     grandTotalValue += totalUnits;
@@ -185,7 +168,7 @@ export function CompensationModal({
                                   : `(${getDeptName(s)})`
                               ) : ''}
                             </span>
-                            <span className="font-semibold opacity-80">+{item.getValue()}</span>
+                            <span className="font-semibold opacity-80">+{item.unitValue}</span>
                           </div>
                         ))}
                       </div>
@@ -205,6 +188,7 @@ export function CompensationModal({
 
           <p className="text-xs text-center text-gray-400 mt-6 pb-2">
             หมายเหตุ: ตัวเลขนี้เป็นการคำนวณเบื้องต้นจากข้อมูลปฏิทิน<br/>จำนวนเงินจริงอาจขึ้นอยู่กับระเบียบการเบิกจ่ายของโรงพยาบาล
+            {rateLoadError && <><br/>โหลดอัตราจาก Admin ไม่สำเร็จ จึงใช้ค่าเริ่มต้นของระบบ</>}
           </p>
 
         </div>

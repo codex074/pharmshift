@@ -1,16 +1,17 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar, Users, Database, TableProperties, Activity } from 'lucide-react';
+import { X, Calendar, Users, Database, TableProperties, Activity, Coins } from 'lucide-react';
 import { ManageHolidaysModal } from './ManageHolidaysModal';
 import { AdminUserManagementModal } from './AdminUserManagementModal';
 import { AdminBackupModal } from './AdminBackupModal';
 import { AdminShiftEditorModal } from './AdminShiftEditorModal';
 import { AdminAuditLogModal } from './AdminAuditLogModal';
+import { AdminCompensationSettingsModal } from './AdminCompensationSettingsModal';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
 
-type Tab = 'holidays' | 'users' | 'shifts' | 'backup' | 'audit';
+type Tab = 'holidays' | 'users' | 'shifts' | 'backup' | 'compensation' | 'audit';
 
 interface AdminSettingsModalProps {
   onClose: () => void;
@@ -27,7 +28,10 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
     { id: 'shifts',   label: 'แก้ไขเวร',  icon: <TableProperties className="w-4 h-4" /> },
     { id: 'backup',   label: 'ข้อมูล',    icon: <Database        className="w-4 h-4" /> },
     ...(currentUser?.role === 'admin'
-      ? [{ id: 'audit' as Tab, label: 'Audit', icon: <Activity className="w-4 h-4" /> }]
+      ? [
+          { id: 'compensation' as Tab, label: 'ค่าตอบแทน', icon: <Coins className="w-4 h-4" /> },
+          { id: 'audit' as Tab, label: 'Audit', icon: <Activity className="w-4 h-4" /> },
+        ]
       : []),
   ];
 
@@ -39,7 +43,7 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
       <div
         className={cn(
           'bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200',
-          activeTab === 'shifts' || activeTab === 'audit' ? 'max-w-4xl' : 'max-w-2xl',
+          activeTab === 'shifts' || activeTab === 'audit' || activeTab === 'compensation' ? 'max-w-4xl' : 'max-w-2xl',
         )}
         onClick={(e) => e.stopPropagation()}
       >
@@ -55,13 +59,13 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-gray-100 flex-shrink-0 bg-white">
+        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-gray-100 flex-shrink-0 bg-white overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition-all',
+                'flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition-all',
                 activeTab === tab.id
                   ? 'border-indigo-500 text-indigo-600 bg-indigo-50/60'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
@@ -96,6 +100,10 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
 
           {activeTab === 'backup' && (
             <AdminBackupModal currentUser={currentUser} />
+          )}
+
+          {activeTab === 'compensation' && currentUser?.role === 'admin' && (
+            <AdminCompensationSettingsModal />
           )}
 
           {activeTab === 'audit' && currentUser?.role === 'admin' && (
