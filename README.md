@@ -324,3 +324,5 @@ Cron behavior:
 Pharmacy Department, Uttaradit Hospital
 
 All rights reserved. This software is developed for internal use by the Pharmacy Department, Uttaradit Hospital. Unauthorized reproduction or distribution is prohibited.
+
+Built with the assistance of [Claude](https://claude.ai) (Anthropic) and [Codex](https://openai.com/codex) (OpenAI).
