@@ -277,44 +277,46 @@ export function useSwapRequests(userId?: string) {
     fetchSwaps();
 
     if (!userId) return;
+
+    const handleSwapChange = async (payload: RealtimePostgresChangesPayload<{ id: string; requester_id?: string; target_user_id?: string }>) => {
+      const newRow = (payload.new ?? null) as { id?: string } | null;
+      const oldRow = (payload.old ?? null) as { id?: string } | null;
+
+      if (payload.eventType === 'DELETE') {
+        const deletedId = oldRow?.id;
+        if (!deletedId) return;
+        applySwapRequests((prev) => removeById(prev, deletedId));
+        return;
+      }
+
+      const newId = newRow?.id;
+      if (!newId) return;
+      const fullSwap = await fetchSwapById(newId);
+      if (!fullSwap) {
+        applySwapRequests((prev) => removeById(prev, newId));
+        return;
+      }
+
+      applySwapRequests((prev) => {
+        const next = dedupeSwapRequests(
+          upsertById(prev, fullSwap)
+            .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
+        );
+        return next.slice(0, 50);
+      });
+    };
+
     const channel = supabase
       .channel(`swaps-${userId}`)
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'swap_requests' },
-        async (payload: RealtimePostgresChangesPayload<{ id: string; requester_id?: string; target_user_id?: string }>) => {
-          const newRow = (payload.new ?? null) as { id?: string; requester_id?: string; target_user_id?: string } | null;
-          const oldRow = (payload.old ?? null) as { id?: string; requester_id?: string; target_user_id?: string } | null;
-          const isRelevant = newRow?.requester_id === userId
-            || newRow?.target_user_id === userId
-            || oldRow?.requester_id === userId
-            || oldRow?.target_user_id === userId;
-
-          if (!isRelevant) return;
-
-          if (payload.eventType === 'DELETE') {
-            const deletedId = oldRow?.id;
-            if (!deletedId) return;
-            applySwapRequests((prev) => removeById(prev, deletedId));
-            return;
-          }
-
-          const newId = newRow?.id;
-          if (!newId) return;
-          const fullSwap = await fetchSwapById(newId);
-          if (!fullSwap) {
-            applySwapRequests((prev) => removeById(prev, newId));
-            return;
-          }
-
-          applySwapRequests((prev) => {
-            const next = dedupeSwapRequests(
-              upsertById(prev, fullSwap)
-                .sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''))
-            );
-            return next.slice(0, 50);
-          });
-        }
+        { event: '*', schema: 'public', table: 'swap_requests', filter: `requester_id=eq.${userId}` },
+        handleSwapChange,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'swap_requests', filter: `target_user_id=eq.${userId}` },
+        handleSwapChange,
       )
       .subscribe();
 
