@@ -1,326 +1,367 @@
-# PharmShift / เวรดี๊ดี
+<div align="center">
 
-Progressive Web App for managing pharmacy shift schedules for Uttaradit Hospital. The app is built around monthly schedule calendars for three staff role groups, with admin/sub-admin tools for uploading, editing, publishing, notifying, and exporting schedule data.
+# 💊 PharmShift · เวรดี๊ดี
 
-## Project Overview
+**ระบบจัดตารางเวรเภสัชกรรม โรงพยาบาลอุตรดิตถ์**
 
-PharmShift lets staff view published monthly schedules, track their own shifts, request swaps/transfers/cover, receive in-app and mobile push notifications, and export schedule or compensation documents. Admin users can manage users, holidays, schedules, backups, audit logs, and role-specific schedule publishing.
+![Next.js](https://img.shields.io/badge/Next.js-14.2-black?logo=next.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white)
+![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-3.4-06B6D4?logo=tailwindcss&logoColor=white)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-black?logo=vercel&logoColor=white)
+![PWA](https://img.shields.io/badge/PWA-installable-5A0FC8?logo=pwa&logoColor=white)
 
-Key features shown in the code:
+Progressive Web App สำหรับจัดการตารางเวรเภสัชกรรม รองรับ 3 กลุ่มบุคลากร  
+พร้อมระบบสลับเวร, แจ้งเตือน Push, และ Export Excel ครบครัน
 
-- Monthly calendar views for `pharmacist`, `pharmacy_technician`, and `officer` role groups.
-- "All shifts" and "My shifts" views with mobile-specific navigation and swipe month changes.
-- Admin and sub-admin schedule management, including Excel upload, edit mode, add/delete/reassign shifts, backup/delete utilities, and audit log viewing.
-- Role-specific publish flags in `published_months`; regular users cannot view/request against unpublished role schedules.
-- Swap, transfer, and cover requests with duplicate checks, overlap warnings, atomic accept handling, auto-rejection of competing pending requests, and notifications.
-- In-app notifications and Web Push notifications for mobile devices.
-- Excel exports for schedule tables, personal schedules, compensation/evidence sheets, and sign sheets.
-- PWA manifest, service worker, install prompt, and static asset caching.
-- Scheduled reminders and cleanup through GitHub Actions and Vercel cron configuration.
+</div>
 
-## Tech Stack
+---
 
-- Next.js `14.2.5` App Router
-- React `18`
-- TypeScript `5` with `strict: true`
-- Tailwind CSS `3.4`
-- Radix UI primitives
-- Supabase PostgreSQL and Supabase Realtime
-- Custom JWT session cookies via `jose`
-- `@supabase/ssr` and `@supabase/supabase-js`
-- Excel import/export via `xlsx`, `exceljs`, and `file-saver`
-- Web Push via `web-push` and `public/sw.js`
-- `date-fns` with Thai locale
-- Sonner toasts, SweetAlert2 confirmations, Lucide icons
-- Vercel deployment config and GitHub Actions cron workflow
+## ✨ Features
 
-## Requirements
+| Feature | รายละเอียด |
+|---|---|
+| 📅 **ตารางเวรรายเดือน** | 3 กลุ่มบุคลากร: เภสัชกร, เจ้าพนักงานเภสัชกรรม, เจ้าหน้าที่ |
+| 🔄 **สลับ / โอน / ขอคนแทน** | ตรวจเวรชน, atomic accept, auto-reject คำขอซ้ำ |
+| 🔔 **Push Notifications** | แจ้งเตือนมือถือ PWA + In-app notification panel |
+| 📊 **Excel Export** | ตารางเวร, หลักฐานการปฏิบัติงาน, ค่าตอบแทน, ใบลงชื่อ |
+| 📤 **Excel Import** | อัปโหลดตารางเวรแบบ Bulk พร้อม overwrite mode |
+| 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, Audit Log |
+| 📱 **PWA** | ติดตั้งบน Android / iOS ได้ รองรับ swipe เปลี่ยนเดือน |
 
-- Node.js 18.17+ for Next.js 14.
-- npm, using the committed `package-lock.json`.
-- A Supabase project or local Supabase instance with the SQL schema/migrations applied.
-- Web Push VAPID keys if push notifications are used.
-- Vercel and GitHub repository secrets if the scheduled jobs are deployed.
+---
 
-## Installation
+## 🏗️ Architecture
+
+```mermaid
+graph TB
+    subgraph Client["🌐 Client (Browser / PWA)"]
+        UI[Next.js App Router<br/>React 18 + Tailwind CSS]
+        SW[Service Worker<br/>sw.js]
+        RT[Supabase Realtime<br/>3 channels per user]
+    end
+
+    subgraph Server["⚙️ Server (Vercel)"]
+        API[API Routes<br/>/api/*]
+        MW[Middleware<br/>JWT Auth + Rolling Refresh]
+        CRON[Cron Routes<br/>/api/cron/*]
+    end
+
+    subgraph Data["🗄️ Data (Supabase)"]
+        DB[(PostgreSQL<br/>RLS Enabled)]
+        REALTIME[Realtime<br/>postgres_changes]
+    end
+
+    subgraph External["📡 External"]
+        PUSH[Web Push API<br/>FCM / APNs]
+        GHA[GitHub Actions<br/>Scheduled Cron]
+    end
+
+    UI -->|JWT Cookie| MW
+    MW --> API
+    API --> DB
+    CRON --> DB
+    CRON --> PUSH
+    GHA -->|Bearer CRON_SECRET| CRON
+    DB --> REALTIME
+    REALTIME --> RT
+    SW --> PUSH
+```
+
+---
+
+## 👥 User Roles & Permissions
+
+```mermaid
+graph LR
+    subgraph Roles["บุคลากร"]
+        A[👑 admin]
+        SA[🔧 sub_admin]
+        PH[💊 pharmacist]
+        PT[🏥 pharmacy_technician]
+        OF[📋 officer]
+    end
+
+    subgraph Permissions["สิทธิ์"]
+        V[ดูตารางเวร]
+        S[สลับ / โอน / ขอคนแทน]
+        E[แก้ไข / เพิ่ม / ลบเวร]
+        U[อัปโหลด Excel]
+        M[จัดการ User & วันหยุด]
+        AL[ดู Audit Log]
+    end
+
+    A --> V & S & E & U & M & AL
+    SA --> V & S & E & U
+    PH --> V & S
+    PT --> V & S
+    OF --> V & S
+```
+
+---
+
+## 🔄 Swap / Transfer / Cover Flow
+
+```mermaid
+sequenceDiagram
+    actor Staff as 👤 Staff
+    participant App as 📱 App
+    participant API as ⚙️ /api/swap/accept
+    participant DB as 🗄️ Supabase RPC
+    participant Notify as 🔔 Notifications
+
+    Staff->>App: คลิกเวร → เลือก สลับ / โอน / ขอคนแทน
+    App->>API: POST /api/swap/accept
+    API->>DB: ตรวจ ownership (fresh DB check)
+    DB-->>API: ผ่าน
+    API->>DB: ตรวจเวรชน (overlap / ดึก→เช้า / บ่าย→ดึก)
+    alt มีเวรชน
+        DB-->>API: collision warning
+        API-->>App: แจ้งเตือน → ผู้ใช้ยืนยัน force
+    end
+    API->>DB: RPC accept_swap_request_atomic
+    DB-->>API: success (1 transaction)
+    API->>Notify: Push + In-app notify
+    API->>DB: Auto-reject pending requests ที่ซ้ำ
+    API-->>App: ✅ สำเร็จ
+```
+
+---
+
+## 🛠️ Tech Stack
+
+```mermaid
+mindmap
+  root((PharmShift))
+    Frontend
+      Next.js 14 App Router
+      React 18
+      TypeScript 5 strict
+      Tailwind CSS 3.4
+      Radix UI Primitives
+      Lucide Icons
+      Sonner Toasts
+      SweetAlert2
+    Backend
+      Next.js API Routes
+      Custom JWT Auth jose
+      bcryptjs Password Hashing
+      web-push VAPID
+    Database
+      Supabase PostgreSQL
+      Supabase Realtime
+      RLS Policies
+      Atomic RPCs
+    Export
+      ExcelJS
+      xlsx
+      file-saver
+      date-fns Thai locale
+    DevOps
+      Vercel Deployment
+      GitHub Actions Cron
+      PWA Service Worker
+```
+
+---
+
+## 📁 Project Structure
+
+```
+pharmshift/
+├── app/
+│   ├── api/
+│   │   ├── auth/           # login · logout · me · change-password
+│   │   ├── admin/
+│   │   │   ├── shifts/     # GET · PUT · DELETE · PATCH · /batch · /owners
+│   │   │   ├── users/      # GET · POST · PUT · /reset-password
+│   │   │   └── audit-logs/ # GET cursor-paginated
+│   │   ├── swap/accept/    # atomic swap/transfer/cover
+│   │   ├── push/           # subscribe · send
+│   │   ├── notifications/  # GET · POST · PUT(mark-read)
+│   │   ├── holidays/       # CRUD · import
+│   │   ├── shifts/upload/  # Excel import
+│   │   ├── user/profile/   # self-update
+│   │   └── cron/           # shift-reminders · cleanup
+│   ├── calendar/           # Main page (~830 LOC)
+│   ├── login/
+│   └── change-password/
+├── components/
+│   ├── calendar/           # Grids, modals, export buttons
+│   ├── swap/               # SwapModal, NotificationsPanel
+│   └── layout/             # Header, MobileBottomNav
+├── hooks/
+│   ├── useShifts.ts        # useShifts + useSwapRequests + useNotifications
+│   ├── useIsMobile.ts
+│   └── useSwipeGesture.ts
+├── lib/
+│   ├── session.ts          # JWT sign/verify/cookie
+│   ├── pushSender.ts       # Server-side Web Push
+│   ├── excelExport.ts      # Evidence + Compensation (5 sheets)
+│   ├── scheduleTableExport.ts
+│   ├── signSheetExport.ts  # 7 shift configs
+│   └── types.ts            # Domain types + role helpers
+├── supabase/migrations/    # SQL schema + RPC functions
+├── public/
+│   ├── manifest.json       # PWA (เวรดี๊ดี · theme #8b5cf6)
+│   └── sw.js               # Service Worker
+└── .github/workflows/
+    └── cron.yml            # GitHub Actions (Bangkok timezone)
+```
+
+---
+
+## 🗄️ Database Schema
+
+```mermaid
+erDiagram
+    users {
+        uuid id PK
+        string pha_id
+        string f_name
+        string role
+        boolean is_sub_admin
+        boolean is_active
+        boolean is_readonly
+        string password
+    }
+    shifts {
+        uuid id PK
+        uuid user_id FK
+        uuid original_user_id
+        uuid department_id FK
+        date date
+        string shift_type
+        string month_year
+    }
+    swap_requests {
+        uuid id PK
+        uuid shift_id FK
+        uuid requester_id FK
+        uuid target_user_id FK
+        string request_type
+        string status
+    }
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        string type
+        string title
+        boolean is_read
+    }
+    push_subscriptions {
+        uuid id PK
+        uuid user_id FK
+        string endpoint
+        timestamptz last_used_at
+    }
+    audit_logs {
+        uuid id PK
+        uuid actor_user_id FK
+        string action
+        string description
+        timestamptz created_at
+    }
+
+    users ||--o{ shifts : "อยู่เวร"
+    users ||--o{ swap_requests : "ขอสลับ"
+    users ||--o{ notifications : "รับแจ้งเตือน"
+    users ||--o{ push_subscriptions : "subscribe"
+    shifts ||--o{ swap_requests : "เป็นเป้าหมาย"
+```
+
+---
+
+## ⏰ Shift Types
+
+| เวร | เวลา | สี |
+|---|---|---|
+| 🌅 เช้า | 08:30 – 16:30 | `bg-teal-50 border-teal-300` |
+| 🌆 บ่าย | 16:30 – 23:59 | `bg-purple-50 border-purple-300` |
+| 🌙 ดึก | 00:00 – 08:30 | `bg-indigo-50 border-indigo-300` |
+| 🌄 รุ่งอรุณ | 07:00 – 08:30 | `bg-amber-50 border-amber-300` |
+| 🏥 smc | 16:30 – 20:30 | `bg-violet-100 border-violet-300` |
+
+---
+
+## 🚀 Quick Start
+
+### Requirements
+- Node.js 18.17+
+- Supabase project (หรือ local Supabase CLI)
+- VAPID keys (สำหรับ Push Notifications)
+
+### Installation
 
 ```bash
+git clone https://github.com/codex074/utth-shift.git
+cd utth-shift
 npm install
 ```
 
-Create `.env.local` manually. There is no committed `.env.example` file; use this sample content:
+### Environment Variables
+
+สร้างไฟล์ `.env.local`:
 
 ```bash
 # Supabase
 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your-supabase-anon-key
-SUPABASE_SERVICE_ROLE_KEY=your-supabase-service-role-key
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Session JWT (server-only — ห้าม NEXT_PUBLIC_)
+SESSION_JWT_SECRET=      # openssl rand -base64 64
 
 # Web Push VAPID
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=your-vapid-public-key
 VAPID_PRIVATE_KEY=your-vapid-private-key
 VAPID_SUBJECT=mailto:pharmacy@hospital.go.th
 
-# Cron and internal app URL
+# Cron
 CRON_SECRET=change-me
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Generate VAPID keys when needed:
-
 ```bash
+# Generate VAPID keys
 npx web-push generate-vapid-keys
 ```
 
-## Configuration
-
-Environment variables used by the code:
-
-- `NEXT_PUBLIC_SUPABASE_URL`: Supabase project URL.
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`: browser Supabase key and the signing secret for the custom `pharmshift_session` JWT cookie.
-- `SUPABASE_SERVICE_ROLE_KEY`: server-only Supabase key for trusted API routes, cron jobs, push sends, audit logs, and migrations/scripts.
-- `NEXT_PUBLIC_VAPID_PUBLIC_KEY`: browser-visible VAPID public key for Push API subscription.
-- `VAPID_PRIVATE_KEY`: server-only VAPID private key for push delivery.
-- `VAPID_SUBJECT`: Web Push subject. Defaults to `mailto:pharmacy@hospital.go.th` if unset.
-- `CRON_SECRET`: bearer token for deployed cron endpoints.
-- `NEXT_PUBLIC_APP_URL`: used by `/api/cron/test-reminders` to call the real reminder endpoint.
-- `NODE_ENV`: controls secure cookie behavior in production.
-
-Important config files:
-
-- `next.config.mjs`: enables React strict mode.
-- `tailwind.config.ts`: Tailwind content paths, theme tokens, animations, and font family.
-- `tsconfig.json`: strict TypeScript, App Router settings, `@/*` path alias, `allowJs: true`.
-- `.eslintrc.json`: extends `next/core-web-vitals` and disables `react/no-unescaped-entities`.
-- `vercel.json`: sets `maxDuration` for cron API routes and schedules `/api/cron/cleanup`.
-- `.github/workflows/cron.yml`: scheduled GitHub Actions calls to reminder and cleanup endpoints.
-- `supabase/config.toml`: local Supabase project configuration. It references `./seed.sql`, but no `supabase/seed.sql` is currently committed.
-
-Secrets handling:
-
-- `.env.local` is ignored by `.gitignore` via `*.local`.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY`, `VAPID_PRIVATE_KEY`, or `CRON_SECRET` to browser code.
-- Changing `NEXT_PUBLIC_SUPABASE_ANON_KEY` also changes the JWT signing secret and invalidates existing app sessions.
-
-## Database Setup
-
-Apply SQL from `supabase/schema.sql` and `supabase/migrations/` to the Supabase database. The code expects these main tables/functions:
-
-- `users`: staff accounts, roles, flags, names, password field, salary number.
-- `departments`: schedule departments such as `ER`, `MED`, `SURG`, `SMC`, `Chemo`, `รุ่งอรุณ`.
-- `shifts`: scheduled shifts with `user_id`, `original_user_id`, `user_snapshot`, `month_year`, `shift_type`, and `position`.
-- `swap_requests`: swap, transfer, and cover request state.
-- `published_months`: per-role publish flags.
-- `holidays`: public holidays used by calendars/imports.
-- `notifications`: in-app notification records.
-- `push_subscriptions`: Web Push subscription endpoints.
-- `audit_logs`: audit trail used by admin audit views.
-- `shift_logs`: legacy/cleanup-supported shift log table.
-- RPC functions such as `accept_swap_request_atomic`, `apply_shift_owner_edits_atomic`, and `apply_admin_shift_changes_atomic`.
-
-The app uses custom app sessions instead of Supabase Auth for page authentication. Several database policies are permissive because the code enforces permissions in API routes and client logic; service-role API routes handle trusted writes.
-
-## Running The App
+### Run
 
 ```bash
-npm run dev
+npm run dev      # http://localhost:3000
+npm run build    # production build
+npm run lint     # ESLint
 ```
 
-Open `http://localhost:3000`. The root page redirects to `/calendar`; unauthenticated page requests redirect to `/login`.
+---
 
-Production build and start:
+## 🌐 Deployment
 
-```bash
-npm run build
-npm start
-```
+### Vercel
+1. Connect repository → Vercel
+2. ตั้งค่า Environment Variables ทั้งหมด
+3. `vercel.json` ตั้ง `maxDuration: 60` สำหรับ cron routes
 
-## Usage
+### GitHub Actions Cron
 
-Common UI flow:
+| UTC | Bangkok | Job |
+|---|---|---|
+| 23:00 | 06:00 | Morning reminders — เวรวันนี้ |
+| 09:00 | 16:00 | Evening reminders — เวรพรุ่งนี้ |
+| 21:00 | 04:00 | Cleanup — swap requests, notifications เก่า |
 
-1. Log in at `/login` with a `pha_id` and password.
-2. New admin-created users start with password `1234` and `must_change_password = true`.
-3. Open `/calendar` to view the current month.
-4. Switch between role group tabs and between "ทุกเวร" and "เวรของฉัน".
-5. Click a shift to request a swap, transfer, or cover if the schedule is published and your account can perform requests.
-6. Use the bell panel to accept/reject/cancel requests and manage mobile push notifications.
-7. Admin/sub-admin users can upload schedules, enter edit mode, publish a role schedule, export Excel files, manage holidays/users, backup data, and review audit logs.
+Secrets ที่ต้องตั้งใน GitHub repository:
+- `APP_URL` — deployed app URL
+- `CRON_SECRET` — same as env variable
 
-Useful API examples:
+---
 
-```bash
-curl -X POST http://localhost:3000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"phaId":"pha001","password":"1234"}'
+## 📜 License & Credits
 
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  "http://localhost:3000/api/cron/shift-reminders?run=morning"
-
-curl -H "Authorization: Bearer $CRON_SECRET" \
-  "http://localhost:3000/api/cron/cleanup"
-```
-
-Representative API routes:
-
-- `POST /api/auth/login`
-- `GET /api/auth/me`
-- `POST /api/auth/change-password`
-- `POST /api/auth/logout`
-- `GET|POST|PUT /api/admin/users`
-- `POST /api/admin/users/reset-password`
-- `GET|PUT|DELETE|PATCH /api/admin/shifts`
-- `POST /api/admin/shifts/batch`
-- `POST /api/admin/shifts/owners`
-- `POST /api/shifts/upload`
-- `POST /api/swap/accept`
-- `GET|POST|PUT /api/notifications`
-- `POST|DELETE /api/push/subscribe`
-- `POST /api/push/send`
-- `GET|POST /api/holidays`
-- `PATCH|DELETE /api/holidays/[id]`
-- `POST /api/holidays/import`
-- `POST /api/user/profile`
-- `GET /api/cron/shift-reminders`
-- `POST /api/cron/test-reminders`
-- `GET /api/cron/cleanup`
-
-## Development Workflow
-
-Available package scripts:
-
-```bash
-npm run dev     # start Next.js dev server
-npm run build   # production build, including Next.js type/build checks
-npm start       # start production server after build
-npm run lint    # Next.js ESLint
-```
-
-Testing and formatting:
-
-- No `test` script is configured in `package.json`.
-- Playwright is installed as a dev dependency, but no Playwright config or tests are present.
-- No formatter or Prettier script/config is present.
-
-Useful one-off scripts:
-
-- `node scripts/generate-sample-excel.mjs`
-- `node scripts/create-users.mjs`
-- `node scripts/upsert-users.mjs`
-- `node scripts/create-admin.mjs`
-- `npx ts-node scripts/seed.ts`
-- `python3 scripts/parse-schedule.py`
-
-Many scripts are migration/import utilities and some still reference legacy schema fields such as `name` or `fullname`. Inspect and adapt them before running against production data.
-
-## Project Structure
-
-```text
-app/
-  layout.tsx                  Root layout, metadata, fonts, toaster, PWA provider
-  page.tsx                    Redirects to /calendar
-  login/page.tsx              Login UI
-  change-password/page.tsx    First-login password change UI
-  calendar/page.tsx           Main calendar, role/view state, admin actions, modals
-  api/                        Next.js route handlers
-
-components/
-  calendar/                   Calendar grids, admin modals, export/upload/publish tools
-  swap/                       SwapModal and NotificationsPanel
-  layout/                     Header, mobile bottom nav, mobile admin menu
-  pwa/                        Service worker registration and install prompt
-  ui/                         Shared UI helpers/icons/loading/ripple
-  UserProfileModal.tsx        User profile editor
-  HelpGuideModal.tsx          In-app user guide
-
-hooks/
-  useShifts.ts                useShifts, useSwapRequests, useNotifications, useCurrentUser
-  useIsMobile.ts              Mobile breakpoint hook
-  useSwipeGesture.ts          Touch swipe hook for month navigation
-
-lib/
-  types.ts                    Domain types, role helpers, shift config/constants
-  utils.ts                    cn(), Thai month helpers, shift overlap helpers
-  session.ts                  Custom JWT cookie helpers
-  supabase.ts                 Browser Supabase client
-  supabaseServer.ts           Server Supabase SSR client
-  auditLog*.ts                Audit log writers
-  push*.ts                    Push subscribe/send helpers
-  *Export.ts                  Excel export builders
-  calendarMonthGrid.ts        Calendar week/day builders
-
-supabase/
-  schema.sql                  Main schema
-  migrations/                 SQL migrations and RPC functions
-  run_*.sql                   Manual SQL editor scripts
-  config.toml                 Local Supabase CLI config
-
-public/
-  manifest.json               PWA manifest
-  sw.js                       Service worker and push click handler
-  guide.*                     User guide files
-  sample_shifts.*             Sample import data
-  icons                       PWA and favicon assets
-
-.github/workflows/cron.yml    GitHub Actions scheduled jobs
-vercel.json                   Vercel function and cron config
-middleware.ts                 Page auth and rolling session refresh
-```
-
-## Deployment Notes
-
-Vercel:
-
-- Connect the repository to Vercel.
-- Configure all required environment variables in the Vercel project.
-- `vercel.json` sets `app/api/cron/**` max duration to 30 seconds.
-- `vercel.json` also schedules `GET /api/cron/cleanup` at `0 3 * * *` UTC.
-
-GitHub Actions:
-
-- `.github/workflows/cron.yml` runs scheduled jobs and can be triggered manually.
-- Required repository secrets:
-  - `APP_URL`: deployed app base URL.
-  - `CRON_SECRET`: same value as the deployed app environment variable.
-- Scheduled workflow entries call:
-  - `GET /api/cron/shift-reminders?run=morning`
-  - `GET /api/cron/shift-reminders?run=evening`
-  - `GET /api/cron/cleanup`
-
-Cron behavior:
-
-- Morning reminders target today's shifts and exclude `รุ่งอรุณ`.
-- Evening reminders target tomorrow's shifts and include all shift types.
-- Reminder jobs only notify users whose role schedule is published for that month.
-- Cleanup deletes old swap requests, notifications, shift logs, audit logs, and stale push subscriptions.
-
-## Known Limitations And Design Decisions
-
-- Authentication is custom JWT cookie auth, not Supabase Auth.
-- User passwords are stored and compared as plain text in the `users.password` column.
-- The Supabase anon key is used as the JWT signing secret. Do not rely on the fallback secret in production.
-- `POST /api/push/send` does not perform an explicit session or cron-secret check in the route code; treat it as an internal endpoint or add authorization before broader exposure.
-- Push subscription is intentionally limited to mobile user agents; iOS Safari push requires installing the app to the home screen.
-- No automated tests or formatter are configured.
-- Local Supabase config references `./seed.sql`, but that file is not present.
-- Some root files and scripts are debugging/import artifacts (`dump.js`, `layout_dump.txt`, `parse_layout.js`, Excel samples). Verify relevance before using them as app entry points.
-- Business rules for overlap detection exist in both `lib/utils.ts` and `/api/swap/accept/route.ts`; update both when changing shift timing semantics.
-
-## Troubleshooting
-
-- Redirect loop to login: check `NEXT_PUBLIC_SUPABASE_ANON_KEY`, the `pharmshift_session` cookie, and middleware session verification.
-- `MONTH_HAS_DATA` from Excel upload: the target role/month already has shifts; overwrite requires the current admin/sub-admin password.
-- "function does not exist" for `accept_swap_request_atomic`, `apply_shift_owner_edits_atomic`, or `apply_admin_shift_changes_atomic`: apply the latest Supabase migrations.
-- Duplicate shift errors: check the `unique_user_date_shifttype` constraint and same-date/same-shift assignments.
-- Push says `NO_VAPID_KEY`: set `NEXT_PUBLIC_VAPID_PUBLIC_KEY` in the client environment and `VAPID_PRIVATE_KEY` on the server.
-- Push not available on iPhone/iPad: install the PWA from Safari first.
-- Cron returns `401`: set `CRON_SECRET` in the app and send `Authorization: Bearer <secret>`.
-- Reminders send zero notifications: verify the month is published for the role and that shifts exist on the target Bangkok date.
-- Local `supabase db reset` fails on seed: remove/adjust the `sql_paths = ["./seed.sql"]` reference or add the missing seed file.
-
-## License And Credits
-
-© 2026 Ph.D. Teeradet Wichai  
+© 2026 **Ph.D. Teeradet Wichai**  
 Pharmacy Department, Uttaradit Hospital
 
 All rights reserved. This software is developed for internal use by the Pharmacy Department, Uttaradit Hospital. Unauthorized reproduction or distribution is prohibited.
