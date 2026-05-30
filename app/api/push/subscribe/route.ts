@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { isMobileUserAgent } from '@/lib/deviceDetection';
+import { getSession } from '@/lib/session';
 
 function getSupabaseAdmin() {
   return createClient(
@@ -13,11 +14,20 @@ function getSupabaseAdmin() {
 /** POST — Save push subscription for a user */
 export async function POST(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { userId, subscription } = await req.json();
     const userAgent = req.headers.get('user-agent');
 
     if (!userId || !subscription?.endpoint || !subscription?.keys) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    if (session.id !== userId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     if (!isMobileUserAgent(userAgent)) {
@@ -55,6 +65,11 @@ export async function POST(req: NextRequest) {
 /** DELETE — Remove push subscription */
 export async function DELETE(req: NextRequest) {
   try {
+    const session = await getSession();
+    if (!session?.id) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { endpoint } = await req.json();
 
     if (!endpoint) {
@@ -65,7 +80,8 @@ export async function DELETE(req: NextRequest) {
     await supabase
       .from('push_subscriptions')
       .delete()
-      .eq('endpoint', endpoint);
+      .eq('endpoint', endpoint)
+      .eq('user_id', session.id);
 
     return NextResponse.json({ ok: true });
   } catch (err: any) {

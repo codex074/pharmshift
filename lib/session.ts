@@ -62,7 +62,7 @@ export async function createSession(user: Partial<User>, options?: CreateSession
   cookies().set(SESSION_COOKIE_NAME, session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
     ...(persistent
       ? {
@@ -84,7 +84,7 @@ export async function clearSession() {
     expires: new Date(0),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    sameSite: 'strict',
     path: '/',
   });
 }

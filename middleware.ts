@@ -99,7 +99,7 @@ export async function middleware(request: NextRequest) {
       maxAge: SESSION_DAYS * 24 * 60 * 60, // seconds — fallback for some browsers
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      sameSite: 'strict',
       path: '/',
     });
   }

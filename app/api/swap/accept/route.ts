@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { sendPushToUser, sendPushToUsers } from '@/lib/pushSender';
 
 // Service-role client — bypasses RLS, used for trusted server-side mutations
 const supa = createClient(
@@ -246,15 +247,11 @@ export async function POST(request: NextRequest) {
     ? `${acceptorName} ได้ยอมรับให้อยู่เวรแทนแล้ว — ${fmtShift(req.shift)}`
     : `${acceptorName} รับ ${fmtShift(req.shift)} แล้ว`;
 
-  // Push notification
-  const baseUrl = request.nextUrl.origin;
-  fetch(`${baseUrl}/api/push/send`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      userId: req.requester_id, title: acceptTitle, body: acceptBody,
-      url: '/calendar', tag: `swap-${req.id}`,
-    }),
+  sendPushToUser(req.requester_id, {
+    title: acceptTitle,
+    body: acceptBody,
+    url: '/calendar',
+    tag: `swap-${req.id}`,
   }).catch(() => {});
 
   // In-app notification
@@ -283,13 +280,11 @@ export async function POST(request: NextRequest) {
     if (notifyIds.length) {
       const autoCancelTitle = '⚠️ คำขอถูกยกเลิกอัตโนมัติ';
       const autoCancelBody = `${fmtShift(req.shift)} ถูกดำเนินการโดยผู้อื่นแล้ว คำขอของคุณจึงถูกยกเลิก`;
-      fetch(`${baseUrl}/api/push/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userIds: notifyIds, title: autoCancelTitle, body: autoCancelBody,
-          url: '/calendar', tag: `swap-auto-cancel-${req.shift_id}`,
-        }),
+      sendPushToUsers(notifyIds, {
+        title: autoCancelTitle,
+        body: autoCancelBody,
+        url: '/calendar',
+        tag: `swap-auto-cancel-${req.shift_id}`,
       }).catch(() => {});
 
       await supa.from('notifications').insert(

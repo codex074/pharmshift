@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, defaultPassword });
+    return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Admin reset password error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

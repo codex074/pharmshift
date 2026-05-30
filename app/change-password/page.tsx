@@ -8,8 +8,10 @@ import { Loader2, UserCheck, Eye, EyeOff, Sparkles, ShieldCheck } from 'lucide-r
 
 export default function ChangePasswordPage() {
   const router = useRouter();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
   const [showPw, setShowPw] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -40,6 +42,10 @@ export default function ChangePasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
+    if (!currentPassword) {
+      toast.error('กรุณากรอกรหัสผ่านปัจจุบัน');
+      return;
+    }
     if (password.length < 4) {
       toast.error('รหัสผ่านต้องมีอย่างน้อย 4 ตัวอักษร');
       return;
@@ -54,7 +60,7 @@ export default function ChangePasswordPage() {
       const res = await fetch('/api/auth/change-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password }),
+        body: JSON.stringify({ oldPassword: currentPassword, password }),
       });
 
       const data = await res.json();
@@ -111,6 +117,32 @@ export default function ChangePasswordPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Current Password */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-semibold text-gray-600 ml-0.5">
+                รหัสผ่านปัจจุบัน <span className="text-red-400">*</span>
+              </label>
+              <div className={`relative rounded-xl transition-all duration-300 ${focusedField === 'current' ? 'ring-2 ring-violet-400/30' : ''}`}>
+                <input
+                  type={showCurrent ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  onFocus={() => setFocusedField('current')}
+                  onBlur={() => setFocusedField(null)}
+                  required
+                  placeholder="รหัสผ่านเดิม"
+                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200/80 bg-gray-50/80 text-sm font-medium focus:outline-none focus:bg-white focus:border-violet-300 transition-all duration-300"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrent(!showCurrent)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-violet-500 transition-colors duration-200"
+                >
+                  {showCurrent ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
             {/* New Password */}
             <div className="space-y-1.5">
               <label className="text-sm font-semibold text-gray-600 ml-0.5">

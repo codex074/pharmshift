@@ -5,12 +5,46 @@ import webpush from 'web-push';
 import { createClient } from '@supabase/supabase-js';
 import { isMobileUserAgent } from '@/lib/deviceDetection';
 
-// Configure web-push with VAPID keys
-webpush.setVapidDetails(
-  process.env.VAPID_SUBJECT || 'mailto:pharmacy@hospital.go.th',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || '',
-  process.env.VAPID_PRIVATE_KEY || ''
-);
+let vapidReady = false;
+let vapidChecked = false;
+
+function ensureVapidConfigured() {
+  if (vapidReady) return true;
+  if (vapidChecked) return false;
+  vapidChecked = true;
+
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) {
+    console.warn('[push] VAPID keys missing; push delivery disabled');
+    return false;
+  }
+
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_SUBJECT || 'mailto:pharmacy@hospital.go.th',
+      publicKey,
+      privateKey
+    );
+    vapidReady = true;
+    return true;
+  } catch (error) {
+    console.error('[push] invalid VAPID config; push delivery disabled:', error);
+    return false;
+  }
+}
+
+async function limitedAllSettled<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+) {
+  const results: PromiseSettledResult<R>[] = [];
+  for (let i = 0; i < items.length; i += limit) {
+    results.push(...await Promise.allSettled(items.slice(i, i + limit).map(fn)));
+  }
+  return results;
+}
 
 // Service-role Supabase client for server-side operations
 function getSupabaseAdmin() {
@@ -33,6 +67,10 @@ export async function sendPushToUser(
   userId: string,
   payload: NotificationPayload
 ): Promise<{ sent: number; failed: number }> {
+  if (!ensureVapidConfigured()) {
+    return { sent: 0, failed: 0 };
+  }
+
   const supabase = getSupabaseAdmin();
 
   const { data: subscriptions, error } = await supabase
@@ -48,8 +86,10 @@ export async function sendPushToUser(
   let failed = 0;
   const staleIds: string[] = [];
 
-  await Promise.allSettled(
-    subscriptions.map(async (sub) => {
+  await limitedAllSettled(
+    subscriptions,
+    10,
+    async (sub) => {
       if (!isMobileUserAgent(sub.user_agent)) {
         return;
       }
@@ -72,7 +112,7 @@ export async function sendPushToUser(
           staleIds.push(sub.id);
         }
       }
-    })
+    }
   );
 
   // Cleanup stale subscriptions
@@ -91,9 +131,7 @@ export async function sendPushToUsers(
   userIds: string[],
   payload: NotificationPayload
 ): Promise<{ sent: number; failed: number }> {
-  const results = await Promise.allSettled(
-    userIds.map((uid) => sendPushToUser(uid, payload))
-  );
+  const results = await limitedAllSettled(userIds, 20, (uid) => sendPushToUser(uid, payload));
 
   let totalSent = 0;
   let totalFailed = 0;

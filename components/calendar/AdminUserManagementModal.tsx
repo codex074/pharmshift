@@ -169,7 +169,7 @@ export function AdminUserManagementModal({ onClose, embedded }: AdminUserManagem
 
   async function handleResetPassword() {
     if (!editingUser) return;
-    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${userFullName(editingUser)}?\n\nรหัสผ่านใหม่จะถูกตั้งเป็น "1234" และผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
+    if (!confirm(`ยืนยันรีเซ็ตรหัสผ่านของ ${userFullName(editingUser)}?\n\nผู้ใช้จะต้องเปลี่ยนรหัสผ่านเมื่อเข้าสู่ระบบครั้งถัดไป`)) {
       return;
     }
 
@@ -186,8 +186,7 @@ export function AdminUserManagementModal({ onClose, embedded }: AdminUserManagem
         throw new Error(data.error || 'Reset failed');
       }
 
-      const data = await res.json();
-      toast.success(`รีเซ็ตรหัสผ่านสำเร็จ — รหัสผ่านใหม่: ${data.defaultPassword}`);
+      toast.success('รีเซ็ตรหัสผ่านสำเร็จ');
       await fetchUsers();
     } catch (err: any) {
       toast.error(err.message || 'เกิดข้อผิดพลาด');

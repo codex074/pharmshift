@@ -11,13 +11,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { password } = await request.json();
+    const { oldPassword, password } = await request.json();
 
-    if (!password) {
+    if (!oldPassword || !password) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
     const supabase = createSupabaseServer();
+
+    const { data: existingUser, error: readError } = await supabase
+      .from('users')
+      .select('id, password')
+      .eq('id', session.id)
+      .single();
+
+    if (readError || !existingUser) {
+      return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 });
+    }
+
+    if (existingUser.password !== oldPassword) {
+      return NextResponse.json({ error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 401 });
+    }
     
     // Update the password directly
     const { data: user, error } = await supabase
@@ -27,7 +41,7 @@ export async function POST(request: Request) {
         must_change_password: false,
       })
       .eq('id', session.id)
-      .select('*')
+      .select('id, pha_id, prefix, f_name, l_name, role, is_sub_admin, must_change_password')
       .single();
 
     if (error) {
