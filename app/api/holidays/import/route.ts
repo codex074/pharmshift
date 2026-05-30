@@ -1,10 +1,8 @@
 export const dynamic = 'force-dynamic';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { isAdminLike } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
 
 function getSupabaseAdmin() {
   return createClient(
@@ -13,27 +11,31 @@ function getSupabaseAdmin() {
   );
 }
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const session = await getSession();
     if (!isAdminLike(session)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // 1. Read the JSON file
-    const filePath = path.join(process.cwd(), 'holidays.json');
-    if (!fs.existsSync(filePath)) {
-      return NextResponse.json({ error: 'ไม่พบไฟล์ holidays.json ในเซิร์ฟเวอร์' }, { status: 404 });
+    // 1. Parse holidays map from request body: { "2026-01-01": "วันขึ้นปีใหม่", ... }
+    let holidaysMap: Record<string, unknown>;
+    try {
+      holidaysMap = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'ข้อมูล JSON ไม่ถูกต้อง' }, { status: 400 });
+    }
+    if (!holidaysMap || typeof holidaysMap !== 'object' || Array.isArray(holidaysMap)) {
+      return NextResponse.json({ error: 'ข้อมูลต้องเป็น JSON object ของ { "YYYY-MM-DD": "ชื่อวันหยุด" }' }, { status: 400 });
     }
 
-    const fileContent = fs.readFileSync(filePath, 'utf-8');
-    const holidaysMap = JSON.parse(fileContent);
-
     // 2. Transform to array
-    const holidayEntries = Object.entries(holidaysMap).map(([date, name]) => ({
-      date,
-      name: name as string,
-    }));
+    const holidayEntries = Object.entries(holidaysMap)
+      .filter(([, name]) => typeof name === 'string' && name.trim())
+      .map(([date, name]) => ({
+        date,
+        name: (name as string).trim(),
+      }));
 
     if (holidayEntries.length === 0) {
       return NextResponse.json({ error: 'ไม่มีข้อมูลวันหยุดในไฟล์' }, { status: 400 });

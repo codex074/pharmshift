@@ -40,8 +40,8 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 | R14 | Change-password ไม่ตรวจ old password | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — API และ UI ต้องส่ง/ตรวจรหัสผ่านปัจจุบัน |
 | R15 | sameSite=lax + ไม่มี CSRF token | 🟡 แก้แล้วบางส่วน | `4bab36a` (2026-05-30) — session cookie เป็น `sameSite=strict`; ยังไม่มี CSRF token เฉพาะ route |
 | R16 | ไม่มี security header (CSP/HSTS/X-Frame) | 🟡 แก้แล้วบางส่วน | `4bab36a` (2026-05-30) — เพิ่ม HSTS/X-Frame/Content-Type/Referrer/Permissions; ยังไม่ได้เพิ่ม CSP เต็มรูปแบบ |
-| R17 | Bangkok timezone math เปราะ | ⬜ | — |
-| R18 | `holidays.json` อ่านจาก local filesystem | ⬜ | — |
+| R17 | Bangkok timezone math เปราะ | ✅ แก้แล้ว | working tree (2026-05-30) — fail-closed: return 400 ถ้า `run=` หาย, ลบ Bangkok-hour heuristic |
+| R18 | `holidays.json` อ่านจาก local filesystem | ✅ แก้แล้ว | working tree (2026-05-30) — route อ่าน JSON จาก body แทน filesystem; UI เปลี่ยนเป็น file picker |
 | R19 | `select('*')` ดึง password มาด้วย | ✅ แก้แล้ว | `4bab36a` + this commit (2026-05-30) — auth routes เลิกคืน password แล้ว และรัน hash migration ล้าง plain text ใน DB แล้ว |
 
 ### งานติดตาม (TODO)
@@ -232,8 +232,18 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 #### R17. Bangkok timezone math ใน `shift-reminders` เปราะ
 - `app/api/cron/shift-reminders/route.ts:82-98` หาก `run=` หาย จะ fallback เป็น "Bangkok hour" → retry ของ GitHub Actions หรือ Vercel cron อาจส่ง reminder ซ้ำหรือผิดวัน
 
+**✅ การแก้ไข (working tree, 2026-05-30)**
+- ลบ Bangkok-hour heuristic fallback ออก
+- เพิ่ม fail-closed: `if (runParam !== 'morning' && runParam !== 'evening') return 400`
+- ยืนยันแล้วว่า GitHub Actions ทุก schedule ส่ง `?run=morning|evening` ครบ และ test-reminders ส่ง `x-test-run` header
+
 #### R18. `holidays.json` อ่านจาก local filesystem
 - ต้อง redeploy ทุกครั้งที่อัปเดตวันหยุด — foot-gun ตอน hospital ประกาศวันหยุดเพิ่มกลางปี
+
+**✅ การแก้ไข (working tree, 2026-05-30)**
+- Route `POST /api/holidays/import` รับ JSON body แทน `fs.readFile` (ลบ `fs`/`path` import ออก)
+- UI `ManageHolidaysModal`: เปลี่ยนปุ่มให้เปิด file picker → อ่านไฟล์ด้วย `File.text()` → ส่ง JSON ใน body
+- ชื่อปุ่มเปลี่ยนเป็น "นำเข้าจากไฟล์ JSON"
 
 #### R19. Plain-text password อยู่ใน `users.*` และถูก `select('*')`
 - Cache/log/Sentry breadcrumb ใด ๆ ที่บังเอิญ serialize response นี้ = leak password ทุกคน รวมกับ R13 ยิ่งหนัก

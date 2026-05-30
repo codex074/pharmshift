@@ -149,28 +149,46 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
     }
   }
 
-  async function handleImportFromJson() {
-    if (!confirm('ยืนยันการนำเข้าข้อมูลวันหยุดจากไฟล์ holidays.json ใช่หรือไม่?\\n(ข้อมูลที่มีในไฟล์จะถูกเพิ่ม หรืออัปเดตหากวันที่ซ้ำกัน)')) return;
+  function handleImportFromJson() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
 
-    try {
-      setImporting(true);
-      const res = await fetch('/api/holidays/import', { method: 'POST' });
-      
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to import holidays');
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await file.text());
+      } catch {
+        toastError('ไฟล์ JSON ไม่ถูกต้อง');
+        return;
       }
 
-      toastSuccess(data.message || 'นำเข้าข้อมูลวันหยุดสำเร็จ');
-      fetchHolidays();
-      onSuccess(); // Refresh calendar data
-    } catch (error: any) {
-      console.error('Import error:', error);
-      toastError(error.message || 'นำเข้าข้อมูลวันหยุดไม่สำเร็จ');
-    } finally {
-      setImporting(false);
-    }
+      if (!confirm(`ยืนยันการนำเข้าข้อมูลวันหยุดจากไฟล์ "${file.name}" ใช่หรือไม่?\n(ข้อมูลที่มีในไฟล์จะถูกเพิ่ม หรืออัปเดตหากวันที่ซ้ำกัน)`)) return;
+
+      try {
+        setImporting(true);
+        const res = await fetch('/api/holidays/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(parsed),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to import holidays');
+
+        toastSuccess(data.message || 'นำเข้าข้อมูลวันหยุดสำเร็จ');
+        fetchHolidays();
+        onSuccess();
+      } catch (error: any) {
+        console.error('Import error:', error);
+        toastError(error.message || 'นำเข้าข้อมูลวันหยุดไม่สำเร็จ');
+      } finally {
+        setImporting(false);
+      }
+    };
+    input.click();
   }
 
   const bodyContent = (
@@ -190,7 +208,7 @@ export function ManageHolidaysModal({ onClose, onSuccess, embedded }: ManageHoli
                 className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
               >
                 {importing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-                นำเข้าจาก holidays.json
+                นำเข้าจากไฟล์ JSON
               </button>
             </div>
 

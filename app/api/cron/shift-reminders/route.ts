@@ -72,25 +72,22 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
     const bkk = getBangkokNow();
-    const bkkHour = bkk.hour;
-
     // "run" param is set explicitly by GitHub Actions workflow (morning / evening).
     // "testRun" is the legacy admin-test override (same values).
-    // If neither is provided, fall back to Bangkok-hour heuristic as last resort.
     const runParam = req.nextUrl.searchParams.get('run')
       ?? req.nextUrl.searchParams.get('testRun')
       ?? req.headers.get('x-test-run');
+
+    if (runParam !== 'morning' && runParam !== 'evening') {
+      return NextResponse.json({ error: 'Missing required param: run=morning|evening' }, { status: 400 });
+    }
 
     // Determine which date and which shift types to remind
     let targetDate: string;
     let excludeDawn = false; // exclude รุ่งอรุณ?
     let timeLabel: string;
 
-    const isMorningRun =
-      runParam === 'morning' ||
-      (!runParam && bkkHour >= 4 && bkkHour < 12); // widened fallback window
-
-    if (isMorningRun) {
+    if (runParam === 'morning') {
       // Morning run (06:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
       targetDate = `${bkk.year}-${String(bkk.month).padStart(2, '0')}-${String(bkk.day).padStart(2, '0')}`;
       excludeDawn = true;
