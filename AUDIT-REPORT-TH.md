@@ -25,7 +25,7 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 | ID | ความเสี่ยง | สถานะ | Commit / Note |
 |---|---|---|---|
 | R5 | Cron cleanup รัน 2 ครั้ง/วัน + SELECT ไม่มี LIMIT | ✅ แก้แล้ว | this commit (2026-05-30) — ถอด Vercel cron, เพิ่ม RPC bounded chain cleanup, รัน migration RPC แล้ว |
-| R6 | Cron ลบ push subscription ที่ยังใช้งาน | ⬜ | — |
+| R6 | Cron ลบ push subscription ที่ยังใช้งาน | ✅ แก้แล้ว | working tree (2026-05-30) — เพิ่ม `last_used_at`, update เมื่อ send สำเร็จ, cleanup กรองบน `last_used_at` |
 | R7 | Excel upload ไม่ guard ขนาดไฟล์ | ✅ แก้แล้ว | this commit (2026-05-30) — ตรวจ `file.size > 3MB` และ extension ก่อน `arrayBuffer()`, เพิ่ม `maxDuration=60` |
 | R8 | Admin endpoint ดึงข้อมูลเกินจำเป็น | ✅ แก้แล้ว | this commit (2026-05-30) — เพิ่ม MAX_BATCH=500 ใน shifts/batch + shifts/owners, limit userIds ≤300 ใน notifications POST |
 | R9 | Web push fan-out ไม่จำกัด concurrency | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — จำกัด concurrency: users=20, subscriptions/user=10 |
@@ -133,6 +133,13 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 - **ไฟล์**: `app/api/cron/cleanup/route.ts:131-138`
 - **อาการ**: ลบจาก `push_subscriptions` ที่ `created_at < now()-3 months` แต่ **ไม่มี `last_used_at`** → user ทุกคนที่ subscribe นานเกิน 3 เดือนถูกตัด noti เงียบ ๆ ทุกไตรมาส (ชื่อตัวแปรเขียน `cutoff60d` แต่จริง ๆ คือ 3 เดือน — bug ทั้ง code และ intent)
 - **Symptom**: PWA user หยุดได้รับ reminder ทุก ๆ ไตรมาส, ticket "subscribe แล้วแต่ไม่ได้ noti"
+
+**✅ การแก้ไข (working tree, 2026-05-30)**
+- Migration `20260530_push_subscriptions_last_used_at.sql`: เพิ่ม column `last_used_at timestamptz` + backfill ด้วย `created_at`
+- `app/api/push/subscribe/route.ts`: set `last_used_at = now()` ใน upsert
+- `lib/pushSender.ts`: collect `sentIds[]` แล้ว bulk-UPDATE `last_used_at = now()` หลัง send สำเร็จ
+- `app/api/cron/cleanup/route.ts`: เปลี่ยน filter จาก `created_at` → `last_used_at`, เปลี่ยนชื่อตัวแปร `cutoff60d` → `cutoff3mPush`
+- **ต้องรัน migration บน production ก่อน deploy** — cleanup route จะ error ถ้า column ยังไม่มี
 
 #### R7. Excel upload ไม่ guard ขนาดไฟล์ก่อน parse
 - **ไฟล์**: `app/api/shifts/upload/route.ts:104-109`

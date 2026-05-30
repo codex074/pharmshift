@@ -85,6 +85,7 @@ export async function sendPushToUser(
   let sent = 0;
   let failed = 0;
   const staleIds: string[] = [];
+  const sentIds: string[] = [];
 
   await limitedAllSettled(
     subscriptions,
@@ -105,6 +106,7 @@ export async function sendPushToUser(
           JSON.stringify(payload)
         );
         sent++;
+        sentIds.push(sub.id);
       } catch (err: any) {
         failed++;
         // 404 or 410 = subscription expired/invalid → cleanup
@@ -121,6 +123,14 @@ export async function sendPushToUser(
       .from('push_subscriptions')
       .delete()
       .in('id', staleIds);
+  }
+
+  // Refresh last_used_at for active subscriptions so cleanup doesn't purge them
+  if (sentIds.length > 0) {
+    await supabase
+      .from('push_subscriptions')
+      .update({ last_used_at: new Date().toISOString() })
+      .in('id', sentIds);
   }
 
   return { sent, failed };

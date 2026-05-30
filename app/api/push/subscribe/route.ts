@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
 
-    // Upsert — if same endpoint already exists, update keys
+    // Upsert — if same endpoint already exists, update keys + last_used_at
     const { error } = await supabase
       .from('push_subscriptions')
       .upsert(
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
           p256dh: subscription.keys.p256dh,
           auth: subscription.keys.auth,
           user_agent: userAgent || null,
+          last_used_at: new Date().toISOString(),
         },
         { onConflict: 'endpoint' }
       );

@@ -116,13 +116,14 @@ export async function GET(request: Request) {
   if (errAuditLogs) console.error('[cron/cleanup] audit_logs 3-month delete error:', errAuditLogs);
 
   // ── 8) Delete push_subscriptions inactive for 3 months ─────────────────
-  const cutoff60d = new Date();
-  cutoff60d.setMonth(cutoff60d.getMonth() - 3);
+  const cutoff3mPush = new Date();
+  cutoff3mPush.setMonth(cutoff3mPush.getMonth() - 3);
 
   const { error: errPush, count: countPush } = await supabase
     .from('push_subscriptions')
     .delete({ count: 'exact' })
-    .lt('created_at', cutoff60d.toISOString());
+    .not('last_used_at', 'is', null)
+    .lt('last_used_at', cutoff3mPush.toISOString());
 
   if (errPush) console.error('[cron/cleanup] push_subscriptions 60-day delete error:', errPush);
 
