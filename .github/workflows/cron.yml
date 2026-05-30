@@ -5,7 +5,7 @@ on:
     # ── Shift Reminders ────────────────────────────────────────
     # 23:00 UTC = 06:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
     - cron: '0 23 * * *'
-    # 09:00 UTC = 16:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
+    # 09:00 UTC = 16:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท) + เวรดึกคืนนี้
     - cron: '0 9 * * *'
     # ── Cleanup ────────────────────────────────────────────────
     # 21:00 UTC = 04:00 Bangkok  →  ลบข้อมูลเก่า
@@ -21,6 +21,7 @@ on:
         type: choice
         options:
           - reminders
+          - night-reminders
           - cleanup
           - all
 
@@ -61,6 +62,36 @@ jobs:
 
           if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
             echo "✅ Shift reminders ($RUN_TYPE) sent successfully"
+          else
+            echo "❌ Failed with status $RESPONSE"
+            exit 1
+          fi
+
+  # ─────────────────────────────────────────────────────────────
+  # แจ้งเตือนเวรดึกคืนนี้ (16:00 Bangkok)
+  # ─────────────────────────────────────────────────────────────
+  night-shift-reminders:
+    name: Night Shift Reminders
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' &&
+      (github.event.inputs.job == 'night-reminders' || github.event.inputs.job == 'all')
+      || (
+        github.event_name == 'schedule' &&
+        github.event.schedule == '0 9 * * *'
+      )
+    steps:
+      - name: Call night shift reminder API
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
+            -X GET "${{ secrets.APP_URL }}/api/cron/shift-reminders?run=night" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}")
+
+          echo "Run type : night"
+          echo "HTTP Status: $RESPONSE"
+
+          if [ "$RESPONSE" -ge 200 ] && [ "$RESPONSE" -lt 300 ]; then
+            echo "✅ Night shift reminders sent successfully"
           else
             echo "❌ Failed with status $RESPONSE"
             exit 1

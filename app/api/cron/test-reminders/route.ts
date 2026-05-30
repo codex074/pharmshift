@@ -6,9 +6,10 @@ import { getSession } from '@/lib/session';
 /**
  * Admin-only endpoint to trigger shift reminders manually for testing.
  * POST /api/cron/test-reminders
- * Body: { "run": "morning" | "evening" }
- *   morning = simulate 08:00 run (today's shifts, except รุ่งอรุณ)
- *   evening = simulate 18:00 run (tomorrow's shifts, all types)
+ * Body: { "run": "morning" | "evening" | "night" }
+ *   morning = simulate 06:00 run (today's shifts, except รุ่งอรุณ)
+ *   evening = simulate 16:00 run (tomorrow's shifts, all types)
+ *   night   = simulate 16:00 run (tonight's night shift only)
  */
 export async function POST(req: NextRequest) {
   // Auth check — admin only
@@ -18,7 +19,8 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json().catch(() => ({}));
-  const run: 'morning' | 'evening' = body.run === 'morning' ? 'morning' : 'evening';
+  const run: 'morning' | 'evening' | 'night' =
+    body.run === 'morning' || body.run === 'night' ? body.run : 'evening';
 
   // Call the real cron endpoint internally, passing testRun header
   const origin = req.headers.get('origin') ?? req.headers.get('host') ?? 'localhost:3000';

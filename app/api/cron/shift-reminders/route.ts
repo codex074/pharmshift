@@ -11,6 +11,7 @@ import { createClient } from '@supabase/supabase-js';
  * Schedule (GitHub Actions cron):
  *   1) 23:00 UTC  = 06:00 Bangkok  →  remind today's shifts (EXCEPT รุ่งอรุณ)
  *   2) 09:00 UTC  = 16:00 Bangkok  →  remind tomorrow's shifts (ALL including รุ่งอรุณ)
+ *   3) 09:00 UTC  = 16:00 Bangkok  →  remind tonight's night shift only
  *
  * Only notifies users whose shifts are in published months.
  */
@@ -72,26 +73,31 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseAdmin();
     const bkk = getBangkokNow();
-    // "run" param is set explicitly by GitHub Actions workflow (morning / evening).
+    // "run" param is set explicitly by GitHub Actions workflow (morning / evening / night).
     // "testRun" is the legacy admin-test override (same values).
     const runParam = req.nextUrl.searchParams.get('run')
       ?? req.nextUrl.searchParams.get('testRun')
       ?? req.headers.get('x-test-run');
 
-    if (runParam !== 'morning' && runParam !== 'evening') {
-      return NextResponse.json({ error: 'Missing required param: run=morning|evening' }, { status: 400 });
+    if (runParam !== 'morning' && runParam !== 'evening' && runParam !== 'night') {
+      return NextResponse.json({ error: 'Missing required param: run=morning|evening|night' }, { status: 400 });
     }
 
     // Determine which date and which shift types to remind
     let targetDate: string;
     let excludeDawn = false; // exclude รุ่งอรุณ?
     let timeLabel: string;
+    const isNightRun = runParam === 'night';
 
     if (runParam === 'morning') {
       // Morning run (06:00 BKK) → remind today's shifts, EXCEPT รุ่งอรุณ
       targetDate = `${bkk.year}-${String(bkk.month).padStart(2, '0')}-${String(bkk.day).padStart(2, '0')}`;
       excludeDawn = true;
       timeLabel = 'วันนี้';
+    } else if (runParam === 'night') {
+      // Night run (16:00 BKK) → remind tonight's night shift only
+      targetDate = `${bkk.year}-${String(bkk.month).padStart(2, '0')}-${String(bkk.day).padStart(2, '0')}`;
+      timeLabel = 'คืนนี้';
     } else {
       // Evening run (16:00 BKK) → remind tomorrow's shifts (ALL)
       const todayUTC = Date.UTC(bkk.year, bkk.month - 1, bkk.day);
@@ -137,6 +143,9 @@ export async function GET(req: NextRequest) {
     if (excludeDawn) {
       query = query.neq('shift_type', 'รุ่งอรุณ');
     }
+    if (isNightRun) {
+      query = query.eq('shift_type', 'ดึก');
+    }
 
     const { data: shifts, error: shiftsErr } = await query;
 
@@ -170,7 +179,7 @@ export async function GET(req: NextRequest) {
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
       const deptName = (s.department as any)?.name;
       const dept = deptName && deptName !== s.shift_type ? ` (${deptName})` : '';
-      const desc = `${label}${dept}`;
+      const desc = isNightRun ? 'เวรดึก' : `${label}${dept}`;
       const existing = userShifts.get(s.user_id) || [];
       existing.push(desc);
       userShifts.set(s.user_id, existing);
@@ -189,14 +198,16 @@ export async function GET(req: NextRequest) {
     let totalFailed = 0;
 
     const entries = Array.from(userShifts.entries());
-    const notifTitle = `⏰ ${timeLabel}คุณมีเวร`;
+    const notifTitle = isNightRun ? 'คืนนี้คุณมีเวรดึก' : `⏰ ${timeLabel}คุณมีเวร`;
+    const buildBody = (shiftDescs: string[]) =>
+      isNightRun ? 'คืนนี้คุณมีเวรดึก' : `${thaiDate} — ${shiftDescs.join(', ')}`;
 
     // Insert in-app notifications (จากระบบ) for all users at once
     const notifRows = entries.map(([userId, shiftDescs]) => ({
       user_id: userId,
       type: 'shift_reminder',
       title: notifTitle,
-      body: `${thaiDate} — ${shiftDescs.join(', ')}`,
+      body: buildBody(shiftDescs),
       url: '/calendar',
     }));
 
@@ -210,12 +221,11 @@ export async function GET(req: NextRequest) {
     // Send push notifications
     await Promise.allSettled(
       entries.map(async ([userId, shiftDescs]) => {
-        const shiftList = shiftDescs.join(', ');
         const payload: NotificationPayload = {
           title: notifTitle,
-          body: `${thaiDate} — ${shiftList}`,
+          body: buildBody(shiftDescs),
           url: '/calendar',
-          tag: `reminder-${targetDate}`,
+          tag: `reminder-${runParam}-${targetDate}`,
         };
 
         const result = await sendPushToUsers([userId], payload);
