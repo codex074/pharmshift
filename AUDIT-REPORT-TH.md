@@ -27,7 +27,7 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 | R5 | Cron cleanup รัน 2 ครั้ง/วัน + SELECT ไม่มี LIMIT | ✅ แก้แล้ว | this commit (2026-05-30) — ถอด Vercel cron, เพิ่ม RPC bounded chain cleanup, รัน migration RPC แล้ว |
 | R6 | Cron ลบ push subscription ที่ยังใช้งาน | ⬜ | — |
 | R7 | Excel upload ไม่ guard ขนาดไฟล์ | ✅ แก้แล้ว | this commit (2026-05-30) — ตรวจ `file.size > 3MB` และ extension ก่อน `arrayBuffer()`, เพิ่ม `maxDuration=60` |
-| R8 | Admin endpoint ดึงข้อมูลเกินจำเป็น | ⬜ | — |
+| R8 | Admin endpoint ดึงข้อมูลเกินจำเป็น | ✅ แก้แล้ว | this commit (2026-05-30) — เพิ่ม MAX_BATCH=500 ใน shifts/batch + shifts/owners, limit userIds ≤300 ใน notifications POST |
 | R9 | Web push fan-out ไม่จำกัด concurrency | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — จำกัด concurrency: users=20, subscriptions/user=10 |
 | R10 | VAPID config error → ทุก route 500 | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — lazy VAPID setup, config ผิดแล้วปิด push แบบ fail-soft |
 | R11 | Cron secret loophole + Vercel-cron ไม่ส่ง Bearer | ✅ แก้แล้ว | working tree (2026-05-30) — cron routes fail-closed เมื่อไม่มี `CRON_SECRET`, ใช้ GitHub Actions เป็น runner เดียว |

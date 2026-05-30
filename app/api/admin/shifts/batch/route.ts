@@ -149,6 +149,11 @@ export async function POST(req: NextRequest) {
         }))
       : [];
 
+    const MAX_BATCH = 500;
+    if (deleteIds.length + ownerEdits.length + adds.length > MAX_BATCH) {
+      return NextResponse.json({ error: 'Batch ใหญ่เกินไป' }, { status: 413 });
+    }
+
     if (ownerEdits.some((edit: any) => !edit.shift_id || !edit.user_id)) {
       return NextResponse.json({ error: 'Invalid owner edit payload' }, { status: 400 });
     }

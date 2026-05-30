@@ -51,6 +51,9 @@ export async function POST(req: NextRequest) {
       console.warn('[POST /api/notifications] Missing fields:', { ids: ids.length, type, title: !!title, body: !!body });
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
+    if (ids.length > 300) {
+      return NextResponse.json({ error: 'Too many recipients' }, { status: 413 });
+    }
 
     const supabase = getSupabaseAdmin();
     const rows = ids.map((uid) => ({ user_id: uid, type, title, body, url: url || '/calendar' }));

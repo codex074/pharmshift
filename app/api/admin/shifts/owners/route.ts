@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(edits) || edits.length === 0) {
       return NextResponse.json({ error: 'edits is required' }, { status: 400 });
     }
+    if (edits.length > 500) {
+      return NextResponse.json({ error: 'Batch ใหญ่เกินไป' }, { status: 413 });
+    }
 
     const normalized = edits.map((edit: OwnerEditPayload) => ({
       shift_id: edit.shiftId,
