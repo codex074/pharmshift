@@ -31,7 +31,7 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 | R9 | Web push fan-out ไม่จำกัด concurrency | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — จำกัด concurrency: users=20, subscriptions/user=10 |
 | R10 | VAPID config error → ทุก route 500 | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — lazy VAPID setup, config ผิดแล้วปิด push แบบ fail-soft |
 | R11 | Cron secret loophole + Vercel-cron ไม่ส่ง Bearer | ✅ แก้แล้ว | working tree (2026-05-30) — cron routes fail-closed เมื่อไม่มี `CRON_SECRET`, ใช้ GitHub Actions เป็น runner เดียว |
-| R12 | Realtime channel ไม่ filter server-side | ✅ แก้แล้ว | working tree (2026-05-30) — แยก `.on()` 2 ครั้งด้วย server-side filter per userId |
+| R12 | Realtime channel ไม่ filter server-side | ✅ แก้แล้ว | `95ab492` (2026-05-30) — แยก `.on()` 2 ครั้งด้วย server-side filter per userId |
 
 ### P2 (Medium/Low)
 | ID | ความเสี่ยง | สถานะ | Commit / Note |
@@ -184,7 +184,7 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 - **อาการ**: client ทุกคน subscribe ทุก event ของ `swap_requests` แล้วกรอง JS-side → เกิน 75 user online concurrent (× 3 channel = 225 conn) จะชนเพดาน 200 connection ของ Supabase Free + กิน message budget ฟรี ๆ
 - **Symptom**: Realtime quota หมด (Supabase dashboard "Realtime messages"), UI update flaky
 
-**✅ การแก้ไข (working tree, 2026-05-30)**
+**✅ การแก้ไข (commit `95ab492`, 2026-05-30)**
 - แยก `.on()` 2 ครั้งบน channel เดียวกัน: filter `requester_id=eq.${userId}` และ `target_user_id=eq.${userId}`
 - ลบ JS-side `isRelevant` guard ออก (server filter รับประกันความถูกต้องแล้ว)
 - Callback สกัดออกเป็น `handleSwapChange` เพื่อไม่ต้องซ้ำ code
