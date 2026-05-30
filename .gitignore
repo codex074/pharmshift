@@ -30,3 +30,4 @@ public/workbox-*.js.map
 public/fallback-*.js
 AUDIT-REPORT-TH.md
 user.json
+holidays.json
