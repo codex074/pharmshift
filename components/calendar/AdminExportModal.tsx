@@ -23,7 +23,7 @@ const EXPORT_TYPES: { id: ExportType; label: string; desc: string; icon: string;
   {
     id: 'compensation',
     label: 'หลักฐานค่าตอบแทน',
-    desc: 'ใช้ชื่อปัจจุบัน (หลังแลกเวร)',
+    desc: 'ใช้ชื่อปัจจุบัน (หลังแลกเวร) — เฉพาะคนที่มีเวร',
     icon: '💰',
     color: 'bg-emerald-50 border-emerald-300 text-emerald-800',
   },
@@ -37,7 +37,7 @@ const EXPORT_TYPES: { id: ExportType; label: string; desc: string; icon: string;
   {
     id: 'evidence',
     label: 'หลักฐานการจัดตารางเวร',
-    desc: 'ใช้ชื่อเดิม (ก่อนแลกเวร) — รูปแบบค่าตอบแทน',
+    desc: 'ใช้ชื่อเดิม (ก่อนแลกเวร) — ทุกคนที่ Active และไม่ Read-only',
     icon: '📋',
     color: 'bg-violet-50 border-violet-300 text-violet-800',
   },
@@ -54,6 +54,11 @@ function getPrevMonthLastDayNightShiftDate(year: number, month: number) {
   const prevYear = month === 1 ? year - 1 : year;
   const lastDayOfPrevMonth = new Date(year, month - 1, 0).getDate();
   return `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDayOfPrevMonth).padStart(2, '0')}`;
+}
+
+function getShiftRoleForExport(shift: any, exportType: ExportType) {
+  if (exportType === 'compensation') return shift.user?.role;
+  return shift.original_user?.role || shift.user?.role;
 }
 
 export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) {
@@ -119,19 +124,36 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
 
       // กรอง role ตามที่เลือก
       const filteredShifts = hasRoleFilter
-        ? currentMonthShifts.filter((s: any) => selectedRoles.has(s.user?.role))
+        ? currentMonthShifts.filter((s: any) => selectedRoles.has(getShiftRoleForExport(s, selected)))
         : currentMonthShifts;
       const filteredPrevDukShifts = hasRoleFilter
-        ? prevDukShifts.filter((s: any) => selectedRoles.has(s.user?.role))
+        ? prevDukShifts.filter((s: any) => selectedRoles.has(getShiftRoleForExport(s, selected)))
         : prevDukShifts;
       const exportShifts = [...(filteredShifts as any[]), ...filteredPrevDukShifts];
 
-      if (!exportShifts.length) {
+      if (!exportShifts.length && selected !== 'evidence') {
         throw new Error(hasRoleFilter ? 'ไม่พบข้อมูลเวรของ Role ที่เลือกในเดือนนี้' : 'ไม่พบข้อมูลเวรในเดือนที่ระบุ');
       }
 
       if (selected === 'compensation') {
         await exportCompensationExcel(exportShifts as any, year, month);
+      } else if (selected === 'evidence') {
+        const { data: eligibleUsersData, error: eligibleUsersError } = await supabase
+          .from('users')
+          .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname, is_active, is_readonly')
+          .in('role', Array.from(selectedRoles));
+
+        if (eligibleUsersError) throw new Error('ไม่สามารถดึงรายชื่อผู้ใช้ได้');
+
+        const eligibleUsers = (eligibleUsersData || []).filter((user: any) =>
+          user.is_active !== false && user.is_readonly !== true
+        );
+
+        if (!eligibleUsers.length) {
+          throw new Error('ไม่พบผู้ใช้ Active ที่ไม่ใช่ Read-only ใน Role ที่เลือก');
+        }
+
+        await exportEvidenceExcel(exportShifts as any, eligibleUsers, year, month);
       } else {
         const userIds = new Set<string>();
         exportShifts.forEach((s: any) => {
@@ -139,21 +161,12 @@ export function AdminExportModal({ onClose, defaultMonth, defaultYear }: Props) 
           if (s.original_user_id) userIds.add(s.original_user_id);
         });
 
-        const { data: usersData } = await supabase
+        const { data: signSheetUsersData } = await supabase
           .from('users')
           .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
           .in('id', Array.from(userIds));
 
-        if (selected === 'sign-sheet') {
-          const { data: allUsersData } = await supabase
-            .from('users')
-            .select('id, f_name, l_name, prefix, role, pha_id, salary_number, nickname')
-            .in('id', Array.from(userIds));
-
-          await exportSignSheet(exportShifts, allUsersData || [], year, month);
-        } else {
-          await exportEvidenceExcel(exportShifts as any, usersData || [], year, month);
-        }
+        await exportSignSheet(exportShifts, signSheetUsersData || [], year, month);
       }
 
       const typeLabel =

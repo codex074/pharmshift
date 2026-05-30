@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, CalendarClock, CheckCircle2, Database, Loader2, RefreshCcw, Search, UserRound } from 'lucide-react';
+import { Activity, AlertCircle, CalendarClock, CheckCircle2, Database, Loader2, RefreshCcw, Search, UserRound, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
-import type { UserRole } from '@/lib/types';
+import { ROLE_LABELS, type UserRole } from '@/lib/types';
 
 type AuditLog = {
   id: string;
@@ -27,6 +27,14 @@ const ACTION_OPTIONS = [
   { value: 'request_cover', label: 'ขออยู่แทน' },
   { value: 'request_transfer', label: 'โอนเวร' },
   { value: 'export_report', label: 'ดึงรายงาน' },
+];
+
+const ROLE_OPTIONS: Array<{ value: UserRole | 'all'; label: string }> = [
+  { value: 'all', label: 'ทุก role' },
+  { value: 'pharmacist', label: ROLE_LABELS.pharmacist },
+  { value: 'pharmacy_technician', label: ROLE_LABELS.pharmacy_technician },
+  { value: 'officer', label: ROLE_LABELS.officer },
+  { value: 'admin', label: ROLE_LABELS.admin },
 ];
 
 const ACTION_LABELS: Record<string, string> = {
@@ -51,6 +59,13 @@ function formatDate(value: string) {
 
 function actionLabel(action: string) {
   return ACTION_LABELS[action] || action;
+}
+
+function localDateBoundaryIso(value: string, boundary: 'start' | 'end') {
+  if (!value) return null;
+  const date = new Date(`${value}T${boundary === 'start' ? '00:00:00.000' : '23:59:59.999'}`);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
 }
 
 function logSentence(log: AuditLog) {
@@ -88,6 +103,9 @@ export function AdminAuditLogModal() {
   const [error, setError] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [action, setAction] = useState('all');
+  const [role, setRole] = useState<UserRole | 'all'>('all');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [search, setSearch] = useState('');
 
   async function fetchLogs(reset = false) {
@@ -96,7 +114,14 @@ export function AdminAuditLogModal() {
     setError(null);
 
     try {
-      const params = new URLSearchParams({ limit: '50', action });
+      const params = new URLSearchParams({ limit: '50' });
+      const fromIso = localDateBoundaryIso(dateFrom, 'start');
+      const toIso = localDateBoundaryIso(dateTo, 'end');
+
+      if (action !== 'all') params.set('action', action);
+      if (role !== 'all') params.set('role', role);
+      if (fromIso) params.set('from', fromIso);
+      if (toIso) params.set('to', toIso);
       if (cursor) params.set('cursor', cursor);
       const res = await fetch(`/api/admin/audit-logs?${params.toString()}`);
       const data = await res.json();
@@ -115,7 +140,7 @@ export function AdminAuditLogModal() {
   useEffect(() => {
     fetchLogs(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [action]);
+  }, [action, role, dateFrom, dateTo]);
 
   const filteredLogs = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -126,11 +151,22 @@ export function AdminAuditLogModal() {
         log.description || '',
         logSentence(log),
         actionLabel(log.action),
+        log.actor_role ? ROLE_LABELS[log.actor_role] : '',
         formatDate(log.created_at),
       ].join(' ').toLowerCase();
       return haystack.includes(q);
     });
   }, [logs, search]);
+
+  const hasActiveFilters = Boolean(action !== 'all' || role !== 'all' || dateFrom || dateTo || search.trim());
+
+  function clearFilters() {
+    setAction('all');
+    setRole('all');
+    setDateFrom('');
+    setDateTo('');
+    setSearch('');
+  }
 
   return (
     <div className="flex h-full min-h-[520px] flex-col bg-white">
@@ -156,7 +192,7 @@ export function AdminAuditLogModal() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[1fr_220px] gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_180px_180px] gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
@@ -173,6 +209,48 @@ export function AdminAuditLogModal() {
           >
             {ACTION_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
+          <select
+            value={role}
+            onChange={(event) => setRole(event.target.value as UserRole | 'all')}
+            className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+          >
+            {ROLE_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[180px_180px_auto] gap-2">
+          <label className="space-y-1">
+            <span className="text-[11px] font-semibold text-gray-500">ตั้งแต่วันที่</span>
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || undefined}
+              onChange={(event) => setDateFrom(event.target.value)}
+              className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </label>
+          <label className="space-y-1">
+            <span className="text-[11px] font-semibold text-gray-500">ถึงวันที่</span>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom || undefined}
+              onChange={(event) => setDateTo(event.target.value)}
+              className="w-full h-10 rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-indigo-200"
+            />
+          </label>
+          {hasActiveFilters && (
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="h-10 rounded-xl border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+              >
+                <X className="w-3.5 h-3.5" />
+                ล้างตัวกรอง
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

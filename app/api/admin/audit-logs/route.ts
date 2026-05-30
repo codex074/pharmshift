@@ -35,10 +35,33 @@ type AuditLogResponse = {
   created_at: string;
 };
 
+const ROLE_VALUES: UserRole[] = ['pharmacist', 'pharmacy_technician', 'officer', 'admin'];
+
 function parseLimit(value: string | null) {
   const parsed = Number(value || 50);
   if (!Number.isFinite(parsed)) return 50;
   return Math.max(10, Math.min(100, Math.floor(parsed)));
+}
+
+function isUserRole(value: string): value is UserRole {
+  return ROLE_VALUES.includes(value as UserRole);
+}
+
+function parseDateFilter(value: string | null) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
+
+async function getActorIdsForRole(role: UserRole) {
+  const { data, error } = await supa
+    .from('users')
+    .select('id')
+    .eq('role', role);
+
+  if (error) throw error;
+  return (data || []).map((user: any) => user.id).filter(Boolean) as string[];
 }
 
 function normalizeLegacyAction(row: LegacyAuditRow) {
@@ -101,7 +124,31 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const limit = parseLimit(searchParams.get('limit'));
     const action = searchParams.get('action');
+    const roleParam = searchParams.get('role');
     const cursor = searchParams.get('cursor');
+    const fromParam = searchParams.get('from');
+    const toParam = searchParams.get('to');
+    const from = parseDateFilter(fromParam);
+    const to = parseDateFilter(toParam);
+
+    if (roleParam && roleParam !== 'all' && !isUserRole(roleParam)) {
+      return NextResponse.json({ error: 'ตัวกรอง role ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    if ((fromParam && !from) || (toParam && !to)) {
+      return NextResponse.json({ error: 'ตัวกรองวันที่ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    if (from && to && new Date(from).getTime() > new Date(to).getTime()) {
+      return NextResponse.json({ error: 'ช่วงวันที่ไม่ถูกต้อง' }, { status: 400 });
+    }
+
+    const role: UserRole | null = roleParam && roleParam !== 'all' ? (roleParam as UserRole) : null;
+    const actorIds = role ? await getActorIdsForRole(role) : null;
+
+    if (role && actorIds?.length === 0) {
+      return NextResponse.json({ logs: [], nextCursor: null });
+    }
 
     let simpleQuery = supa
       .from('audit_logs')
@@ -110,6 +157,9 @@ export async function GET(req: NextRequest) {
       .limit(limit + 1);
 
     if (action && action !== 'all') simpleQuery = simpleQuery.eq('action', action);
+    if (actorIds) simpleQuery = simpleQuery.in('actor_user_id', actorIds);
+    if (from) simpleQuery = simpleQuery.gte('created_at', from);
+    if (to) simpleQuery = simpleQuery.lte('created_at', to);
     if (cursor) simpleQuery = simpleQuery.lt('created_at', cursor);
 
     const simpleResult = await simpleQuery;
@@ -134,6 +184,9 @@ export async function GET(req: NextRequest) {
       .limit(limit + 1);
 
     if (cursor) legacyQuery = legacyQuery.lt('created_at', cursor);
+    if (actorIds) legacyQuery = legacyQuery.in('actor_user_id', actorIds);
+    if (from) legacyQuery = legacyQuery.gte('created_at', from);
+    if (to) legacyQuery = legacyQuery.lte('created_at', to);
 
     const legacyResult = await legacyQuery;
     if (legacyResult.error) throw simpleResult.error;
@@ -152,6 +205,10 @@ export async function GET(req: NextRequest) {
 
     if (action && action !== 'all') {
       logs = logs.filter((row) => row.action === action);
+    }
+
+    if (role) {
+      logs = logs.filter((row) => row.actor_role === role);
     }
 
     const hasMore = logs.length > limit;

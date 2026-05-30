@@ -115,14 +115,47 @@ interface UserRowData {
   totalAmount: number;
 }
 
+type ExportUserInfo = {
+  id: string;
+  f_name: string;
+  l_name: string;
+  prefix: string;
+  role: string;
+  pha_id: string | number;
+  salary_number: string;
+  nickname: string;
+  is_active?: boolean;
+  is_readonly?: boolean;
+};
+
+function buildUserRowData(user: ExportUserInfo): UserRowData {
+  const phaIdRaw = user.pha_id ?? 0;
+  const phaId = typeof phaIdRaw === 'number'
+    ? phaIdRaw
+    : parseInt(String(phaIdRaw).replace(/\D/g, ''), 10) || 0;
+
+  return {
+    userId: user.id,
+    firstName: `${user.prefix || ''}${user.f_name || ''}`.trim() || user.nickname || 'ไม่ทราบชื่อ',
+    lastName: user.l_name || '',
+    salaryNumber: user.salary_number || '',
+    role: user.role || 'pharmacist',
+    phaId,
+    days: {},
+    totalValue: 0,
+    totalAmount: 0,
+  };
+}
+
 export async function exportEvidenceExcel(
   shifts: Shift[],
-  users: Array<{ id: string; f_name: string; l_name: string; prefix: string; role: string; pha_id: string | number; salary_number: string; nickname: string }>,
+  users: ExportUserInfo[],
   year: number,
   month: number
 ) {
   // Build usersMap for quick lookup
   const usersMap = new Map(users.map((u) => [u.id, u]));
+  const evidenceUserIds = new Set(users.map((u) => u.id));
 
   // Resolve original user: prefer user_snapshot (historical), fallback to usersMap
   const resolvedShifts: Shift[] = shifts.map((s) => {
@@ -162,12 +195,18 @@ export async function exportEvidenceExcel(
         nickname: origUser.nickname,
       } as any,
     };
-  });
+  }).filter((s) => !!s.user_id && evidenceUserIds.has(s.user_id));
 
-  await exportCompensationExcel(resolvedShifts, year, month, true);
+  await exportCompensationExcel(resolvedShifts, year, month, true, users);
 }
 
-export async function exportCompensationExcel(shifts: Shift[], year: number, month: number, isEvidence = false) {
+export async function exportCompensationExcel(
+  shifts: Shift[],
+  year: number,
+  month: number,
+  isEvidence = false,
+  evidenceUsers: ExportUserInfo[] = [],
+) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'NTogether';
   workbook.created = new Date();
@@ -247,6 +286,11 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
     // 1. Process Data
     const relevantShifts = shifts.filter(config.filter);
     const userMap = new Map<string, UserRowData>();
+    if (isEvidence) {
+      evidenceUsers.forEach((user) => {
+        userMap.set(user.id, buildUserRowData(user));
+      });
+    }
 
     for (const s of relevantShifts) {
       if (!s.user_id) continue;
@@ -298,7 +342,7 @@ export async function exportCompensationExcel(shifts: Shift[], year: number, mon
 
     const roleOrder: Record<string, number> = { pharmacist: 0, pharmacy_technician: 1, officer: 2 };
     const rowsData = Array.from(userMap.values())
-      .filter(u => u.totalValue > 0)
+      .filter(u => isEvidence || u.totalValue > 0)
       .sort((a, b) => {
         const roleDiff = (roleOrder[a.role] ?? 3) - (roleOrder[b.role] ?? 3);
         if (roleDiff !== 0) return roleDiff;
