@@ -28,3 +28,4 @@ dist-ssr
 public/workbox-*.js
 public/workbox-*.js.map
 public/fallback-*.js
+AUDIT-REPORT-TH.md
