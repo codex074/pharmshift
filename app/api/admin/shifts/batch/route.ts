@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
 import { writeAuditLogs } from '@/lib/auditLog';
+import { hashPassword, shouldRehashPassword, verifyPassword } from '@/lib/password';
 import {
   AFTERNOON_MED_SLOT_FULL_MESSAGE,
   DUPLICATE_SHIFT_MESSAGE,
@@ -107,6 +108,28 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
+    const adminPassword = typeof body.adminPassword === 'string' ? body.adminPassword : '';
+    if (!adminPassword) {
+      return NextResponse.json({ error: 'กรุณากรอกรหัสผ่านเพื่อยืนยัน' }, { status: 400 });
+    }
+
+    const { data: adminUser, error: adminPasswordError } = await supa
+      .from('users')
+      .select('id, password')
+      .eq('id', session.id)
+      .single();
+
+    if (adminPasswordError || !adminUser || !(await verifyPassword(adminPassword, adminUser.password))) {
+      return NextResponse.json({ error: 'รหัสผ่านไม่ถูกต้อง' }, { status: 403 });
+    }
+
+    if (await shouldRehashPassword(adminUser.password)) {
+      await supa
+        .from('users')
+        .update({ password: await hashPassword(adminPassword) })
+        .eq('id', session.id);
+    }
+
     const deleteIds = Array.isArray(body.deleteIds) ? body.deleteIds.filter(Boolean) : [];
     const ownerEdits = Array.isArray(body.ownerEdits)
       ? body.ownerEdits.map((edit: OwnerEditPayload) => ({

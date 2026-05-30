@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
+import { hashPassword } from '@/lib/password';
 
 export async function POST(req: NextRequest) {
   try {
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     const { error } = await supabase
       .from('users')
       .update({
-        password: defaultPassword,
+        password: await hashPassword(defaultPassword),
         must_change_password: true,
       })
       .eq('id', userId);

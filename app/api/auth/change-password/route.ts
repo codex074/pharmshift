@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { getSession, createSession } from '@/lib/session';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { isMobileUserAgent } from '@/lib/deviceDetection';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 export async function POST(request: Request) {
   try {
@@ -29,15 +30,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 });
     }
 
-    if (existingUser.password !== oldPassword) {
+    if (!(await verifyPassword(oldPassword, existingUser.password))) {
       return NextResponse.json({ error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 401 });
     }
     
-    // Update the password directly
     const { data: user, error } = await supabase
       .from('users')
       .update({
-        password: password,
+        password: await hashPassword(password),
         must_change_password: false,
       })
       .eq('id', session.id)

@@ -5,6 +5,7 @@ import { createSupabaseServer } from '@/lib/supabaseServer';
 import { createSession } from '@/lib/session';
 import { isMobileUserAgent } from '@/lib/deviceDetection';
 import { writeAuditLog } from '@/lib/auditLog';
+import { hashPassword, shouldRehashPassword, verifyPassword } from '@/lib/password';
 
 const LOGIN_WINDOW_MINUTES = 15;
 const MAX_ATTEMPTS_PER_USER = 5;
@@ -93,8 +94,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
-    // Checking the password directly with text equality
-    if (user.password !== password) {
+    const passwordValid = await verifyPassword(password, user.password);
+    if (!passwordValid) {
       await recordFailedLogin(loginAttemptClient, normalizedPhaId, ip);
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
@@ -102,6 +103,13 @@ export async function POST(request: Request) {
     // Block disabled accounts
     if (user.is_active === false) {
       return NextResponse.json({ error: 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ' }, { status: 403 });
+    }
+
+    if (await shouldRehashPassword(user.password)) {
+      await loginAttemptClient
+        .from('users')
+        .update({ password: await hashPassword(password) })
+        .eq('id', user.id);
     }
 
     // Set the custom auth token cookie

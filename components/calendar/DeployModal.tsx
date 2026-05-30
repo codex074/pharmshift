@@ -9,6 +9,7 @@ import { th } from 'date-fns/locale';
 import { ROLE_LABELS, STAFF_ROLES, UserRole, isAdminLike, isAdmin } from '@/lib/types';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { postAuditLog } from '@/lib/auditLogClient';
+import { verifyCurrentPassword } from '@/lib/clientAuth';
 
 interface DeployModalProps {
   initialYear: number;
@@ -103,16 +104,14 @@ export function DeployModal({ initialYear, initialMonth, currentUser, onClose, o
       toast.error('กรุณากรอกรหัสผ่านเพื่อยืนยัน');
       return;
     }
-    if (currentUser?.password && currentUser.password !== password) {
-      toast.error('รหัสผ่านไม่ถูกต้อง');
-      return;
-    }
 
     setLoading(true);
     setErrorDesc('');
     setSuccessMsg('');
 
     try {
+      await verifyCurrentPassword(password);
+
       const monthYear = format(new Date(year, month - 1), 'yyyy-MM');
 
       const updatePayload: any = {

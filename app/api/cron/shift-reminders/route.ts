@@ -57,10 +57,17 @@ const SHIFT_TYPE_LABELS: Record<string, string> = {
 
 export async function GET(req: NextRequest) {
   try {
-    // Verify cron secret (Vercel sets this automatically for cron jobs)
+    // Verify cron secret. GitHub Actions sends this as a Bearer token.
     const authHeader = req.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}` && process.env.NODE_ENV === 'production') {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const cronSecret = process.env.CRON_SECRET;
+    if (process.env.NODE_ENV === 'production') {
+      if (!cronSecret) {
+        console.error('[cron/shift-reminders] CRON_SECRET is not configured');
+        return NextResponse.json({ error: 'Cron secret is not configured' }, { status: 500 });
+      }
+      if (authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     const supabase = getSupabaseAdmin();

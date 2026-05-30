@@ -7,6 +7,7 @@ import { Download, Trash2, Eye, EyeOff, Loader2, AlertTriangle, CheckCircle2, Da
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { verifyCurrentPassword } from '@/lib/clientAuth';
 import type { User } from '@/lib/types';
 
 interface AdminBackupModalProps {
@@ -173,11 +174,10 @@ export function AdminBackupModal({ currentUser }: AdminBackupModalProps) {
   // ── Delete ───────────────────────────────────────────────────────────
   async function handleDelete() {
     if (!deletePassword) { toast.error('กรุณากรอกรหัสผ่าน'); return; }
-    if (currentUser?.password && currentUser.password !== deletePassword) {
-      toast.error('รหัสผ่านไม่ถูกต้อง'); return;
-    }
     setDeleteLoading(true);
     try {
+      await verifyCurrentPassword(deletePassword);
+
       let label = '';
 
       if (deleteMode === 'shifts-month') {

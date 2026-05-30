@@ -10,6 +10,7 @@ import type { Shift, ShiftType, User } from '@/lib/types';
 import { userFullName, userDisplayName } from '@/lib/types';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { shiftsOverlap } from '@/lib/utils';
+import { verifyCurrentPassword } from '@/lib/clientAuth';
 import type { PendingAdd } from './AdminAddShiftModal';
 
 async function pushAdminChange(userIds: string[], title: string, body: string) {
@@ -103,6 +104,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
           originalUserId: isPublished(add.month_year, add.user.role as any) ? add.user.id : null,
           monthYear: add.month_year,
         })),
+        adminPassword: password,
       }),
     });
 
@@ -113,14 +115,19 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
   async function handleConfirm() {
     if (loadingRef.current) return;
     if (!password) { toastError('กรุณากรอกรหัสผ่าน'); return; }
-    if (currentUser?.password && currentUser.password !== password) {
-      toastError('รหัสผ่านไม่ถูกต้อง'); return;
-    }
     loadingRef.current = true;
     setLoading(true);
     const now = new Date();
     const timestamp = `วันที่ ${format(now, 'd MMM', { locale: th })} ${(now.getFullYear() + 543).toString().slice(-2)} เวลา ${format(now, 'HH:mm')} น.`;
     const adminName = currentUser?.f_name || 'ผู้ดูแลระบบ';
+    try {
+      await verifyCurrentPassword(password);
+    } catch (err: any) {
+      toastError(err.message || 'รหัสผ่านไม่ถูกต้อง');
+      loadingRef.current = false;
+      setLoading(false);
+      return;
+    }
     /** Format shift date "2025-03-20" → "20 มี.ค." */
     const fmtDate = (d: string) => {
       try { return format(new Date(d + 'T00:00'), 'd MMM', { locale: th }); }

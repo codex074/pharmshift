@@ -1,21 +1,37 @@
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Secured by CRON_SECRET — set this in Vercel Environment Variables
-export async function GET(request: Request) {
-  const authHeader = request.headers.get('authorization');
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const supabase = createClient(
+function getSupabaseAdmin() {
+  return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
   );
+}
+
+function verifyCronRequest(request: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) {
+    console.error('[cron/cleanup] CRON_SECRET is not configured');
+    return NextResponse.json({ error: 'Cron secret is not configured' }, { status: 500 });
+  }
+
+  const authHeader = request.headers.get('authorization');
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  return null;
+}
+
+export async function GET(request: Request) {
+  const startedAt = Date.now();
+  const authError = verifyCronRequest(request);
+  if (authError) return authError;
+
+  const supabase = getSupabaseAdmin();
 
   // ── 1) Delete swap_requests older than 3 months ────────────────────────
   const cutoff3mSwap = new Date();
@@ -47,42 +63,13 @@ export async function GET(request: Request) {
   // All intermediate hops are deleted to save space.
   let countChain = 0;
 
-  const { data: accepted, error: errFetch } = await supabase
-    .from('swap_requests')
-    .select('id, shift_id, created_at')
-    .eq('status', 'accepted')
-    .order('created_at', { ascending: true }); // oldest first
+  const { data: chainDeleted, error: errChain } = await supabase
+    .rpc('cleanup_swap_request_chain_hops', { p_limit: 1000 });
 
-  if (errFetch) {
-    console.error('[cron/cleanup] fetch accepted error:', errFetch);
-  } else if (accepted && accepted.length > 0) {
-    // Group by shift_id
-    const byShift = new Map<string, { id: string; created_at: string }[]>();
-    for (const req of accepted) {
-      if (!byShift.has(req.shift_id)) byShift.set(req.shift_id, []);
-      byShift.get(req.shift_id)!.push({ id: req.id, created_at: req.created_at });
-    }
-
-    const keepIds = new Set<string>();
-    byShift.forEach((reqs) => {
-      // Keep first (oldest) and last (newest) — delete everything in between
-      keepIds.add(reqs[0].id);
-      keepIds.add(reqs[reqs.length - 1].id);
-    });
-
-    const idsToDelete = accepted
-      .filter(r => !keepIds.has(r.id))
-      .map(r => r.id);
-
-    if (idsToDelete.length > 0) {
-      const { error: errChain, count } = await supabase
-        .from('swap_requests')
-        .delete({ count: 'exact' })
-        .in('id', idsToDelete);
-
-      if (errChain) console.error('[cron/cleanup] chain delete error:', errChain);
-      else countChain = count ?? 0;
-    }
+  if (errChain) {
+    console.error('[cron/cleanup] chain-hop RPC error:', errChain);
+  } else {
+    countChain = Number(chainDeleted ?? 0);
   }
 
   // ── 4) Delete shift_reminder notifications older than 12 hours ─────────
@@ -149,6 +136,7 @@ export async function GET(request: Request) {
 
   return NextResponse.json({
     ok: true,
+    durationMs: Date.now() - startedAt,
     deleted_swap_requests_4w:       count4w      ?? 0,
     deleted_swap_requests_rejected: count48h     ?? 0,
     deleted_chain_hops:             countChain,

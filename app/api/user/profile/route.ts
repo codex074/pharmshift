@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
+import { hashPassword, verifyPassword } from '@/lib/password';
 
 export async function PUT(req: NextRequest) {
   try {
@@ -11,7 +12,7 @@ export async function PUT(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { prefix, f_name, l_name, nickname, password, salary_number } = body;
+    const { prefix, f_name, l_name, nickname, password, oldPassword, salary_number } = body;
 
     if (!f_name || !l_name || !nickname) {
       return NextResponse.json({ error: 'Missing required fields (f_name, l_name, nickname)' }, { status: 400 });
@@ -28,7 +29,25 @@ export async function PUT(req: NextRequest) {
     };
 
     if (password && password.trim() !== '') {
-      updatePayload.password = password.trim();
+      if (!oldPassword || typeof oldPassword !== 'string') {
+        return NextResponse.json({ error: 'กรุณากรอกรหัสผ่านปัจจุบัน' }, { status: 400 });
+      }
+
+      const { data: existingUser, error: readError } = await supabase
+        .from('users')
+        .select('id, password')
+        .eq('id', session.id)
+        .single();
+
+      if (readError || !existingUser) {
+        return NextResponse.json({ error: 'ไม่พบผู้ใช้' }, { status: 404 });
+      }
+
+      if (!(await verifyPassword(oldPassword, existingUser.password))) {
+        return NextResponse.json({ error: 'รหัสผ่านปัจจุบันไม่ถูกต้อง' }, { status: 401 });
+      }
+
+      updatePayload.password = await hashPassword(password.trim());
     }
 
     const { error } = await supabase

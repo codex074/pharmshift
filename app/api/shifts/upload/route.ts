@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import { hashPassword, shouldRehashPassword, verifyPassword } from '@/lib/password';
 import {
   AFTERNOON_MED_SLOT_FULL_MESSAGE,
   afternoonMedSlotKey,
@@ -173,8 +174,14 @@ export async function POST(req: NextRequest) {
         .eq('id', session.id)
         .single();
 
-      if (adminErr || !adminUser || adminUser.password !== adminPassword) {
+      if (adminErr || !adminUser || !(await verifyPassword(adminPassword, adminUser.password))) {
         return NextResponse.json({ error: 'รหัสผ่าน Admin ไม่ถูกต้อง' }, { status: 403 });
+      }
+      if (await shouldRehashPassword(adminUser.password)) {
+        await supabase
+          .from('users')
+          .update({ password: await hashPassword(adminPassword) })
+          .eq('id', session.id);
       }
       // Password verified — DELETE will run after we confirm the Excel has valid data
     }

@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
+import { hashPassword } from '@/lib/password';
 
 export async function GET() {
   try {
@@ -65,7 +66,7 @@ export async function POST(req: NextRequest) {
         role,
         is_sub_admin: role === 'admin' ? false : (is_sub_admin ?? false),
         is_active: true,
-        password: '1234',
+        password: await hashPassword('1234'),
         must_change_password: true,
       })
       .select('id, pha_id, f_name, l_name')

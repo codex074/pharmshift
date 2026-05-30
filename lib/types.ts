@@ -25,7 +25,6 @@ export interface User {
   is_active?: boolean;         // false = blocked from login (left org)
   is_readonly?: boolean;       // true = can login & view but cannot be assigned shifts or swap
   profile_image?: 'male' | 'female';
-  password?: string;           // plain-text copy stored in DB
   must_change_password?: boolean;
   salary_number?: string;
   created_at?: string;
