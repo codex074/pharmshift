@@ -320,6 +320,7 @@ Cron behavior:
 
 ## License And Credits
 
-No license file is present in the repository.
+© 2026 Ph.D. Teeradet Wichai  
+Pharmacy Department, Uttaradit Hospital
 
-The app metadata and user guide identify the project as an internal scheduling system for the Pharmacy Department at Uttaradit Hospital.
+All rights reserved. This software is developed for internal use by the Pharmacy Department, Uttaradit Hospital. Unauthorized reproduction or distribution is prohibited.
