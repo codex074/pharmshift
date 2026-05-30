@@ -26,7 +26,7 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 |---|---|---|---|
 | R5 | Cron cleanup รัน 2 ครั้ง/วัน + SELECT ไม่มี LIMIT | ✅ แก้แล้ว | this commit (2026-05-30) — ถอด Vercel cron, เพิ่ม RPC bounded chain cleanup, รัน migration RPC แล้ว |
 | R6 | Cron ลบ push subscription ที่ยังใช้งาน | ⬜ | — |
-| R7 | Excel upload ไม่ guard ขนาดไฟล์ | ⬜ | — |
+| R7 | Excel upload ไม่ guard ขนาดไฟล์ | ✅ แก้แล้ว | this commit (2026-05-30) — ตรวจ `file.size > 3MB` และ extension ก่อน `arrayBuffer()`, เพิ่ม `maxDuration=60` |
 | R8 | Admin endpoint ดึงข้อมูลเกินจำเป็น | ⬜ | — |
 | R9 | Web push fan-out ไม่จำกัด concurrency | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — จำกัด concurrency: users=20, subscriptions/user=10 |
 | R10 | VAPID config error → ทุก route 500 | ✅ แก้แล้ว | `4bab36a` (2026-05-30) — lazy VAPID setup, config ผิดแล้วปิด push แบบ fail-soft |
@@ -138,6 +138,12 @@ Legend: ✅ แก้แล้ว · 🟡 แก้แล้วบางส่�
 - **ไฟล์**: `app/api/shifts/upload/route.ts:104-109`
 - **อาการ**: `file.arrayBuffer()` → `XLSX.read(buffer)` → `sheet_to_json(... { header: 1 })` แบบ sync ขนาด Vercel reject body >4.5MB อยู่แล้ว แต่ไฟล์ 4MB ที่มี 50 sheet/macro ทำ Lambda OOM ได้ + `xlsx@0.18.x` มี CVE หลายตัว (regex DoS, prototype pollution)
 - **Symptom**: 413 ตอนไฟล์ใหญ่, 500 + "JavaScript heap out of memory" ตอนไฟล์แต่งให้ก่อกวน
+
+**✅ การแก้ไขใน working tree (2026-05-30)**
+- ตรวจ `file.size > 3MB` และ extension `.xlsx/.xls` ก่อนเรียก `file.arrayBuffer()` — คืน 413/400 ทันที
+- เพิ่ม `export const maxDuration = 60` ที่หัวไฟล์ route
+- เพิ่ม `app/api/shifts/upload/route` ใน `vercel.json` functions ด้วย `maxDuration: 60`
+- หมายเหตุ: การ migrate `xlsx` → `exceljs` เพื่อแก้ CVE เป็น scope แยก (ไม่ทำในรอบนี้)
 
 #### R8. Admin endpoint ดึงข้อมูลเกินจำเป็น
 - **ไฟล์**: `/api/admin/users`, `/api/notifications` PUT, `/api/admin/shifts/batch`, `/api/admin/shifts/owners`, `/api/notifications` POST

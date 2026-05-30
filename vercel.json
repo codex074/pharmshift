@@ -2,6 +2,9 @@
   "functions": {
     "app/api/cron/**": {
       "maxDuration": 60
+    },
+    "app/api/shifts/upload/route": {
+      "maxDuration": 60
     }
   }
 }

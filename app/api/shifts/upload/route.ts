@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
@@ -96,6 +97,16 @@ export async function POST(req: NextRequest) {
 
     if (!file || !monthStr || !yearStr) {
       return NextResponse.json({ error: 'Missing file, month, or year.' }, { status: 400 });
+    }
+
+    const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3 MB
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json({ error: 'ไฟล์ใหญ่เกินไป (สูงสุด 3MB)' }, { status: 413 });
+    }
+
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith('.xlsx') && !fileName.endsWith('.xls')) {
+      return NextResponse.json({ error: 'รองรับเฉพาะไฟล์ .xlsx หรือ .xls เท่านั้น' }, { status: 400 });
     }
 
     const targetMonth = parseInt(monthStr);
