@@ -41,10 +41,7 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
       onClick={onClose}
     >
       <div
-        className={cn(
-          'bg-white rounded-2xl shadow-2xl w-full overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200',
-          activeTab === 'shifts' || activeTab === 'audit' || activeTab === 'compensation' ? 'max-w-4xl' : 'max-w-2xl',
-        )}
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl h-[90vh] max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
