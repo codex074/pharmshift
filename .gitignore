@@ -31,3 +31,28 @@ public/fallback-*.js
 AUDIT-REPORT-TH.md
 user.json
 holidays.json
+
+# Tool configs
+.claude/
+.codex/
+
+# Build artifacts
+tsconfig.tsbuildinfo
+
+# Debug/scratch files
+dump.js
+dump_grid.js
+check_client_error.js
+parse_layout.js
+layout_dump.txt
+read_xls.cjs
+sam-code/
+user-infographic.html
+function.md
+
+# Excel data & templates
+Excel/
+sample_shifts.xlsx
+
+# Script data
+scripts/schedule.json
