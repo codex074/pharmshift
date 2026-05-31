@@ -447,6 +447,16 @@ export default function CalendarPage() {
           </div>
         {/* Desktop action buttons — unified dark/violet palette */}
         <div className={cn("flex items-center gap-1.5 flex-wrap", isMobile && "hidden")}>
+            {userIsAdmin && (
+              <button
+                onClick={() => setShowAdminSettings(true)}
+                className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
+              >
+                <span>⚙️</span>
+                <span className="sm:hidden">ตั้งค่า</span>
+                <span className="hidden sm:inline">ตั้งค่าระบบ</span>
+              </button>
+            )}
             {canManageActiveRoleGroup && (
               <>
                 {isEditMode ? (
@@ -470,7 +480,8 @@ export default function CalendarPage() {
                 ) : (
                   <button
                     onClick={() => setShowManageShiftsModal(true)}
-                    className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
+                    className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                    style={{ background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)' }}
                   >
                     <span>🛠️</span>
                     <span>จัดการเวร</span>
@@ -486,16 +497,6 @@ export default function CalendarPage() {
                   <span className="hidden sm:inline">ประกาศตารางเวร</span>
                 </button>
               </>
-            )}
-            {userIsAdmin && (
-              <button
-                onClick={() => setShowAdminSettings(true)}
-                className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
-              >
-                <span>⚙️</span>
-                <span className="sm:hidden">ตั้งค่า</span>
-                <span className="hidden sm:inline">ตั้งค่าระบบ</span>
-              </button>
             )}
         <ScheduleTableExportButton shifts={allShifts} holidays={holidays} year={year} month={month} isPublished={activeRolePublished} isAdminLike={canManageActiveRoleGroup} prevMonthLastDayShifts={prevMonthLastDayShifts} currentUserId={currentUser?.id} currentUserName={currentUser?.f_name} roleGroup={effectiveRoleGroup} />
             {currentUser && (
