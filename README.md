@@ -189,7 +189,7 @@ pharmshift/
 │   │   ├── shifts/upload/  # Excel import (≤ 3 MB)
 │   │   ├── user/profile/   # self-update
 │   │   ├── audit-log/      # POST (bulk client events)
-│   │   └── cron/           # shift-reminders (morning/evening/night) · cleanup
+│   │   └── cron/           # shift-reminders (morning/evening) · cleanup
 │   ├── calendar/           # Main page (~970 LOC)
 │   ├── login/
 │   ├── change-password/
@@ -379,7 +379,6 @@ npm run lint     # ESLint
 |---|---|---|---|
 | 23:00 | 06:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
 | 09:00 | 16:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
-| 09:00 | 16:00 | Night reminders — เวรดึกคืนนี้ | `/api/cron/shift-reminders?run=night` |
 | 21:00 | 04:00 | Cleanup — swap, notifications, audit, push (≥ 3 mo / 12 h / 3 d) | `/api/cron/cleanup` |
 
 Secrets ที่ต้องตั้งใน GitHub repository:
