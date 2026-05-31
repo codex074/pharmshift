@@ -143,6 +143,7 @@ export function Header({
                 onClick={async () => { setRefreshing(true); await onRefresh(); setRefreshing(false); }}
                 disabled={refreshing}
                 title="โหลดข้อมูลใหม่"
+                aria-label="โหลดข้อมูลใหม่"
                 className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center disabled:opacity-40 active:scale-95"
               >
                 <RefreshIcon3D spinning={refreshing} />
@@ -152,6 +153,7 @@ export function Header({
             <button
               onClick={() => setIsGuideOpen(true)}
               title="วิธีการใช้งาน"
+              aria-label="วิธีการใช้งาน"
               className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
               <HelpIcon3D />
@@ -160,6 +162,8 @@ export function Header({
             <button
               onClick={onBellClick}
               id="notifications-button"
+              title="การแจ้งเตือน"
+              aria-label={pendingCount > 0 ? `การแจ้งเตือน มี ${pendingCount} รายการใหม่` : 'การแจ้งเตือน'}
               className="relative p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95"
             >
               <BellIcon3D />
@@ -177,6 +181,7 @@ export function Header({
               <button
                 onClick={() => setIsProfileModalOpen(true)}
                 title="แก้ไขข้อมูลส่วนตัว"
+                aria-label="แก้ไขข้อมูลส่วนตัว"
                 className="flex items-center gap-2 px-2 sm:px-3 py-1.5 min-h-[40px] bg-white/[0.08] hover:bg-white/[0.15] transition-all duration-200 rounded-xl border border-white/[0.08] active:scale-[0.97] backdrop-blur-sm"
               >
                 <div className="w-7 h-7 flex-shrink-0 rounded-full flex items-center justify-center text-white ring-2 ring-violet-400/50"
@@ -196,6 +201,7 @@ export function Header({
               disabled={loggingOut}
               id="logout-button"
               title="ออกจากระบบ"
+              aria-label="ออกจากระบบ"
               className="p-1.5 min-w-[40px] min-h-[40px] rounded-xl hover:scale-110 transition-all duration-200 flex items-center justify-center active:scale-95 disabled:opacity-50"
             >
               <svg width="30" height="30" viewBox="0 0 30 30" fill="none"

@@ -7,6 +7,7 @@ import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
+import { useAutoSync } from '@/hooks/useAutoSync';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
@@ -93,7 +94,7 @@ export default function CalendarPage() {
       .select(`*, department:departments(id, name), user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role), original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)`)
       .eq('month_year', prevMonthYear)
       .eq('date', lastDayStr)
-      .then(({ data }) => { setPrevMonthLastDayShifts((data as Shift[]) ?? []); });
+      .then(({ data }) => { setPrevMonthLastDayShifts((data as Shift[]) ?? []); }); // decorative prev-month carry-over
   }, [year, month]);
 
   // Auto-subscribe to push notifications when user is authenticated
@@ -162,6 +163,14 @@ export default function CalendarPage() {
     if (result?.collision) return result;
     return result;
   }
+
+  // Single source of truth for "refresh everything" — used by the header button
+  // and by auto-sync on tab-focus / network-reconnect (covers Realtime going stale).
+  const refreshAll = useCallback(async () => {
+    await Promise.all([refetch(), fetchNotifications(), fetchSwaps()]);
+  }, [refetch, fetchNotifications, fetchSwaps]);
+
+  useAutoSync(refreshAll, { enabled: !!currentUser?.id });
 
 
 
@@ -382,7 +391,7 @@ export default function CalendarPage() {
         currentUser={currentUser}
         pendingCount={pendingCount + notifUnreadCount}
         onBellClick={() => setShowNotifications(true)}
-        onRefresh={async () => { await Promise.all([refetch(), fetchNotifications(), fetchSwaps()]); }}
+        onRefresh={refreshAll}
         year={year}
         month={month}
         onMonthChange={handleMonthChange}
@@ -493,10 +502,9 @@ export default function CalendarPage() {
             {currentUser && (
               <div className="relative group">
                 <button
-                  onClick={() => myRolePublished && setShowCompensationModal(true)}
-                  disabled={!myRolePublished}
-                  className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                  style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af' }}
+                  onClick={() => myRolePublished ? setShowCompensationModal(true) : toastError('ยังไม่ได้ประกาศตารางเวรเดือนนี้')}
+                  className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
+                  style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af', opacity: myRolePublished ? undefined : 0.85 }}
                 >
                   {myRolePublished ? <span>💰</span> : <Lock className="w-3.5 h-3.5" />}
                   <span>ค่าตอบแทน</span>
@@ -527,10 +535,9 @@ export default function CalendarPage() {
           {isMobile && currentUser && !userIsAdminLike && (
             <div className="relative group">
               <button
-                onClick={() => myRolePublished && setShowCompensationModal(true)}
-                disabled={!myRolePublished}
-                className="text-white font-bold px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
-                style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af' }}
+                onClick={() => myRolePublished ? setShowCompensationModal(true) : toastError('ยังไม่ได้ประกาศตารางเวรเดือนนี้')}
+                className="text-white font-bold px-3 py-2 rounded-xl text-xs transition-all flex items-center gap-1.5 active:scale-95 shadow-lg"
+                style={{ background: myRolePublished ? 'linear-gradient(135deg, #f59e0b, #d97706)' : undefined, backgroundColor: myRolePublished ? undefined : '#9ca3af', opacity: myRolePublished ? undefined : 0.85 }}
               >
                 {myRolePublished ? <span>💰</span> : <Lock className="w-3 h-3" />}
                 <span>ค่าตอบแทน</span>
@@ -832,7 +839,6 @@ export default function CalendarPage() {
           onReject={rejectSwap}
           onCancel={cancelSwap}
           onMarkNotifsRead={markNotifsRead}
-          onRefresh={async () => { await Promise.all([fetchNotifications(), fetchSwaps()]); }}
           onOpen={markRequesterRead}
           onClose={() => setShowNotifications(false)}
         />

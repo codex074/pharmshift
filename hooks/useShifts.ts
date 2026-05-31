@@ -6,6 +6,7 @@ import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } fr
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
+import { toastError } from '@/lib/swal';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
@@ -169,12 +170,15 @@ export function useShifts(year: number, month: number) {
 
     if (!error && data) {
       setShifts(data as Shift[]);
+    } else if (error) {
+      // R25: don't leave the user staring at an empty calendar with no explanation
+      toastError('โหลดตารางเวรไม่สำเร็จ — กรุณารีเฟรชอีกครั้ง');
     }
-    
+
     if (!holidaysError && holidaysData) {
       setHolidays(holidaysData as Holiday[]);
     }
-    
+
     setLoading(false);
   }, [monthYear]);
 
@@ -511,7 +515,9 @@ export function useNotifications(userId?: string) {
     try {
       await fetch('/api/notifications', { method: 'PUT' });
       applyNotifications((prev) => prev.map((item) => ({ ...item, is_read: true })));
-    } catch {}
+    } catch {
+      toastError('ทำเครื่องหมายอ่านแล้วไม่สำเร็จ — กรุณาลองอีกครั้ง');
+    }
   }, [userId, applyNotifications]);
 
   return { notifications, unreadCount, fetchNotifications, markAllRead };
