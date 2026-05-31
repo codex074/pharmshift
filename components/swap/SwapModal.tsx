@@ -12,6 +12,7 @@ import { DEPT_STYLES, ROLE_LABELS } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
 import { insertNotifications } from '@/lib/notifyUsers';
+import { ShiftProvenance } from '@/components/calendar/ShiftProvenance';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth,
 } from 'date-fns';
@@ -510,6 +511,13 @@ export function SwapModal({
           )}
 
           {shiftInfoCard}
+
+          {/* ที่มาของเวร — แสดงตอนโอนเวรของตัวเอง */}
+          {mode === 'transfer' && (
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-4">
+              <ShiftProvenance shift={shift} currentUserId={currentUser.id} />
+            </div>
+          )}
 
           {/* ── TRANSFER MODE: recipient selector ──────────────────── */}
           {mode === 'transfer' && (

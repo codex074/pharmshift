@@ -154,6 +154,15 @@ export default function CalendarPage() {
   const myRoleKey = ownRoleGroup as keyof typeof publishedRoles;
   const myRolePublished = publishedRoles[myRoleKey] ?? false;
   const canViewOwnRoleSchedule = canManageRoleGroup(currentUser, ownRoleGroup) || myRolePublished;
+  // "เวรของฉัน" always shows the user's own-role shifts, so gate swap actions on the
+  // user's own role + own-role publish status (independent of the selected role tab).
+  const canRequestSwapForMine =
+    !!currentUser
+    && currentUser.role === ownRoleGroup
+    && currentUser.role !== 'admin'
+    && currentUser.is_active !== false
+    && currentUser.is_readonly !== true
+    && myRolePublished;
   const {
     swapRequests, pendingCount, fetchSwaps, acceptSwap, rejectSwap, cancelSwap, markRequesterRead,
   } = useSwapRequests(currentUser?.id);
@@ -715,7 +724,12 @@ export default function CalendarPage() {
                 holidays={holidays}
                 prevMonthLastDayShifts={prevMonthLastDayShifts.filter(s => s.user_id === currentUser?.id)}
                 onDayClick={handleDayClick}
-                onShiftClick={(s) => { if (!canViewOwnRoleSchedule) return; setDetailShift(s); }}
+                onShiftClick={(s) => {
+                  // คลิกชื่อตัวเอง → เปิด SwapModal (โอน/ยกเวร) เหมือนหน้า "ทุกเวร";
+                  // ถ้าส่งคำขอไม่ได้ (readonly/admin/ยังไม่ประกาศ) ตกไปที่ modal รายละเอียดเดิม
+                  if (canRequestSwapForMine) setSelectedShift(s);
+                  else if (canViewOwnRoleSchedule) setDetailShift(s);
+                }}
                 pendingShiftIds={pendingShiftIds}
               />
             ) : isMobile ? (
