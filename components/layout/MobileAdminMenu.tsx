@@ -10,13 +10,13 @@ interface MobileAdminMenuProps {
   onEditMode: () => void;
   onShowConfirm: () => void;
   onDeploy: () => void;
-  onUpload: () => void;
+  onManageShifts: () => void;
   onSettings: () => void;
   onCompensation: () => void;
 }
 
 export function MobileAdminMenu({
-  isEditMode, isSubAdmin, onEditMode, onShowConfirm, onDeploy, onUpload, onSettings, onCompensation,
+  isEditMode, isSubAdmin, onEditMode, onShowConfirm, onDeploy, onManageShifts, onSettings, onCompensation,
 }: MobileAdminMenuProps) {
   const [open, setOpen] = useState(false);
 
@@ -26,9 +26,8 @@ export function MobileAdminMenu({
         { icon: '❌', label: 'ยกเลิกแก้ไข', action: onEditMode, color: 'bg-gray-50 text-gray-700 border-gray-100' },
       ]
     : [
-        { icon: '✏️', label: 'โหมดแก้ไข', action: onEditMode, color: 'bg-blue-50 text-blue-700 border-blue-100' },
+        { icon: '🛠️', label: 'จัดการเวร', action: onManageShifts, color: 'bg-blue-50 text-blue-700 border-blue-100' },
         { icon: '📢', label: 'ประกาศตารางเวร', action: onDeploy, color: 'bg-emerald-50 text-emerald-700 border-emerald-100' },
-        { icon: '📂', label: 'เพิ่มเวร', action: onUpload, color: 'bg-violet-50 text-violet-700 border-violet-100' },
         ...(!isSubAdmin ? [
           { icon: '⚙️', label: 'ตั้งค่าระบบ', action: onSettings, color: 'bg-slate-50 text-slate-700 border-slate-100' },
         ] : []),

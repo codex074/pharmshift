@@ -21,6 +21,7 @@ import { NotificationsPanel } from '@/components/swap/NotificationsPanel';
 import { AdminConfirmModal } from '@/components/calendar/AdminConfirmModal';
 import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubstituteModal';
 import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
+import { AdminManageShiftsModal } from '@/components/calendar/AdminManageShiftsModal';
 import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
@@ -57,6 +58,7 @@ export default function CalendarPage() {
   const [selectedShift, setSelectedShift] = useState<Shift | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [showManageShiftsModal, setShowManageShiftsModal] = useState(false);
   const [showDeployModal, setShowDeployModal] = useState(false);
   const [showPersonalShiftsModal, setShowPersonalShiftsModal] = useState(false);
   const [showCompensationModal, setShowCompensationModal] = useState(false);
@@ -467,12 +469,11 @@ export default function CalendarPage() {
                   </>
                 ) : (
                   <button
-                    onClick={handleToggleEditMode}
+                    onClick={() => setShowManageShiftsModal(true)}
                     className="bg-gray-900 text-white hover:bg-gray-800 font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-md"
                   >
-                    <span>✏️</span>
-                    <span className="sm:hidden">แก้ไข</span>
-                    <span className="hidden sm:inline">โหมดแก้ไข</span>
+                    <span>🛠️</span>
+                    <span>จัดการเวร</span>
                   </button>
                 )}
                 <button
@@ -485,17 +486,6 @@ export default function CalendarPage() {
                   <span className="hidden sm:inline">ประกาศตารางเวร</span>
                 </button>
               </>
-            )}
-            {canManageActiveRoleGroup && (
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="text-white font-bold px-4 py-2.5 rounded-xl text-xs sm:text-sm transition-all flex items-center gap-2 active:scale-95 shadow-lg hover:shadow-xl"
-                style={{ background: 'linear-gradient(135deg, #7c3aed, #5b21b6)' }}
-              >
-                <span>📂</span>
-                <span className="sm:hidden">CSV</span>
-                <span className="hidden sm:inline">เพิ่มเวร</span>
-              </button>
             )}
             {userIsAdmin && (
               <button
@@ -860,6 +850,15 @@ export default function CalendarPage() {
 
 
 
+      {/* Manage Shifts chooser (โหมดแก้ไข / เพิ่มเวร) */}
+      {showManageShiftsModal && (
+        <AdminManageShiftsModal
+          onClose={() => setShowManageShiftsModal(false)}
+          onEditMode={handleToggleEditMode}
+          onUpload={() => setShowUploadModal(true)}
+        />
+      )}
+
       {/* Upload Modal */}
       {showUploadModal && (
         <ShiftUploadModal
@@ -976,7 +975,7 @@ export default function CalendarPage() {
           onEditMode={handleToggleEditMode}
           onShowConfirm={() => setShowAdminConfirm(true)}
           onDeploy={() => setShowDeployModal(true)}
-          onUpload={() => setShowUploadModal(true)}
+          onManageShifts={() => setShowManageShiftsModal(true)}
           onSettings={() => setShowAdminSettings(true)}
           onCompensation={() => setShowCompensationModal(true)}
         />
