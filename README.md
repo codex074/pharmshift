@@ -29,7 +29,7 @@ Progressive Web App สำหรับจัดการตารางเวร
 | 📤 **Excel Import** | อัปโหลดตารางเวรแบบ Bulk (≤ 3 MB) + overwrite mode (ยืนยันรหัสผ่าน admin) |
 | 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, อัตราค่าตอบแทน, Audit Log, Backup |
 | 🔐 **Auth ปลอดภัย** | JWT 30 วัน + rolling refresh, bcrypt hash, rate-limit login, cookie `sameSite=strict` |
-| 📱 **PWA** | ติดตั้งบน Android / iOS ได้ รองรับ swipe เปลี่ยนเดือน |
+| 📱 **PWA** | ติดตั้งบน Android / iOS ได้ · swipe เปลี่ยนเดือน · แจ้งเตือน offline · auto-sync เมื่อกลับเข้าแอป |
 
 ---
 
@@ -144,6 +144,8 @@ mindmap
       Lucide Icons
       Sonner Toasts
       SweetAlert2
+      Error Boundaries
+      Auto-sync on focus/reconnect
     Backend
       Next.js API Routes
       Custom JWT Auth jose
@@ -188,15 +190,18 @@ pharmshift/
 │   │   ├── user/profile/   # self-update
 │   │   ├── audit-log/      # POST (bulk client events)
 │   │   └── cron/           # shift-reminders (morning/evening/night) · cleanup
-│   ├── calendar/           # Main page (~830 LOC)
+│   ├── calendar/           # Main page (~970 LOC)
 │   ├── login/
-│   └── change-password/
+│   ├── change-password/
+│   └── error.tsx · global-error.tsx · not-found.tsx  # error boundaries (กันจอขาว)
 ├── components/
 │   ├── calendar/           # Grids, modals, export buttons
 │   ├── swap/               # SwapModal, NotificationsPanel
-│   └── layout/             # Header, MobileBottomNav
+│   ├── layout/             # Header, MobileBottomNav, MobileAdminMenu
+│   └── ui/                 # OfflineBanner, loading-overlay, icons3d, ripple
 ├── hooks/
-│   ├── useShifts.ts        # useShifts + useSwapRequests + useNotifications
+│   ├── useShifts.ts        # useShifts + useSwapRequests + useNotifications + useCurrentUser
+│   ├── useAutoSync.ts      # re-sync on tab focus / network reconnect
 │   ├── useIsMobile.ts
 │   └── useSwipeGesture.ts
 ├── lib/
@@ -313,8 +318,8 @@ erDiagram
 ### Installation
 
 ```bash
-git clone https://github.com/codex074/utth-shift.git
-cd utth-shift
+git clone https://github.com/codex074/pharmshift.git
+cd pharmshift
 npm install
 ```
 
