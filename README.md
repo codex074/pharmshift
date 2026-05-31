@@ -24,10 +24,11 @@ Progressive Web App สำหรับจัดการตารางเวร
 |---|---|
 | 📅 **ตารางเวรรายเดือน** | 3 กลุ่มบุคลากร: เภสัชกร, เจ้าพนักงานเภสัชกรรม, เจ้าหน้าที่ |
 | 🔄 **สลับ / โอน / ขอคนแทน** | ตรวจเวรชน, atomic accept, auto-reject คำขอซ้ำ |
-| 🔔 **Push Notifications** | แจ้งเตือนมือถือ PWA + In-app notification panel |
+| 🔔 **Push Notifications** | แจ้งเตือนเช้า / เย็น / ก่อนเวรดึก + In-app notification panel |
 | 📊 **Excel Export** | ตารางเวร, หลักฐานการปฏิบัติงาน, ค่าตอบแทน, ใบลงชื่อ |
-| 📤 **Excel Import** | อัปโหลดตารางเวรแบบ Bulk พร้อม overwrite mode |
-| 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, Audit Log |
+| 📤 **Excel Import** | อัปโหลดตารางเวรแบบ Bulk (≤ 3 MB) + overwrite mode (ยืนยันรหัสผ่าน admin) |
+| 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, อัตราค่าตอบแทน, Audit Log, Backup |
+| 🔐 **Auth ปลอดภัย** | JWT 30 วัน + rolling refresh, bcrypt hash, rate-limit login, cookie `sameSite=strict` |
 | 📱 **PWA** | ติดตั้งบน Android / iOS ได้ รองรับ swipe เปลี่ยนเดือน |
 
 ---
@@ -147,7 +148,8 @@ mindmap
       Next.js API Routes
       Custom JWT Auth jose
       bcryptjs Password Hashing
-      web-push VAPID
+      Login Rate Limiting
+      web-push VAPID lazy init
     Database
       Supabase PostgreSQL
       Supabase Realtime
@@ -172,18 +174,20 @@ mindmap
 pharmshift/
 ├── app/
 │   ├── api/
-│   │   ├── auth/           # login · logout · me · change-password
+│   │   ├── auth/           # login · logout · me · change-password · verify-password
 │   │   ├── admin/
 │   │   │   ├── shifts/     # GET · PUT · DELETE · PATCH · /batch · /owners
 │   │   │   ├── users/      # GET · POST · PUT · /reset-password
+│   │   │   ├── compensation-rates/  # GET · PUT (admin only)
 │   │   │   └── audit-logs/ # GET cursor-paginated
 │   │   ├── swap/accept/    # atomic swap/transfer/cover
-│   │   ├── push/           # subscribe · send
+│   │   ├── push/           # subscribe · send (auth + rate-limited)
 │   │   ├── notifications/  # GET · POST · PUT(mark-read)
-│   │   ├── holidays/       # CRUD · import
-│   │   ├── shifts/upload/  # Excel import
+│   │   ├── holidays/       # CRUD · import (JSON body)
+│   │   ├── shifts/upload/  # Excel import (≤ 3 MB)
 │   │   ├── user/profile/   # self-update
-│   │   └── cron/           # shift-reminders · cleanup
+│   │   ├── audit-log/      # POST (bulk client events)
+│   │   └── cron/           # shift-reminders (morning/evening/night) · cleanup
 │   ├── calendar/           # Main page (~830 LOC)
 │   ├── login/
 │   └── change-password/
@@ -196,11 +200,14 @@ pharmshift/
 │   ├── useIsMobile.ts
 │   └── useSwipeGesture.ts
 ├── lib/
-│   ├── session.ts          # JWT sign/verify/cookie
-│   ├── pushSender.ts       # Server-side Web Push
+│   ├── session.ts          # JWT sign/verify/cookie (sameSite=strict, 30d rolling)
+│   ├── password.ts         # bcrypt hash/verify + auto-rehash helper
+│   ├── pushSender.ts       # Server-side Web Push (lazy VAPID + concurrency cap)
+│   ├── compensation.ts     # Rate categories + DB-backed rates loader
 │   ├── excelExport.ts      # Evidence + Compensation (5 sheets)
 │   ├── scheduleTableExport.ts
 │   ├── signSheetExport.ts  # 7 shift configs
+│   ├── shiftSlotRules.ts   # Slot validation (เช่น MED บ่าย ห้ามซ้อน)
 │   └── types.ts            # Domain types + role helpers
 ├── supabase/migrations/    # SQL schema + RPC functions
 ├── public/
@@ -224,7 +231,7 @@ erDiagram
         boolean is_sub_admin
         boolean is_active
         boolean is_readonly
-        string password
+        string password "bcrypt-hashed"
     }
     shifts {
         uuid id PK
@@ -262,6 +269,17 @@ erDiagram
         string action
         string description
         timestamptz created_at
+    }
+    login_attempts {
+        uuid id PK
+        string pha_id
+        string ip
+        timestamptz attempted_at
+    }
+    compensation_rates {
+        string category PK
+        string role PK
+        numeric rate
     }
 
     users ||--o{ shifts : "อยู่เวร"
@@ -342,20 +360,26 @@ npm run lint     # ESLint
 
 ### Vercel
 1. Connect repository → Vercel
-2. ตั้งค่า Environment Variables ทั้งหมด
-3. `vercel.json` ตั้ง `maxDuration: 60` สำหรับ cron routes
+2. ตั้งค่า Environment Variables ทั้งหมด — โดยเฉพาะ `SESSION_JWT_SECRET` (generate ด้วย `openssl rand -base64 64`)
+3. `vercel.json` ตั้ง `maxDuration: 60` สำหรับ cron routes (`app/api/cron/**`)
+4. รัน Supabase migrations ทั้งหมดใน `supabase/migrations/` — โดยเฉพาะ
+   - `20260530_create_login_attempts.sql` — เปิด rate-limit login
+   - `20260530_hash_existing_user_passwords.sql` — hash plain-text passwords ที่ค้างอยู่
+   - `20260530_create_compensation_rates.sql` — ตารางอัตราค่าตอบแทน
+   - `20260530_push_subscriptions_last_used_at.sql` — กัน cleanup ลบ device ที่ยังใช้งาน
 
-### GitHub Actions Cron
+### GitHub Actions Cron (runner เดียว — Vercel cron ถูกถอดออก)
 
-| UTC | Bangkok | Job |
-|---|---|---|
-| 23:00 | 06:00 | Morning reminders — เวรวันนี้ |
-| 09:00 | 16:00 | Evening reminders — เวรพรุ่งนี้ |
-| 21:00 | 04:00 | Cleanup — swap requests, notifications เก่า |
+| UTC | Bangkok | Job | Endpoint |
+|---|---|---|---|
+| 23:00 | 06:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
+| 09:00 | 16:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
+| 09:00 | 16:00 | Night reminders — เวรดึกคืนนี้ | `/api/cron/shift-reminders?run=night` |
+| 21:00 | 04:00 | Cleanup — swap, notifications, audit, push (≥ 3 mo / 12 h / 3 d) | `/api/cron/cleanup` |
 
 Secrets ที่ต้องตั้งใน GitHub repository:
 - `APP_URL` — deployed app URL
-- `CRON_SECRET` — same as env variable
+- `CRON_SECRET` — same as env variable (fail-closed: ถ้าไม่ตั้ง cron route ตอบ 500)
 
 ---
 
