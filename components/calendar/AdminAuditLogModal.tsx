@@ -80,45 +80,22 @@ function logSentence(log: AuditLog) {
   return `${actor} ${detail}`;
 }
 
-function StatusBadge({ log }: { log: AuditLog }) {
+type StatusInfo = { dot: string; strip: string; text: string; label: string; icon: React.ReactNode };
+
+function getStatusInfo(log: AuditLog): StatusInfo {
   if (!SWAP_ACTIONS.has(log.action)) {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        สำเร็จ
-      </span>
-    );
+    return { dot: 'bg-emerald-400', strip: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700', label: 'สำเร็จ', icon: <CheckCircle2 className="w-3 h-3" /> };
   }
   if (log.swap_status === 'accepted') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        ยืนยันแล้ว
-      </span>
-    );
+    return { dot: 'bg-emerald-400', strip: 'bg-emerald-50 border-emerald-100', text: 'text-emerald-700', label: 'ยืนยันแล้ว', icon: <CheckCircle2 className="w-3 h-3" /> };
   }
   if (log.swap_status === 'rejected') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
-        <XCircle className="h-3.5 w-3.5" />
-        ถูกปฏิเสธ
-      </span>
-    );
+    return { dot: 'bg-red-400', strip: 'bg-red-50 border-red-100', text: 'text-red-700', label: 'ถูกปฏิเสธ', icon: <XCircle className="w-3 h-3" /> };
   }
   if (log.swap_status === 'pending') {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
-        <Clock className="h-3.5 w-3.5" />
-        รอดำเนินการ
-      </span>
-    );
+    return { dot: 'bg-amber-400', strip: 'bg-amber-50 border-amber-100', text: 'text-amber-700', label: 'รอดำเนินการ', icon: <Clock className="w-3 h-3" /> };
   }
-  // null = row deleted (cancelled or cleaned up)
-  return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
-      ส่งคำขอแล้ว
-    </span>
-  );
+  return { dot: 'bg-gray-300', strip: 'bg-gray-50 border-gray-200', text: 'text-gray-500', label: 'ส่งคำขอแล้ว', icon: null };
 }
 
 const ROLE_BADGES: Record<string, { label: string; className: string }> = {
@@ -316,38 +293,49 @@ export function AdminAuditLogModal() {
             <p className="text-sm font-medium">ยังไม่พบ audit log</p>
           </div>
         ) : (
-          filteredLogs.map((log) => (
-            <div key={log.id} className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm space-y-3">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-white">
-                  {actionLabel(log.action)}
-                </span>
-                {log.actor_role && ROLE_BADGES[log.actor_role] && (
-                  <span className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11px] font-semibold',
-                    ROLE_BADGES[log.actor_role].className,
-                  )}>
-                    {ROLE_BADGES[log.actor_role].label}
-                  </span>
-                )}
-                <time className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
-                  <CalendarClock className="w-3.5 h-3.5" />
-                  {formatDate(log.created_at)}
-                </time>
-                <span className="ml-auto">
-                  <StatusBadge log={log} />
-                </span>
-              </div>
+          filteredLogs.map((log) => {
+            const status = getStatusInfo(log);
+            return (
+              <div key={log.id} className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+                <div className="p-4 space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-gray-900 px-2.5 py-1 text-[11px] font-semibold text-white">
+                      {actionLabel(log.action)}
+                    </span>
+                    {log.actor_role && ROLE_BADGES[log.actor_role] && (
+                      <span className={cn(
+                        'rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                        ROLE_BADGES[log.actor_role].className,
+                      )}>
+                        {ROLE_BADGES[log.actor_role].label}
+                      </span>
+                    )}
+                    <time className="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                      <CalendarClock className="w-3.5 h-3.5" />
+                      {formatDate(log.created_at)}
+                    </time>
+                  </div>
 
-              <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700 space-y-1.5">
-                <div className="flex items-center gap-2 font-semibold text-gray-900">
-                  <UserRound className="w-4 h-4 text-gray-400" />
-                  <span>{log.actor_name || 'ระบบ'}</span>
+                  <div className="rounded-lg bg-gray-50 px-3 py-3 text-sm text-gray-700 space-y-1.5">
+                    <div className="flex items-center gap-2 font-semibold text-gray-900">
+                      <UserRound className="w-4 h-4 text-gray-400" />
+                      <span>{log.actor_name || 'ระบบ'}</span>
+                    </div>
+                    <p className="leading-relaxed">{logSentence(log)}</p>
+                  </div>
                 </div>
-                <p className="leading-relaxed">{logSentence(log)}</p>
+
+                {/* status strip */}
+                <div className={cn('flex items-center gap-2 px-4 py-2 border-t', status.strip)}>
+                  <div className={cn('w-2 h-2 rounded-full shrink-0', status.dot)} />
+                  <span className={cn('text-[11px] font-semibold flex items-center gap-1', status.text)}>
+                    {status.icon}
+                    {status.label}
+                  </span>
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
