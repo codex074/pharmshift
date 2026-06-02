@@ -45,37 +45,45 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white flex-shrink-0">
-          <h2 className="text-xl font-bold text-gray-900">⚙️ ตั้งค่าระบบ</h2>
+        <div className="px-5 sm:px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-3 bg-white flex-shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center text-lg shrink-0">⚙️</div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-gray-900 leading-tight truncate">ตั้งค่าระบบ</h2>
+              <p className="text-xs text-gray-400 truncate">จัดการวันหยุด ผู้ใช้ เวร และข้อมูลระบบ</p>
+            </div>
+          </div>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-1 px-4 pt-3 pb-0 border-b border-gray-100 flex-shrink-0 bg-white overflow-x-auto">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                'flex shrink-0 items-center gap-2 px-4 py-2.5 text-sm font-semibold rounded-t-xl border-b-2 transition-all',
-                activeTab === tab.id
-                  ? 'border-indigo-500 text-indigo-600 bg-indigo-50/60'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
-              )}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
-          ))}
+        {/* Tabs — scrollable pill bar */}
+        <div className="px-3 sm:px-4 py-2.5 border-b border-gray-100 flex-shrink-0 bg-gray-50/60 overflow-x-auto">
+          <div className="flex gap-1.5 w-max">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'flex shrink-0 items-center gap-2 px-3.5 py-2 text-sm font-semibold rounded-xl transition-all active:scale-95',
+                  activeTab === tab.id
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'text-gray-500 hover:text-gray-800 hover:bg-white'
+                )}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Tab Content */}
-        <div className="flex-1 overflow-hidden flex flex-col min-h-0">
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 bg-gray-50/40">
           {activeTab === 'holidays' && (
             <ManageHolidaysModal
               embedded

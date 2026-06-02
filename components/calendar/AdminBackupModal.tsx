@@ -239,7 +239,7 @@ export function AdminBackupModal({ currentUser }: AdminBackupModalProps) {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-5 overflow-y-auto">
+    <div className="flex flex-col gap-6 p-5 overflow-y-auto flex-1 min-h-0">
 
       {/* ── Section 1: Backup ───────────────────────────────────────── */}
       <section className="space-y-3">
