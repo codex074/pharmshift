@@ -1,6 +1,7 @@
 type AuditClientEvent = {
   action: string;
   description: string;
+  entityId?: string | null;
 };
 
 export async function postAuditLog(event: AuditClientEvent) {

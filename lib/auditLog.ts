@@ -5,6 +5,7 @@ type AuditEntry = {
   actorName?: string | null;
   action: string;
   description: string;
+  entityId?: string | null;
 };
 
 type PreparedAuditEntry = {
@@ -12,6 +13,7 @@ type PreparedAuditEntry = {
   actorName: string;
   action: string;
   description: string;
+  entityId: string | null;
 };
 
 type AuditSchemaKind = 'simple' | 'legacy';
@@ -77,6 +79,7 @@ async function prepareEntries(entries: AuditEntry[]): Promise<PreparedAuditEntry
       actorName,
       action: entry.action,
       description: entry.description,
+      entityId: entry.entityId || null,
     };
   }));
 }
@@ -88,6 +91,7 @@ async function insertSimple(rows: PreparedAuditEntry[]) {
       actor_name: row.actorName,
       action: row.action,
       description: row.description,
+      entity_id: row.entityId,
     })),
   );
 }

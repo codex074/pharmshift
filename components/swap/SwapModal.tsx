@@ -265,15 +265,16 @@ export function SwapModal({
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
       }
-      const { error } = await supabase.from('swap_requests').insert({
+      const { data: insertedTransfer, error } = await supabase.from('swap_requests').insert({
         shift_id: shift.id, requester_id: currentUser.id,
         target_user_id: selectedUser.id, request_type: 'transfer',
         message: message.trim() || null, status: 'pending',
-      });
+      }).select('id').single();
       if (error) throw error;
       await postAuditLog({
         action: 'request_transfer',
         description: `ขอโอน${formatAuditShift(shift)} ให้ ${selectedUser.f_name || selectedUser.nickname || 'ผู้ใช้'}`,
+        entityId: insertedTransfer?.id ?? null,
       });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
@@ -328,7 +329,7 @@ export function SwapModal({
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
       }
-      const { error } = await supabase.from('swap_requests').insert({
+      const { data: insertedSwap, error } = await supabase.from('swap_requests').insert({
         shift_id: shift.id,                    // target's shift (what requester wants)
         target_shift_id: selectedMyShift.id,   // requester's shift (offered in exchange)
         requester_id: currentUser.id,
@@ -336,11 +337,12 @@ export function SwapModal({
         request_type: 'swap',
         message: message.trim() || null,
         status: 'pending',
-      });
+      }).select('id').single();
       if (error) throw error;
       await postAuditLog({
         action: 'request_swap',
         description: `ขอแลก${formatAuditShift(selectedMyShift)} กับ ${ownerLabel} (${formatAuditShift(shift)})`,
+        entityId: insertedSwap?.id ?? null,
       });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
@@ -388,18 +390,19 @@ export function SwapModal({
         toast.warning('มีคำขอค้างอยู่แล้ว', { description: duplicateMessage });
         setLoading(false); return;
       }
-      const { error } = await supabase.from('swap_requests').insert({
+      const { data: insertedCover, error } = await supabase.from('swap_requests').insert({
         shift_id: shift.id,
         requester_id: currentUser.id,
         target_user_id: shift.user_id,
         request_type: 'cover',
         message: message.trim() || null,
         status: 'pending',
-      });
+      }).select('id').single();
       if (error) throw error;
       await postAuditLog({
         action: 'request_cover',
         description: `ขออยู่แทน ${ownerLabel} ใน${formatAuditShift(shift)}`,
+        entityId: insertedCover?.id ?? null,
       });
       const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
       const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });

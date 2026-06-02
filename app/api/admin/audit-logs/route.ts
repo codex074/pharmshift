@@ -26,6 +26,8 @@ type LegacyAuditRow = {
   created_at: string;
 };
 
+const SWAP_ACTIONS = new Set(['request_swap', 'request_cover', 'request_transfer']);
+
 type AuditLogResponse = {
   id: string;
   actor_name: string;
@@ -33,6 +35,7 @@ type AuditLogResponse = {
   action: string;
   description: string;
   created_at: string;
+  swap_status?: 'pending' | 'accepted' | 'rejected' | null;
 };
 
 const ROLE_VALUES: UserRole[] = ['pharmacist', 'pharmacy_technician', 'officer', 'admin'];
@@ -91,6 +94,28 @@ function roleFromSnapshot(snapshot?: LegacyAuditRow['actor_snapshot']) {
 
 function normalizeLegacyDescription(row: LegacyAuditRow) {
   return row.metadata?.description || '';
+}
+
+async function enrichSwapStatus<T extends { action: string; entity_id?: string | null }>(logs: T[]): Promise<(T & { swap_status?: 'pending' | 'accepted' | 'rejected' | null })[]> {
+  const ids = logs
+    .filter((log) => SWAP_ACTIONS.has(log.action) && log.entity_id)
+    .map((log) => log.entity_id as string);
+
+  if (!ids.length) return logs.map((log) => ({ ...log, swap_status: undefined }));
+
+  const { data } = await supa
+    .from('swap_requests')
+    .select('id, status')
+    .in('id', ids);
+
+  const statusMap = new Map((data || []).map((row: any) => [row.id, row.status]));
+
+  return logs.map((log) => {
+    if (!SWAP_ACTIONS.has(log.action)) return { ...log, swap_status: undefined };
+    if (!log.entity_id) return { ...log, swap_status: null };
+    const status = statusMap.get(log.entity_id);
+    return { ...log, swap_status: status ?? null };
+  });
 }
 
 async function enrichActorInfo<T extends { actor_user_id?: string | null; actor_name: string; actor_role?: UserRole | null }>(logs: T[]) {
@@ -152,7 +177,7 @@ export async function GET(req: NextRequest) {
 
     let simpleQuery = supa
       .from('audit_logs')
-      .select('id, actor_user_id, actor_name, action, description, created_at')
+      .select('id, actor_user_id, actor_name, action, description, entity_id, created_at')
       .order('created_at', { ascending: false })
       .limit(limit + 1);
 
@@ -167,12 +192,14 @@ export async function GET(req: NextRequest) {
     if (!simpleResult.error) {
       const rows = simpleResult.data || [];
       const hasMore = rows.length > limit;
-      const logs = await enrichActorInfo((hasMore ? rows.slice(0, limit) : rows).map((row: any) => ({
+      const mapped = (hasMore ? rows.slice(0, limit) : rows).map((row: any) => ({
         ...row,
         actor_name: row.actor_name || 'ระบบ',
         actor_role: null,
         description: row.description || actionLabelFallback(row.action),
-      })));
+      }));
+      const enriched = await enrichActorInfo(mapped);
+      const logs = await enrichSwapStatus(enriched);
       const nextCursor = hasMore ? logs[logs.length - 1]?.created_at : null;
       return NextResponse.json({ logs, nextCursor });
     }

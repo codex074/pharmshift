@@ -23,6 +23,7 @@ export async function POST(request: NextRequest) {
           actorUserId: session.id,
           action: String(event.action),
           description: String(event.description),
+          entityId: event.entityId ? String(event.entityId) : null,
         }))
     );
 

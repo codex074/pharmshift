@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertCircle, CalendarClock, CheckCircle2, Database, Loader2, RefreshCcw, Search, UserRound, X } from 'lucide-react';
+import { Activity, AlertCircle, CalendarClock, CheckCircle2, Clock, Database, Loader2, RefreshCcw, Search, UserRound, X, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { ROLE_LABELS, type UserRole } from '@/lib/types';
+
+const SWAP_ACTIONS = new Set(['request_swap', 'request_cover', 'request_transfer']);
 
 type AuditLog = {
   id: string;
@@ -14,6 +16,7 @@ type AuditLog = {
   action: string;
   description: string;
   created_at: string;
+  swap_status?: 'pending' | 'accepted' | 'rejected' | null;
 };
 
 const ACTION_OPTIONS = [
@@ -75,6 +78,47 @@ function logSentence(log: AuditLog) {
 
   if (detail.startsWith(actor)) return detail;
   return `${actor} ${detail}`;
+}
+
+function StatusBadge({ log }: { log: AuditLog }) {
+  if (!SWAP_ACTIONS.has(log.action)) {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        สำเร็จ
+      </span>
+    );
+  }
+  if (log.swap_status === 'accepted') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
+        <CheckCircle2 className="h-3.5 w-3.5" />
+        ยืนยันแล้ว
+      </span>
+    );
+  }
+  if (log.swap_status === 'rejected') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2.5 py-1 text-[11px] font-semibold text-red-700">
+        <XCircle className="h-3.5 w-3.5" />
+        ถูกปฏิเสธ
+      </span>
+    );
+  }
+  if (log.swap_status === 'pending') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+        <Clock className="h-3.5 w-3.5" />
+        รอดำเนินการ
+      </span>
+    );
+  }
+  // null = row deleted (cancelled or cleaned up)
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-semibold text-gray-500">
+      ส่งคำขอแล้ว
+    </span>
+  );
 }
 
 const ROLE_BADGES: Record<string, { label: string; className: string }> = {
@@ -290,9 +334,8 @@ export function AdminAuditLogModal() {
                   <CalendarClock className="w-3.5 h-3.5" />
                   {formatDate(log.created_at)}
                 </time>
-                <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700">
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                  สำเร็จ
+                <span className="ml-auto">
+                  <StatusBadge log={log} />
                 </span>
               </div>
 
