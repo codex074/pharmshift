@@ -600,8 +600,9 @@ export async function exportCompensationExcel(
           } as any;
           pageTotalRows.push(r1.number, r2.number);
 
-          // Merge seq, salaryNo, firstName, lastName, position across the 2 rows
-          for (const col of [1, 2, 3, 4, 5]) {
+          // Merge seq, salaryNo, firstName, lastName, position, and signature across the 2 rows
+          const mergedCols = isEvidence ? [1, 2, 3, 4, 5] : [1, 2, 3, 4, 5, 40];
+          for (const col of mergedCols) {
             worksheet.mergeCells(r1.number, col, r2.number, col);
           }
         } else {
