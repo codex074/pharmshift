@@ -197,7 +197,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         )}
         onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
       >
-        <span className={cn("text-[10px] truncate max-w-[70%]", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+        <span title={displayName} className={cn("text-[11px] flex-1 min-w-0 truncate mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
           {displayName}
         </span>
         <button 
@@ -255,7 +255,7 @@ function renderPendingAddBadge(add: PendingAdd, globalIndex: number, ctx: Render
       key={`pending-add-${globalIndex}`}
       className="flex items-center justify-between w-[90%] px-1 py-0.5 rounded border mb-0.5 bg-green-50 border-green-300 pointer-events-auto"
     >
-      <span className="text-[10px] truncate max-w-[70%] text-green-800 font-bold">
+      <span title={add.user.nickname || add.user.f_name} className="text-[11px] flex-1 min-w-0 truncate mr-1 text-green-800 font-bold">
         {add.user.nickname || add.user.f_name}
       </span>
       <button

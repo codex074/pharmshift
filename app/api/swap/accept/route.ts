@@ -135,8 +135,7 @@ export async function POST(request: NextRequest) {
   }
 
   // 3) Pre-acceptance collision check
-  //    Level 1 (overlap)  → hard block, ไม่ว่า force จะส่งมาหรือไม่
-  //    Level 2 (sequence) → soft warn, recipient กดยืนยัน (force=true) ได้
+  //    Overlap + sequence → soft warn, recipient กดยืนยัน (force=true) ได้
   let overlapMsg = '';
   let seqMsg = '';
 
@@ -191,20 +190,11 @@ export async function POST(request: NextRequest) {
     if (seqMsgs.length > 0) seqMsg = seqMsgs.join(' และ ');
   }
 
-  // Level 1 — hard block (force ไม่สามารถข้ามได้)
-  if (overlapMsg) {
-    return NextResponse.json(
-      { error: `ไม่สามารถรับคำขอนี้ได้ — ${overlapMsg}` },
-      { status: 409 },
-    );
+  // Soft warn — recipient กดยืนยัน (force=true) ข้ามได้ทั้ง overlap และ sequence
+  const collisionMsg = [overlapMsg, seqMsg].filter(Boolean).join(' และ ');
+  if (collisionMsg && !force) {
+    return NextResponse.json({ collision: collisionMsg });
   }
-
-  // Level 2 — warn, ให้ recipient กดยืนยันได้
-  if (seqMsg && !force) {
-    return NextResponse.json({ collision: seqMsg });
-  }
-
-  const collisionMsg = seqMsg;
 
   // 4) Accept atomically in the database to prevent double-accept races
   const { data: acceptRows, error: acceptErr } = await supa.rpc('accept_swap_request_atomic', {

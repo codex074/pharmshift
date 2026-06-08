@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
     // Get all shifts for the target date with user info via join
     let query = supabase
       .from('shifts')
-      .select('shift_type, user_id, department:departments(name), user:users!user_id(role)')
+      .select('shift_type, position, user_id, department:departments(name), user:users!user_id(role)')
       .eq('month_year', monthYear)
       .eq('date', targetDate);
 
@@ -178,8 +178,11 @@ export async function GET(req: NextRequest) {
       if (!s.user_id) continue;
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
       const deptName = (s.department as any)?.name;
-      const dept = deptName && deptName !== s.shift_type ? ` (${deptName})` : '';
-      const desc = isNightRun ? 'เวรดึก' : `${label}${dept}`;
+      // รุ่งอรุณ: ห้อง (ER/OPD/HIV) เก็บใน position ไม่ใช่ department (dept = ชื่อเดียวกับ shift_type)
+      const detail = s.shift_type === 'รุ่งอรุณ' && s.position
+        ? ` (${s.position})`
+        : deptName && deptName !== s.shift_type ? ` (${deptName})` : '';
+      const desc = isNightRun ? 'เวรดึก' : `${label}${detail}`;
       const existing = userShifts.get(s.user_id) || [];
       existing.push(desc);
       userShifts.set(s.user_id, existing);

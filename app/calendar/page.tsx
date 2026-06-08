@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { Loader2, Lock } from 'lucide-react';
+import { Loader2, Lock, AlertTriangle, X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
@@ -35,12 +35,11 @@ import { AdminSettingsModal } from '@/components/calendar/AdminSettingsModal';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
-import { format, endOfMonth, subMonths } from 'date-fns';
+import { format, endOfMonth, subMonths, addMonths } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike, canManageRoleGroup } from '@/lib/types';
-import { formatThaiMonth } from '@/lib/utils';
-import { cn } from '@/lib/utils';
+import { formatThaiMonth, cn, shiftsOverlap } from '@/lib/utils';
 import {
   AFTERNOON_MED_SLOT_FULL_MESSAGE,
   DUPLICATE_SHIFT_MESSAGE,
@@ -106,6 +105,55 @@ export default function CalendarPage() {
       if (isPushSupported() && isMobilePushDevice()) subscribeToPush(currentUser.id);
     });
   }, [currentUser?.id, authLoading]);
+
+  // Overlap warning banner state
+  const [overlapDates, setOverlapDates] = useState<string[]>([]);
+  const [overlapBannerDismissed, setOverlapBannerDismissed] = useState(false);
+
+  // Check for overlapping shifts in current + next 2 months on login
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const sessionKey = `overlap_dismissed_${currentUser.id}`;
+    if (typeof window !== 'undefined' && sessionStorage.getItem(sessionKey)) {
+      setOverlapBannerDismissed(true);
+      return;
+    }
+    const today = format(new Date(), 'yyyy-MM-dd');
+    const ahead = format(addMonths(new Date(), 2), 'yyyy-MM-dd');
+    supabase
+      .from('shifts')
+      .select('date, shift_type')
+      .eq('user_id', currentUser.id)
+      .gte('date', today)
+      .lte('date', ahead)
+      .then(({ data }) => {
+        if (!data?.length) return;
+        const byDate: Record<string, string[]> = {};
+        data.forEach(s => {
+          if (!byDate[s.date]) byDate[s.date] = [];
+          byDate[s.date].push(s.shift_type);
+        });
+        const found: string[] = [];
+        Object.entries(byDate).forEach(([date, types]) => {
+          outer: for (let i = 0; i < types.length; i++) {
+            for (let j = i + 1; j < types.length; j++) {
+              if (shiftsOverlap(types[i] as ShiftType, types[j] as ShiftType)) {
+                found.push(date);
+                break outer;
+              }
+            }
+          }
+        });
+        if (found.length > 0) setOverlapDates(found.sort());
+      });
+  }, [currentUser?.id]);
+
+  function dismissOverlapBanner() {
+    if (currentUser?.id && typeof window !== 'undefined') {
+      sessionStorage.setItem(`overlap_dismissed_${currentUser.id}`, '1');
+    }
+    setOverlapBannerDismissed(true);
+  }
 
   const userIsAdmin = isAdmin(currentUser);
   const userIsAdminLike = isAdminLike(currentUser);
@@ -437,6 +485,26 @@ export default function CalendarPage() {
         month={month}
         year={year}
       />
+        {/* Overlap warning banner */}
+        {overlapDates.length > 0 && !overlapBannerDismissed && (
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border-2 border-amber-400 rounded-xl">
+            <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-800">⚠️ มีเวรซ้อนกัน — กรุณารีบจัดการ</p>
+              <p className="text-xs text-amber-700 mt-1">
+                วันที่มีเวรซ้อน: {overlapDates.map(d => format(new Date(d + 'T00:00:00'), 'd MMM yyyy', { locale: th })).join(', ')}
+              </p>
+            </div>
+            <button
+              onClick={dismissOverlapBanner}
+              className="text-amber-400 hover:text-amber-600 p-1 transition-colors shrink-0"
+              title="ปิดการแจ้งเตือน"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        )}
+
         {/* Page title + actions */}
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>

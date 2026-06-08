@@ -164,7 +164,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         )}
         onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
       >
-        <span className={cn("text-[10px] truncate flex-1 leading-tight", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+        <span title={displayName} className={cn("text-[11px] truncate flex-1 min-w-0 leading-tight mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
           {displayName}
         </span>
         <button 
@@ -263,7 +263,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       key={`pending-add-${globalIndex}`}
       className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto"
     >
-      <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
+      <span title={add.user.nickname || add.user.f_name} className="text-[11px] truncate flex-1 min-w-0 leading-tight mr-1 text-green-800 font-bold">
         {add.user.nickname || add.user.f_name}
       </span>
       <button
@@ -669,7 +669,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
             const gIdx = ctx.pendingAdds!.indexOf(pa);
             return (
               <div key={gIdx} className="flex items-center justify-between w-full px-1 py-0.5 rounded border my-0.5 bg-green-50 border-green-300 pointer-events-auto">
-                <span className="text-[10px] truncate flex-1 leading-tight text-green-800 font-bold">
+                <span title={pa.user.nickname || pa.user.f_name} className="text-[11px] truncate flex-1 min-w-0 leading-tight mr-1 text-green-800 font-bold">
                   {pa.user.nickname || pa.user.f_name}
                 </span>
                 <button
