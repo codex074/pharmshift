@@ -15,6 +15,10 @@ declare global {
   interface Navigator {
     standalone?: boolean;
   }
+
+  interface Window {
+    __pwaInstallEvent?: BeforeInstallPromptEvent;
+  }
 }
 
 const DISMISS_KEY = 'pharmshift:pwa-install-dismissed-at';
@@ -39,6 +43,12 @@ function isIosSafariBrowser() {
   return isIosDevice && isSafari;
 }
 
+function isAndroidBrowser() {
+  if (typeof window === 'undefined') return false;
+
+  return /Android/i.test(window.navigator.userAgent);
+}
+
 function canShowPromptAgain() {
   if (typeof window === 'undefined') return false;
 
@@ -54,27 +64,20 @@ export function PWAProvider() {
   const [isInstalled, setIsInstalled] = useState(true);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIosSafari, setIsIosSafari] = useState(false);
+  const [showAndroidFallback, setShowAndroidFallback] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !('serviceWorker' in navigator)) return;
 
-    const registerServiceWorker = async () => {
-      try {
-        await navigator.serviceWorker.register('/sw.js', {
-          scope: '/',
-          updateViaCache: 'none',
-        });
-      } catch (error) {
+    // ลงทะเบียนทันที (ไม่รอ window load) เพื่อให้เว็บผ่านเกณฑ์ติดตั้ง PWA ตั้งแต่หน้าแรกที่เข้า
+    navigator.serviceWorker
+      .register('/sw.js', {
+        scope: '/',
+        updateViaCache: 'none',
+      })
+      .catch((error) => {
         console.error('[PWA] Service worker registration failed:', error);
-      }
-    };
-
-    if (document.readyState === 'complete') {
-      void registerServiceWorker();
-    } else {
-      window.addEventListener('load', registerServiceWorker, { once: true });
-      return () => window.removeEventListener('load', registerServiceWorker);
-    }
+      });
   }, []);
 
   useEffect(() => {
@@ -85,25 +88,34 @@ export function PWAProvider() {
     setIsIosSafari(isIosSafariBrowser());
     setShowPrompt(!installed && canShowPromptAgain());
 
-    const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
-      setInstallEvent(event as BeforeInstallPromptEvent);
+    // event ถูกดักจับไว้ล่วงหน้าโดย inline script ใน layout (window.__pwaInstallEvent)
+    const onInstallReady = () => {
+      const event = window.__pwaInstallEvent;
+      if (!event) return;
+      setInstallEvent(event);
       setShowPrompt(canShowPromptAgain());
     };
 
+    onInstallReady();
+    window.addEventListener('pwa-install-ready', onInstallReady);
+
     const onAppInstalled = () => {
+      window.__pwaInstallEvent = undefined;
       setInstallEvent(null);
       setIsInstalled(true);
       setShowPrompt(false);
       window.localStorage.removeItem(DISMISS_KEY);
     };
 
-    window.addEventListener('beforeinstallprompt', onBeforeInstallPrompt);
     window.addEventListener('appinstalled', onAppInstalled);
 
+    // Android ที่ไม่ยิง beforeinstallprompt (Firefox ฯลฯ) → แสดงวิธีติดตั้งเองหลังรอ event 3 วิ
+    const fallbackTimer = window.setTimeout(() => setShowAndroidFallback(true), 3000);
+
     return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
+      window.removeEventListener('pwa-install-ready', onInstallReady);
       window.removeEventListener('appinstalled', onAppInstalled);
+      window.clearTimeout(fallbackTimer);
     };
   }, []);
 
@@ -112,6 +124,7 @@ export function PWAProvider() {
 
     await installEvent.prompt();
     const choice = await installEvent.userChoice;
+    window.__pwaInstallEvent = undefined;
 
     if (choice.outcome === 'accepted') {
       setShowPrompt(false);
@@ -132,10 +145,11 @@ export function PWAProvider() {
 
   if (isInstalled || !showPrompt) return null;
 
-  const showIosHint = isIosSafari && !installEvent;
   const showInstallButton = Boolean(installEvent);
+  const showIosHint = !showInstallButton && isIosSafari;
+  const showAndroidHint = !showInstallButton && !showIosHint && showAndroidFallback && isAndroidBrowser();
 
-  if (!showIosHint && !showInstallButton) return null;
+  if (!showIosHint && !showInstallButton && !showAndroidHint) return null;
 
   return (
     <div className="fixed inset-x-4 bottom-4 z-[60] mx-auto max-w-md rounded-3xl border border-violet-200/80 bg-white/95 p-4 shadow-[0_18px_60px_rgba(76,29,149,0.18)] backdrop-blur">
@@ -150,7 +164,7 @@ export function PWAProvider() {
 
       <div className="flex items-start gap-3 pr-8">
         <div className="mt-0.5 rounded-2xl bg-violet-100 p-2 text-violet-700">
-          {showInstallButton ? <Download className="h-5 w-5" /> : <Share className="h-5 w-5" />}
+          {showIosHint ? <Share className="h-5 w-5" /> : <Download className="h-5 w-5" />}
         </div>
 
         <div className="min-w-0 flex-1">
@@ -159,9 +173,13 @@ export function PWAProvider() {
             <p className="mt-1 text-sm leading-6 text-gray-600">
               เพิ่มแอปลง Home Screen เพื่อเปิดใช้งานได้ไวขึ้นและใช้งานเหมือนแอปบนมือถือหรือแท็บเล็ต
             </p>
-          ) : (
+          ) : showIosHint ? (
             <p className="mt-1 text-sm leading-6 text-gray-600">
               บน iPhone หรือ iPad ให้เปิดผ่าน Safari แล้วแตะปุ่ม Share จากนั้นเลือก Add to Home Screen
+            </p>
+          ) : (
+            <p className="mt-1 text-sm leading-6 text-gray-600">
+              เปิดเมนูของเบราว์เซอร์ แล้วเลือก &ldquo;ติดตั้งแอป&rdquo; หรือ &ldquo;เพิ่มลงในหน้าจอหลัก&rdquo;
             </p>
           )}
         </div>
@@ -177,7 +195,7 @@ export function PWAProvider() {
         </button>
       ) : (
         <div className="mt-4 rounded-2xl bg-violet-50 px-4 py-3 text-sm text-violet-900">
-          {'Safari -> Share -> Add to Home Screen'}
+          {showIosHint ? 'Safari -> Share -> Add to Home Screen' : 'เมนู (⋮) -> ติดตั้งแอป / เพิ่มลงในหน้าจอหลัก'}
         </div>
       )}
     </div>

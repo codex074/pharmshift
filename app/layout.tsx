@@ -43,6 +43,12 @@ export default function RootLayout({
   return (
     <html lang="th" className={`${inter.variable} ${sarabun.variable}`}>
       <body className="min-h-screen bg-background antialiased">
+        {/* ดักจับ beforeinstallprompt ก่อน React hydrate — ไม่งั้น event ที่ยิงเร็วจะหายไป */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallEvent=e;window.dispatchEvent(new Event('pwa-install-ready'));});`,
+          }}
+        />
         <OfflineBanner />
         {children}
         <Toaster richColors position="top-right" />
