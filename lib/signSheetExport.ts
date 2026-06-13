@@ -158,6 +158,7 @@ interface RowGroup {
   pharm_cont: string[];
   pharm_techs: string[];
   officers: string[];
+  medOfficers: { pos: string; name: string }[];
   chemoNames: string[];
 }
 
@@ -214,7 +215,7 @@ function buildGroups(
       : effectiveDate; // med-morning and simple both group by date only
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_techs: [], officers: [], chemoNames: [] });
+      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_techs: [], officers: [], medOfficers: [], chemoNames: [] });
     }
     const grp = groupMap.get(key)!;
     if (config.layout === 'chemo') grp.chemoNames.push(displayName);
@@ -225,7 +226,10 @@ function buildGroups(
       else grp.pharmacists.push(displayName);
     } else if (role === 'pharmacist') grp.pharmacists.push(displayName);
     else if (role === 'pharmacy_technician') grp.pharm_techs.push(displayName);
-    else grp.officers.push(displayName);
+    else {
+      grp.officers.push(displayName);
+      if (config.layout === 'med-morning') grp.medOfficers.push({ pos: s.position || '', name: displayName });
+    }
   }
 
   // Sort keys by date then subtype
@@ -387,17 +391,22 @@ export async function exportSignSheet(
 
       const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
 
+      // Officers: pull only positions m1, m2, m3 (ignore m4+) ordered m1→m2→m3
+      const MED_OFFICER_POS = ['m1', 'm2', 'm3'];
+
       const groups = buildGroups(shifts, config, originalUserMap, usersMap);
       for (const grp of groups) {
         const startRow = ws.lastRow!.number + 1;
-        // Row 1: D/C  → เภสัช D/C + จพง. m1
-        // Row 2: Cont → เภสัช Cont + จพง. m2
-        // Row 3: จนท. → ชื่อ cell ทาสีดำ ไม่มีข้อความ
-        const pairs: Array<[string, string, string]> = [
-          ['D/C',  grp.pharm_dc[0]   || '', grp.pharm_techs[0] || ''],
-          ['Cont', grp.pharm_cont[0] || '', grp.pharm_techs[1] || ''],
+        const medOfficers = MED_OFFICER_POS
+          .map((p) => grp.medOfficers.find((o) => o.pos === p)?.name || '');
+        // Row 1: D/C  → เภสัช D/C + จพง. m1 + จนท. m1
+        // Row 2: Cont → เภสัช Cont + จพง. m2 + จนท. m2
+        // Row 3: จนท. m3 (เภสัช/จพง. ทาสีดำ)
+        const pairs: Array<[string, string, string, string]> = [
+          ['D/C',  grp.pharm_dc[0]   || '', grp.pharm_techs[0] || '', medOfficers[0]],
+          ['Cont', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
         ];
-        pairs.forEach(([label, pharm, pt], i) => {
+        pairs.forEach(([label, pharm, pt, off], i) => {
           const vals = new Array(15).fill('');
           if (i === 0) {
             vals[0] = formatThaiDate(grp.date);
@@ -406,6 +415,7 @@ export async function exportSignSheet(
           vals[1] = label;
           vals[2] = pharm;
           vals[3] = pt;
+          vals[4] = off;
           vals[11] = label;
           const dataRow = ws.addRow(vals);
           styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
@@ -417,9 +427,9 @@ export async function exportSignSheet(
           });
         });
 
-        // Officer row — ตำแหน่ง cell เป็นสีดำ, ชื่อจนท. อยู่คอลัมน์ จนท.
+        // Officer row — ตำแหน่ง cell เป็นสีดำ, ชื่อจนท. m3 อยู่คอลัมน์ จนท.
         const offVals = new Array(15).fill('');
-        offVals[4] = grp.officers[0] || '';
+        offVals[4] = medOfficers[2];
         const offRow = ws.addRow(offVals);
         styleDataRow(offRow, 15, new Set([1, 2, 9, 10, 11, 12]));
         offRow.getCell(2).fill = blackFill;
