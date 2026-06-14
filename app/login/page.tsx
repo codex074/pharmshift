@@ -35,10 +35,18 @@ function LoginForm() {
 
     try {
       const loginId = phaId.trim().toLowerCase();
+      // Keep the app logged in on phones/tablets. Detect the installed
+      // PWA (standalone) or a touch-primary device — this catches iPad,
+      // whose desktop user-agent the server can't distinguish from a Mac.
+      const isStandalone =
+        window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches;
+      const persistent = isStandalone || isTouchDevice;
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phaId: loginId, password }),
+        body: JSON.stringify({ phaId: loginId, password, persistent }),
       });
       const data = await res.json();
 

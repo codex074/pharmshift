@@ -16,6 +16,12 @@ const legacyKey = LEGACY_SECRET ? new TextEncoder().encode(LEGACY_SECRET) : null
 
 export const SESSION_COOKIE_NAME = 'pharmshift_session';
 
+// 400 days — the maximum cookie lifetime modern browsers honour.
+// Combined with the middleware's sliding refresh, an active
+// phone/tablet user effectively never has to log in again.
+const SESSION_DAYS = 400;
+const SESSION_MAX_AGE = SESSION_DAYS * 24 * 60 * 60; // seconds
+
 interface CreateSessionOptions {
   persistent?: boolean;
 }
@@ -24,7 +30,7 @@ export async function encrypt(payload: any) {
   return await new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('30d') // 30 days expiration
+    .setExpirationTime(`${SESSION_DAYS}d`)
     .sign(key);
 }
 
@@ -49,7 +55,7 @@ export async function decrypt(input: string): Promise<any> {
 
 export async function createSession(user: Partial<User>, options?: CreateSessionOptions) {
   const persistent = options?.persistent ?? true;
-  const expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+  const expires = new Date(Date.now() + SESSION_MAX_AGE * 1000);
   const sessionData = {
     id: user.id,
     pha_id: user.pha_id,
@@ -62,12 +68,16 @@ export async function createSession(user: Partial<User>, options?: CreateSession
   cookies().set(SESSION_COOKIE_NAME, session, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    // 'lax' (not 'strict') so the cookie is still sent when the installed
+    // PWA is launched from the home screen or opened from a push
+    // notification — 'strict' drops the cookie on those top-level
+    // navigations and forces a re-login.
+    sameSite: 'lax',
     path: '/',
     ...(persistent
       ? {
           expires,
-          maxAge: 30 * 24 * 60 * 60, // seconds — fallback for browsers that prefer maxAge
+          maxAge: SESSION_MAX_AGE, // seconds — fallback for browsers that prefer maxAge
         }
       : {}),
   });
@@ -84,7 +94,7 @@ export async function clearSession() {
     expires: new Date(0),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax',
     path: '/',
   });
 }

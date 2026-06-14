@@ -67,7 +67,7 @@ async function recordFailedLogin(supabase: ReturnType<typeof createLoginAttemptC
 
 export async function POST(request: Request) {
   try {
-    const { phaId, password } = await request.json();
+    const { phaId, password, persistent } = await request.json();
     const normalizedPhaId = typeof phaId === 'string' ? phaId.trim().toLowerCase() : '';
     const ip = getClientIp(request);
 
@@ -112,9 +112,13 @@ export async function POST(request: Request) {
         .eq('id', user.id);
     }
 
-    // Set the custom auth token cookie
+    // Set the custom auth token cookie.
+    // Persist on phones/tablets so the app stays logged in. We trust the
+    // client's hint (it can detect standalone-PWA / touch devices, which
+    // covers iPad — whose desktop user-agent the server check misses) and
+    // fall back to the server-side user-agent sniff.
     await createSession(user, {
-      persistent: isMobileUserAgent(request.headers.get('user-agent')),
+      persistent: persistent === true || isMobileUserAgent(request.headers.get('user-agent')),
     });
 
     await writeAuditLog({
