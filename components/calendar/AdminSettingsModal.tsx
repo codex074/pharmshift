@@ -1,17 +1,18 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Calendar, Users, Database, TableProperties, Activity, Coins } from 'lucide-react';
+import { X, Calendar, Users, Database, TableProperties, Activity, Coins, LogIn } from 'lucide-react';
 import { ManageHolidaysModal } from './ManageHolidaysModal';
 import { AdminUserManagementModal } from './AdminUserManagementModal';
 import { AdminBackupModal } from './AdminBackupModal';
 import { AdminShiftEditorModal } from './AdminShiftEditorModal';
 import { AdminAuditLogModal } from './AdminAuditLogModal';
+import { AdminAccessLogModal } from './AdminAccessLogModal';
 import { AdminCompensationSettingsModal } from './AdminCompensationSettingsModal';
 import { cn } from '@/lib/utils';
 import type { User } from '@/lib/types';
 
-type Tab = 'holidays' | 'users' | 'shifts' | 'backup' | 'compensation' | 'audit';
+type Tab = 'holidays' | 'users' | 'shifts' | 'backup' | 'compensation' | 'audit' | 'access';
 
 interface AdminSettingsModalProps {
   onClose: () => void;
@@ -31,6 +32,7 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
       ? [
           { id: 'compensation' as Tab, label: 'ค่าตอบแทน', icon: <Coins className="w-4 h-4" /> },
           { id: 'audit' as Tab, label: 'Audit', icon: <Activity className="w-4 h-4" /> },
+          { id: 'access' as Tab, label: 'การเข้าใช้งาน', icon: <LogIn className="w-4 h-4" /> },
         ]
       : []),
   ];
@@ -113,6 +115,10 @@ export function AdminSettingsModal({ onClose, onHolidaysChange, currentUser }: A
 
           {activeTab === 'audit' && currentUser?.role === 'admin' && (
             <AdminAuditLogModal />
+          )}
+
+          {activeTab === 'access' && currentUser?.role === 'admin' && (
+            <AdminAccessLogModal />
           )}
         </div>
       </div>
