@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/session';
 import { createSupabaseServer } from '@/lib/supabaseServer';
+import { recordAccess } from '@/lib/accessLog';
 
 export async function GET() {
   const session = await getSession();
@@ -20,6 +21,9 @@ export async function GET() {
   if (error || !user) {
     return NextResponse.json({ user: null }, { status: 401 });
   }
+
+  // Record daily-active usage (deduped to one row per user per day).
+  await recordAccess(session.id);
 
   return NextResponse.json({ user });
 }
