@@ -29,10 +29,23 @@ export async function recordAccess(userId: string) {
   if (recordedToday.has(key)) return;
 
   try {
+    const { data: existing, error: readError } = await accessClient
+      .from('access_logs')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('day', day)
+      .maybeSingle();
+
+    if (readError) throw readError;
+    if (existing) {
+      recordedToday.add(key);
+      return;
+    }
+
     await accessClient.rpc('record_access', { p_user_id: userId, p_day: day });
 
     // Bound the cache: clear it once it grows (e.g. across a day boundary).
-    // The RPC is idempotent, so a few redundant re-records are harmless.
+    // The RPC is insert-only, so a few redundant attempts are harmless.
     if (recordedToday.size > 500) recordedToday.clear();
     recordedToday.add(key);
   } catch (error) {

@@ -7,7 +7,6 @@ import { toastSuccess, toastError } from '@/lib/swal';
 import { useShifts, useSwapRequests, useCurrentUser, useNotifications } from '@/hooks/useShifts';
 import { useIsMobile } from '@/hooks/useIsMobile';
 import { useSwipeGesture } from '@/hooks/useSwipeGesture';
-import { useAutoSync } from '@/hooks/useAutoSync';
 import { CalendarGrid } from '@/components/calendar/CalendarGrid';
 import { MyCalendarGrid } from '@/components/calendar/MyCalendarGrid';
 import { PharmacyTechCalendarGrid } from '@/components/calendar/PharmacyTechCalendarGrid';
@@ -47,6 +46,22 @@ import {
   isAfternoonMedSlot,
   userShiftSlotKey,
 } from '@/lib/shiftSlotRules';
+
+const SHIFT_SELECT = `
+  id,
+  date,
+  department_id,
+  shift_type,
+  position,
+  user_id,
+  original_user_id,
+  user_snapshot,
+  month_year,
+  created_at,
+  department:departments(id, name),
+  user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
+  original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
+`;
 
 export default function CalendarPage() {
   const now = new Date();
@@ -92,10 +107,10 @@ export default function CalendarPage() {
     const prevMonthYear = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
     supabase
       .from('shifts')
-      .select(`*, department:departments(id, name), user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role), original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)`)
+      .select(SHIFT_SELECT)
       .eq('month_year', prevMonthYear)
       .eq('date', lastDayStr)
-      .then(({ data }) => { setPrevMonthLastDayShifts((data as Shift[]) ?? []); }); // decorative prev-month carry-over
+      .then(({ data }) => { setPrevMonthLastDayShifts((data as unknown as Shift[]) ?? []); }); // decorative prev-month carry-over
   }, [year, month]);
 
   // Auto-subscribe to push notifications when user is authenticated
@@ -223,15 +238,10 @@ export default function CalendarPage() {
     return result;
   }
 
-  // Single source of truth for "refresh everything" — used by the header button
-  // and by auto-sync on tab-focus / network-reconnect (covers Realtime going stale).
+  // Single source of truth for manual refresh from the header button.
   const refreshAll = useCallback(async () => {
     await Promise.all([refetch(), fetchNotifications(), fetchSwaps()]);
   }, [refetch, fetchNotifications, fetchSwaps]);
-
-  useAutoSync(refreshAll, { enabled: !!currentUser?.id });
-
-
 
   function handleMonthChange(y: number, m: number) {
     setYear(y);

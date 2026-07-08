@@ -10,6 +10,40 @@ import { toastError } from '@/lib/swal';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 
+const SHIFT_SELECT = `
+  id,
+  date,
+  department_id,
+  shift_type,
+  position,
+  user_id,
+  original_user_id,
+  user_snapshot,
+  month_year,
+  created_at,
+  department:departments(id, name),
+  user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
+  original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
+`;
+
+const SWAP_REQUEST_SELECT = `
+  id,
+  shift_id,
+  requester_id,
+  target_user_id,
+  request_type,
+  target_shift_id,
+  status,
+  message,
+  requester_read,
+  created_at,
+  updated_at,
+  shift:shifts!shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name)),
+  target_shift:shifts!target_shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name)),
+  requester:users!requester_id(id, prefix, f_name, l_name, nickname),
+  target_user:users!target_user_id(id, prefix, f_name, l_name, nickname)
+`;
+
 /** "เวรดึก 15 ม.ค. (ER)" — for notification body text */
 function fmtShiftNotif(s: Shift | null | undefined): string {
   if (!s) return 'เวรดังกล่าว';
@@ -124,17 +158,12 @@ export function useShifts(year: number, month: number) {
   const fetchShiftById = useCallback(async (shiftId: string) => {
     const { data, error } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        department:departments(id, name),
-        user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
-        original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
-      `)
+      .select(SHIFT_SELECT)
       .eq('id', shiftId)
       .single();
 
     if (error || !data) return null;
-    return data as Shift;
+    return data as unknown as Shift;
   }, []);
 
   const fetchShifts = useCallback(async () => {
@@ -155,21 +184,16 @@ export function useShifts(year: number, month: number) {
 
     const { data, error } = await supabase
       .from('shifts')
-      .select(`
-        *,
-        department:departments(id, name),
-        user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
-        original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
-      `)
+      .select(SHIFT_SELECT)
       .eq('month_year', monthYear)
       .order('date', { ascending: true });
 
     const { data: holidaysData, error: holidaysError } = await supabase
       .from('holidays')
-      .select('*');
+      .select('id, date, name, created_at');
 
     if (!error && data) {
-      setShifts(data as Shift[]);
+      setShifts(data as unknown as Shift[]);
     } else if (error) {
       // R25: don't leave the user staring at an empty calendar with no explanation
       toastError('โหลดตารางเวรไม่สำเร็จ — กรุณารีเฟรชอีกครั้ง');
@@ -242,13 +266,7 @@ export function useSwapRequests(userId?: string) {
   const fetchSwapById = useCallback(async (swapId: string) => {
     const { data } = await supabase
       .from('swap_requests')
-      .select(`
-        *,
-        shift:shifts!shift_id(*, department:departments(id, name)),
-        target_shift:shifts!target_shift_id(*, department:departments(id, name)),
-        requester:users!requester_id(id, prefix, f_name, l_name, nickname),
-        target_user:users!target_user_id(id, prefix, f_name, l_name, nickname)
-      `)
+      .select(SWAP_REQUEST_SELECT)
       .eq('id', swapId)
       .maybeSingle();
 
@@ -259,19 +277,13 @@ export function useSwapRequests(userId?: string) {
     if (!userId) return;
     const { data } = await supabase
       .from('swap_requests')
-      .select(`
-        *,
-        shift:shifts!shift_id(*, department:departments(id, name)),
-        target_shift:shifts!target_shift_id(*, department:departments(id, name)),
-        requester:users!requester_id(id, prefix, f_name, l_name, nickname),
-        target_user:users!target_user_id(id, prefix, f_name, l_name, nickname)
-      `)
+      .select(SWAP_REQUEST_SELECT)
       .or(`requester_id.eq.${userId},target_user_id.eq.${userId}`)
       .order('created_at', { ascending: false })
       .limit(50);
 
     if (data) {
-      const next = dedupeSwapRequests(data as SwapRequest[]);
+      const next = dedupeSwapRequests(data as unknown as SwapRequest[]);
       setSwapRequests(next);
       syncPendingCount(next);
     }
