@@ -203,6 +203,12 @@ export async function POST(request: NextRequest) {
   });
   if (acceptErr) {
     console.error('[swap/accept] atomic accept error:', acceptErr);
+    const raw = acceptErr.message || '';
+    if (acceptErr.code === '23505' || raw.includes('unique_user_date_shifttype')) {
+      return NextResponse.json({
+        error: 'ฐานข้อมูลยังใช้กฎเดิมที่ห้ามรับเวรซ้อนอยู่ กรุณารัน migration ล่าสุดก่อน',
+      }, { status: 409 });
+    }
     return NextResponse.json({ error: 'ไม่สามารถดำเนินการรับคำขอได้' }, { status: 500 });
   }
 
@@ -286,8 +292,5 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({
-    ok: true,
-    collision: collisionMsg || undefined,
-  });
+  return NextResponse.json({ ok: true });
 }

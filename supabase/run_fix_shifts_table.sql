@@ -11,8 +11,10 @@ ALTER TABLE public.shifts ADD CONSTRAINT shifts_shift_type_check
 -- 2. Add position column (nullable)
 ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS position text;
 
--- 3. Drop old unique constraint and recreate with position included
+-- 3. Drop old broad unique constraint and recreate as an exact-slot guard.
+--    This allows receiving overlapping shifts in different rooms/positions;
+--    the app warns instead of blocking that workflow.
 ALTER TABLE public.shifts DROP CONSTRAINT IF EXISTS unique_user_date_shifttype;
 ALTER TABLE public.shifts ADD CONSTRAINT unique_user_date_shifttype
-  UNIQUE (user_id, date, shift_type, position)
+  UNIQUE (user_id, date, shift_type, department_id, position)
   DEFERRABLE INITIALLY IMMEDIATE;

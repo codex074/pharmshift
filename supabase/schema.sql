@@ -121,6 +121,14 @@ create index if not exists shifts_date_idx on public.shifts (date);
 create index if not exists shifts_user_idx on public.shifts (user_id);
 create index if not exists shifts_month_idx on public.shifts (month_year);
 
+-- Exact duplicate slot guard only. Same user/date/shift_type in different
+-- rooms or positions is allowed so swap/transfer/cover flows can warn instead
+-- of blocking multi-step real-world exchanges.
+alter table public.shifts drop constraint if exists unique_user_date_shifttype;
+alter table public.shifts add constraint unique_user_date_shifttype
+  unique (user_id, date, shift_type, department_id, position)
+  deferrable initially immediate;
+
 -- Row Level Security
 alter table public.shifts enable row level security;
 drop policy if exists "Authenticated users can read shifts" on public.shifts;

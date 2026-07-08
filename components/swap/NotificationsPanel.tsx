@@ -181,7 +181,7 @@ export function NotificationsPanel({
       setCollisionReqId(null);
       setCollisionMsg('');
       toast.success('ยอมรับคำขอเรียบร้อย');
-      toast.warning('⚠️ มีเวรต่อเนื่องกัน กรุณาตรวจสอบตารางของคุณ', { duration: 8000 });
+      toast.warning('⚠️ มีเวรซ้อนหรือเวรต่อเนื่อง กรุณาตรวจสอบตารางของคุณ', { duration: 8000 });
     } catch (err: any) {
       toast.error(err.message || 'เกิดข้อผิดพลาด ลองใหม่อีกครั้ง');
     } finally {
@@ -348,7 +348,7 @@ export function NotificationsPanel({
                 className="flex-1 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold transition-all disabled:opacity-50 flex items-center justify-center gap-1"
               >
                 {isProcessing ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-                ยืนยันรับ (เวรต่อเนื่อง)
+                ยืนยันรับ
               </button>
             </div>
           </div>

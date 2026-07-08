@@ -341,7 +341,7 @@ export function useSwapRequests(userId?: string) {
       throw new Error(data.error || 'เกิดข้อผิดพลาด');
     }
 
-    if (data.collision) {
+    if (!force && data.collision) {
       return { collision: data.collision };
     }
 
