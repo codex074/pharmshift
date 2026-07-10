@@ -46,6 +46,26 @@ function getDeptName(shift: Shift) {
   return shift.department?.name || shift.department_name || '';
 }
 
+/**
+ * Compensation records night shifts on the day the shift ends, matching the
+ * compensation Excel export. Other shift types use their scheduled date.
+ */
+export function getCompensationShiftDate(shift: Shift) {
+  const [year, month, day] = shift.date.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  if (shift.shift_type === 'ดึก') {
+    date.setDate(date.getDate() + 1);
+  }
+
+  return date;
+}
+
+export function isCompensationShiftInMonth(shift: Shift, year: number, month: number) {
+  const compensationDate = getCompensationShiftDate(shift);
+  return compensationDate.getFullYear() === year && compensationDate.getMonth() + 1 === month;
+}
+
 export const COMPENSATION_CATEGORIES: CompensationCategory[] = [
   {
     key: 'rung_arun',

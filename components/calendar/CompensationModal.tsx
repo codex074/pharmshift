@@ -8,7 +8,9 @@ import type { Shift, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   COMPENSATION_CATEGORIES,
+  getCompensationShiftDate,
   getCompensationRate,
+  isCompensationShiftInMonth,
   normalizeCompensationRates,
   type CompensationRatesMap,
 } from '@/lib/compensation';
@@ -66,13 +68,16 @@ export function CompensationModal({
 
   const monthName = format(new Date(year, month - 1), 'MMMM yyyy', { locale: th });
   const role = currentUser.role || 'pharmacist';
+  const compensationShifts = shifts.filter((shift) =>
+    isCompensationShiftInMonth(shift, year, month)
+  );
 
   // Calculate breakdown
   let grandTotalValue = 0;
   let grandTotalAmount = 0;
 
   const breakdown = COMPENSATION_CATEGORIES.map(rule => {
-    const relevantShifts = shifts.filter(rule.filter);
+    const relevantShifts = compensationShifts.filter(rule.filter);
     
     // Sum units
     const totalUnits = relevantShifts.reduce((acc) => acc + rule.unitValue, 0);
@@ -119,7 +124,7 @@ export function CompensationModal({
         <div className="flex-1 overflow-y-auto bg-gray-50 p-5 space-y-4">
           
           <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-200/60 mb-6 text-center">
-             <p className="text-sm text-gray-500 font-medium mb-1">ยอดรวมค่าตอบแทนสุทธิ (ประเมิน)</p>
+             <p className="text-sm text-gray-500 font-medium mb-1">ค่าตอบแทนที่จะได้รับตาม Excel</p>
              <p className="text-3xl font-bold text-amber-600">
                 {grandTotalAmount.toLocaleString('th-TH', { minimumFractionDigits: 2 })}
                 <span className="text-lg text-gray-400 font-normal ml-1">฿</span>
@@ -159,10 +164,12 @@ export function CompensationModal({
                     {isExpanded && (
                       <div className="mt-3 pt-3 border-t border-black/10 text-sm space-y-1.5 animate-in slide-in-from-top-2 fade-in duration-200">
                         <p className="font-bold opacity-80 mb-2">รายละเอียดเวร (คลิกเพื่อย่อ):</p>
-                        {item.relevantShifts.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map((s, i) => (
+                        {[...item.relevantShifts].sort((a,b) => getCompensationShiftDate(a).getTime() - getCompensationShiftDate(b).getTime()).map((s, i) => {
+                          const compensationDate = getCompensationShiftDate(s);
+                          return (
                           <div key={i} className="flex justify-between items-center py-1.5 px-3 bg-white/40 rounded-lg">
                             <span>
-                              <span className="font-semibold">{format(new Date(s.date), 'dd')}</span> {format(new Date(s.date), 'MMM', { locale: th })} {s.shift_type} {getDeptName(s) ? (
+                              <span className="font-semibold">{format(compensationDate, 'dd')}</span> {format(compensationDate, 'MMM', { locale: th })} {s.shift_type} {getDeptName(s) ? (
                                 s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position && (s.position === 'D/C' || s.position === 'Cont')
                                   ? `(${getDeptName(s)} ${s.position})`
                                   : `(${getDeptName(s)})`
@@ -170,7 +177,8 @@ export function CompensationModal({
                             </span>
                             <span className="font-semibold opacity-80">+{item.unitValue}</span>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -187,7 +195,7 @@ export function CompensationModal({
           )}
 
           <p className="text-xs text-center text-gray-400 mt-6 pb-2">
-            หมายเหตุ: ตัวเลขนี้เป็นการคำนวณเบื้องต้นจากข้อมูลปฏิทิน<br/>จำนวนเงินจริงอาจขึ้นอยู่กับระเบียบการเบิกจ่ายของโรงพยาบาล
+            หมายเหตุ: คำนวณด้วยหลักเกณฑ์เดียวกับ Excel ค่าตอบแทน<br/>เวรดึกนับเป็นวันที่ออกเวร (วันถัดไป)
             {rateLoadError && <><br/>โหลดอัตราจาก Admin ไม่สำเร็จ จึงใช้ค่าเริ่มต้นของระบบ</>}
           </p>
 

@@ -5,7 +5,9 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import {
   compensationRatesToRows,
+  getCompensationShiftDate,
   getCompensationRate,
+  isCompensationShiftInMonth,
   normalizeCompensationRates,
   type CompensationRatesMap,
 } from './compensation';
@@ -305,11 +307,9 @@ export async function exportCompensationExcel(
 
     for (const s of relevantShifts) {
       if (!s.user_id) continue;
-      // เวรดึก ปฏิบัติงานถึง 08.30 ของวันถัดไป → นับเป็นวันถัดไป
-      const shiftDate = new Date(s.date);
-      if (s.shift_type === 'ดึก') shiftDate.setDate(shiftDate.getDate() + 1);
-      // ถ้า shift ข้ามเดือน (เช่น ดึกวันสุดท้ายของเดือน) ให้ข้ามไป
-      if (shiftDate.getMonth() + 1 !== month) continue;
+      // ใช้วันที่รับค่าตอบแทนเดียวกับหน้าสรุปส่วนตัว: เวรดึกนับวันที่ออกเวร
+      if (!isCompensationShiftInMonth(s, year, month)) continue;
+      const shiftDate = getCompensationShiftDate(s);
       const day = shiftDate.getDate();
       
       let userRow = userMap.get(s.user_id);
