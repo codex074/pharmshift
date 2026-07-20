@@ -679,12 +679,15 @@ export async function exportCompensationExcel(
         ? `SUM(${amountColLetter}${formulaRows[0]}:${amountColLetter}${formulaRows[formulaRows.length - 1]})`
         : '0';
       const summaryValues = new Array(totalCols).fill('');
-      summaryValues[0] = toThaiBahtText(grandTotalAmount);
       summaryValues[totalValueCol - 1] = { formula: totalValueFormula, result: grandTotalValue };
       summaryValues[amountCol - 1] = { formula: amountFormula, result: grandTotalAmount };
 
       const summaryRow = worksheet.addRow(summaryValues);
       previousSummaryRowNumber = summaryRow.number;
+      summaryRow.getCell(1).value = {
+        formula: `BAHTTEXT(${amountColLetter}${summaryRow.number})`,
+        result: toThaiBahtText(grandTotalAmount),
+      };
       summaryRow.height = 25;
       worksheet.mergeCells(`A${summaryRow.number}:${summaryMergeEnd}${summaryRow.number}`);
       summaryRow.font = { name: 'TH SarabunPSK', size: 16, bold: true };
