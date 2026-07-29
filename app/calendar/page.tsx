@@ -34,7 +34,7 @@ import { AdminSettingsModal } from '@/components/calendar/AdminSettingsModal';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
-import { format, endOfMonth, subMonths, addMonths } from 'date-fns';
+import { format, endOfMonth, subMonths, addMonths, addDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
 import { SHIFT_CONFIG, DEPT_COLORS, ROLE_LABELS, STAFF_ROLES, isAdmin, isAdminLike, canManageRoleGroup } from '@/lib/types';
@@ -61,6 +61,18 @@ const SHIFT_SELECT = `
   department:departments(id, name),
   user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
   original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
+`;
+
+// Slim select for the faded leading/trailing calendar days — no original_user join needed there
+const SURROUNDING_SHIFT_SELECT = `
+  id,
+  date,
+  department_id,
+  shift_type,
+  position,
+  user_id,
+  department:departments(id, name),
+  user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
 `;
 
 export default function CalendarPage() {
@@ -112,6 +124,51 @@ export default function CalendarPage() {
       .eq('date', lastDayStr)
       .then(({ data }) => { setPrevMonthLastDayShifts((data as unknown as Shift[]) ?? []); }); // decorative prev-month carry-over
   }, [year, month]);
+
+  // Shifts for the leading/trailing overflow days shown (faded) to complete the calendar's first/last weeks.
+  // Gated the same way as the main month: a role's shifts only show if that role is published
+  // for the surrounding month, unless the viewer can manage that role group.
+  const [surroundingMonthShifts, setSurroundingMonthShifts] = useState<Shift[]>([]);
+  useEffect(() => {
+    const monthStart = new Date(year, month - 1, 1);
+    const monthEnd = endOfMonth(monthStart);
+    const prevMonthDate = subMonths(monthStart, 1);
+    const nextMonthDate = addMonths(monthStart, 1);
+    const prevMonthYear = `${prevMonthDate.getFullYear()}-${String(prevMonthDate.getMonth() + 1).padStart(2, '0')}`;
+    const nextMonthYear = `${nextMonthDate.getFullYear()}-${String(nextMonthDate.getMonth() + 1).padStart(2, '0')}`;
+
+    Promise.all([
+      supabase
+        .from('published_months')
+        .select('month_year, is_published, pharmacist_published, pharmacy_technician_published, officer_published')
+        .in('month_year', [prevMonthYear, nextMonthYear]),
+      supabase
+        .from('shifts')
+        .select(SURROUNDING_SHIFT_SELECT)
+        .gte('date', format(addDays(monthStart, -7), 'yyyy-MM-dd'))
+        .lte('date', format(addDays(monthStart, -1), 'yyyy-MM-dd')),
+      supabase
+        .from('shifts')
+        .select(SURROUNDING_SHIFT_SELECT)
+        .gte('date', format(addDays(monthEnd, 1), 'yyyy-MM-dd'))
+        .lte('date', format(addDays(monthEnd, 7), 'yyyy-MM-dd')),
+    ]).then(([publishRes, prevRes, nextRes]) => {
+      const publishByMonth = new Map((publishRes.data ?? []).map((p) => [p.month_year, p]));
+      const isRolePublished = (roleYearKey: string, role: UserRole | undefined) => {
+        const p = publishByMonth.get(roleYearKey);
+        if (role === 'pharmacy_technician') return p?.pharmacy_technician_published ?? p?.is_published ?? false;
+        if (role === 'officer') return p?.officer_published ?? p?.is_published ?? false;
+        if (role === 'pharmacist') return p?.pharmacist_published ?? p?.is_published ?? false;
+        return false;
+      };
+      const canSeeRole = (role: UserRole | undefined, roleYearKey: string) =>
+        canManageRoleGroup(currentUser, role as UserRole) || isRolePublished(roleYearKey, role);
+
+      const prevShifts = (prevRes.data ?? []).filter((s: any) => canSeeRole(s.user?.role, prevMonthYear));
+      const nextShifts = (nextRes.data ?? []).filter((s: any) => canSeeRole(s.user?.role, nextMonthYear));
+      setSurroundingMonthShifts([...prevShifts, ...nextShifts] as unknown as Shift[]);
+    });
+  }, [year, month, currentUser]);
 
   // Auto-subscribe to push notifications when user is authenticated
   useEffect(() => {
@@ -211,8 +268,11 @@ export default function CalendarPage() {
   // Shifts for the active role group (used in "ทุกเวร" view)
   const shifts = allShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
 
-  // Previous month last day ดึก shifts filtered by role
+  // Previous month last day ดึก shifts filtered by role (used for Excel exports only)
   const prevMonthLastDayShiftsByRole = prevMonthLastDayShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
+
+  // Leading/trailing overflow-day shifts filtered by role (used for the on-screen calendar grids)
+  const surroundingMonthShiftsByRole = surroundingMonthShifts.filter(s => (s.user as any)?.role === effectiveRoleGroup);
 
   // Publish guards — disable export buttons if the month hasn't been published
   const pharmacistPublished = publishedRoles.pharmacist ?? false;
@@ -791,7 +851,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={visibleMyShifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShifts.filter(s => s.user_id === currentUser?.id)}
+                prevMonthLastDayShifts={surroundingMonthShifts.filter(s => s.user_id === currentUser?.id)}
                 onDayClick={handleDayClick}
                 onShiftClick={(s) => {
                   // คลิกชื่อตัวเอง → เปิด SwapModal (โอน/ยกเวร) เหมือนหน้า "ทุกเวร";
@@ -807,7 +867,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
+                prevMonthLastDayShifts={surroundingMonthShiftsByRole}
                 onDayClick={handleMobileDayClick}
                 isEditMode={activeEditMode && viewMode === 'all'}
                 roleGroup={effectiveRoleGroup}
@@ -821,7 +881,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
+                prevMonthLastDayShifts={surroundingMonthShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}
@@ -841,7 +901,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
+                prevMonthLastDayShifts={surroundingMonthShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}
@@ -861,7 +921,7 @@ export default function CalendarPage() {
                 month={month}
                 shifts={shifts}
                 holidays={holidays}
-                prevMonthLastDayShifts={prevMonthLastDayShiftsByRole}
+                prevMonthLastDayShifts={surroundingMonthShiftsByRole}
                 currentUser={currentUser}
                 onDayClick={handleDayClick}
                 onShiftClick={canRequestSwapInActiveRole ? handleShiftClick : undefined}

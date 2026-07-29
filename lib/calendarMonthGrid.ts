@@ -35,21 +35,26 @@ export function buildCalendarWeeks(
   month: number,
   shifts: Shift[],
   holidays: Holiday[],
-  prevMonthLastDayShifts: Shift[] = [],
+  // Shifts for days just outside the month (either month) — rendered faded to complete the leading/trailing weeks.
+  surroundingShifts: Shift[] = [],
 ): CalendarDay[][] {
   const monthStart = startOfMonth(new Date(year, month - 1));
   const monthEnd = endOfMonth(monthStart);
   let gridStart = startOfWeek(monthStart, { weekStartsOn: 0 });
   const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 0 });
 
-  if (monthStart.getDay() === 0 && prevMonthLastDayShifts.length > 0) {
-    gridStart = addDays(gridStart, -7);
-  }
-
-  const prevMonthLastDay = getPreviousMonthLastDay(year, month);
-  const prevMonthLastDayStr = format(prevMonthLastDay, 'yyyy-MM-dd');
   const currentShiftsByDate = groupShiftsByDate(shifts);
-  const prevDayShifts = prevMonthLastDayShifts.filter((shift) => shift.date === prevMonthLastDayStr);
+  const surroundingShiftsByDate = groupShiftsByDate(surroundingShifts);
+
+  // When the month starts on Sunday there are no leading overflow days in the
+  // standard grid — prepend the previous week so its shifts (e.g. an overnight
+  // ดึก bleeding into day 1) still get shown, but only if there's real data there.
+  if (monthStart.getDay() === 0) {
+    const extendedStart = addDays(gridStart, -7);
+    const hasLeadingWeekShifts = eachDayOfInterval({ start: extendedStart, end: addDays(gridStart, -1) })
+      .some((date) => surroundingShiftsByDate.has(format(date, 'yyyy-MM-dd')));
+    if (hasLeadingWeekShifts) gridStart = extendedStart;
+  }
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -57,11 +62,10 @@ export function buildCalendarWeeks(
   const days = eachDayOfInterval({ start: gridStart, end: gridEnd }).map((date) => {
     const dateStr = format(date, 'yyyy-MM-dd');
     const isCurrentMonth = isSameMonth(date, monthStart);
-    const isPrevMonthLastDay = !isCurrentMonth && dateStr === prevMonthLastDayStr;
 
     return {
       date,
-      shifts: isCurrentMonth ? (currentShiftsByDate.get(dateStr) ?? []) : (isPrevMonthLastDay ? prevDayShifts : []),
+      shifts: isCurrentMonth ? (currentShiftsByDate.get(dateStr) ?? []) : (surroundingShiftsByDate.get(dateStr) ?? []),
       isCurrentMonth,
       isToday: date.getTime() === today.getTime(),
       isHoliday: holidays.some((holiday) => holiday.date === dateStr),
@@ -81,7 +85,7 @@ export function buildCalendarDays(
   month: number,
   shifts: Shift[],
   holidays: Holiday[],
-  prevMonthLastDayShifts: Shift[] = [],
+  surroundingShifts: Shift[] = [],
 ): CalendarDay[] {
-  return buildCalendarWeeks(year, month, shifts, holidays, prevMonthLastDayShifts).flat();
+  return buildCalendarWeeks(year, month, shifts, holidays, surroundingShifts).flat();
 }
