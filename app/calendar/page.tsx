@@ -550,7 +550,12 @@ export default function CalendarPage() {
       <CompensationModal
         isOpen={showCompensationModal}
         onClose={() => setShowCompensationModal(false)}
-        shifts={visibleMyShifts}
+        shifts={[
+          ...visibleMyShifts,
+          ...prevMonthLastDayShifts.filter((shift) =>
+            shift.user_id === currentUser?.id && shift.shift_type === 'ดึก'
+          ),
+        ]}
         currentUser={currentUser}
         month={month}
         year={year}

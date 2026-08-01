@@ -8,7 +8,6 @@ const SESSION_COOKIE = 'pharmshift_session';
 const PUBLIC_ROUTES = ['/login', '/change-password'];
 
 const NEW_SECRET = process.env.SESSION_JWT_SECRET;
-const LEGACY_SECRET = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!NEW_SECRET) {
   throw new Error(
@@ -17,7 +16,6 @@ if (!NEW_SECRET) {
 }
 
 const secret = new TextEncoder().encode(NEW_SECRET);
-const legacySecret = LEGACY_SECRET ? new TextEncoder().encode(LEGACY_SECRET) : null;
 
 // Session lifetime — 400 days (the browser cookie-lifetime cap)
 const SESSION_DAYS = 400;
@@ -25,21 +23,11 @@ const SESSION_MS = SESSION_DAYS * 24 * 60 * 60 * 1000;
 // Slide the window forward once per day so an active user never expires
 const SLIDE_AFTER = 24 * 60 * 60; // seconds since issued
 
-async function verifySession(
-  token: string
-): Promise<{ payload: any; usedLegacy: boolean } | null> {
+async function verifySession(token: string): Promise<any> {
   try {
     const { payload } = await jwtVerify(token, secret, { algorithms: ['HS256'] });
-    return { payload, usedLegacy: false };
+    return payload;
   } catch {
-    if (legacySecret) {
-      try {
-        const { payload } = await jwtVerify(token, legacySecret, { algorithms: ['HS256'] });
-        return { payload, usedLegacy: true };
-      } catch {
-        return null;
-      }
-    }
     return null;
   }
 }
@@ -61,8 +49,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // มี cookie แต่ JWT หมดอายุหรือไม่ถูกต้อง → ล้าง cookie + redirect
-  const verifyResult = await verifySession(token);
-  if (!verifyResult) {
+  const payload = await verifySession(token);
+  if (!payload) {
     const url = new URL('/login', request.url);
     url.searchParams.set('reason', 'session_expired');
     const res = NextResponse.redirect(url);
@@ -70,21 +58,18 @@ export async function middleware(request: NextRequest) {
     return res;
   }
 
-  const { payload, usedLegacy } = verifyResult;
   const response = NextResponse.next();
 
-  // ── Sliding refresh + legacy migration ───────────────────────
+  // ── Sliding refresh ────────────────────────────────────────────
   // Re-sign the JWT and push the cookie expiry to now + 400 days on
   // the first request of each day, so an active phone/tablet user's
   // session continuously slides forward and never expires.  This also
   // refreshes the cookie on iOS/Safari, which may purge cookies after
   // a period of inactivity.
-  // If the session was verified with the legacy (anon-key) secret,
-  // re-sign immediately with the new secret to upgrade it silently.
   const iat = payload.iat as number | undefined;
   const now = Math.floor(Date.now() / 1000);
 
-  if (usedLegacy || !iat || now - iat > SLIDE_AFTER) {
+  if (!iat || now - iat > SLIDE_AFTER) {
     // Strip JWT-internal claims, keep only our session data
     const { iat: _iat, exp: _exp, nbf: _nbf, jti: _jti, ...sessionData } = payload;
 

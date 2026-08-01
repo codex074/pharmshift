@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 .next
+deploy/.env
+deploy/migrate/*.sql
+!deploy/migrate/00_extensions.sql
+!deploy/migrate/p3_realtime_config.sql
+!deploy/migrate/verify_counts.sql
 
 # Editor directories and files
 .vscode/*
