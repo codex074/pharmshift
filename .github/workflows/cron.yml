@@ -1,15 +1,18 @@
 name: Cron Jobs
 
 on:
-  schedule:
-    # ── Shift Reminders ────────────────────────────────────────
-    # 23:00 UTC = 06:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
-    - cron: '0 23 * * *'
-    # 09:00 UTC = 16:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
-    - cron: '0 9 * * *'
-    # ── Cleanup ────────────────────────────────────────────────
-    # 21:00 UTC = 04:00 Bangkok  →  ลบข้อมูลเก่า
-    - cron: '0 21 * * *'
+  # Schedule moved to VPS crontab (2026-08-01) — see deploy/cron.d/pharmshift.
+  # Kept here, commented, in case the VPS cron ever needs to be reverted to
+  # this runner instead.
+  # schedule:
+  #   # ── Shift Reminders ────────────────────────────────────────
+  #   # 23:00 UTC = 06:00 Bangkok  →  แจ้งเตือนเวรวันนี้ (ยกเว้นรุ่งอรุณ)
+  #   - cron: '0 23 * * *'
+  #   # 09:00 UTC = 16:00 Bangkok  →  แจ้งเตือนเวรพรุ่งนี้ (ทุกประเภท)
+  #   - cron: '0 9 * * *'
+  #   # ── Cleanup ────────────────────────────────────────────────
+  #   # 21:00 UTC = 04:00 Bangkok  →  ลบข้อมูลเก่า
+  #   - cron: '0 21 * * *'
 
   # รันมือได้จาก GitHub Actions tab (ใช้ทดสอบ)
   workflow_dispatch:
