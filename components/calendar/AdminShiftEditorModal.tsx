@@ -3,13 +3,14 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   Search, Pencil, Trash2, Check, X, Loader2,
-  ChevronLeft, ChevronRight, AlertTriangle, Filter, RefreshCw,
+  ChevronLeft, ChevronRight, AlertTriangle, Filter, RefreshCw, History,
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { ShiftHistoryModal } from './ShiftHistoryModal';
 
 interface ShiftRow {
   id: string;
@@ -58,6 +59,7 @@ export function AdminShiftEditorModal() {
   const [deletingId,  setDeletingId]  = useState<string | null>(null);
   const [deleteLoad,  setDeleteLoad]  = useState(false);
   const [fixLoading,  setFixLoading]  = useState(false);
+  const [historyShiftId, setHistoryShiftId] = useState<string | null>(null);
 
   // Keep latest depts in a ref so fetch doesn't need it as a dependency
   const deptsRef = useRef<Dept[]>([]);
@@ -394,6 +396,9 @@ export function AdminShiftEditorModal() {
                         </div>
                       ) : (
                         <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => setHistoryShiftId(row.id)}
+                            className="p-1.5 rounded-lg text-gray-400 hover:text-violet-600 hover:bg-violet-50 transition-all" title="ประวัติเวร"
+                          ><History className="w-3.5 h-3.5" /></button>
                           <button onClick={() => startEdit(row)}
                             className="p-1.5 rounded-lg text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 transition-all" title="แก้ไข"
                           ><Pencil className="w-3.5 h-3.5" /></button>
@@ -426,6 +431,10 @@ export function AdminShiftEditorModal() {
             ถัดไป <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
+
+      {historyShiftId && (
+        <ShiftHistoryModal shiftId={historyShiftId} onClose={() => setHistoryShiftId(null)} />
       )}
     </div>
   );

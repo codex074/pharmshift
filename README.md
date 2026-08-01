@@ -377,9 +377,11 @@ npm run lint     # ESLint
 
 | UTC | Bangkok | Job | Endpoint |
 |---|---|---|---|
-| 23:00 | 06:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
-| 09:00 | 16:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
-| 21:00 | 04:00 | Cleanup — swap, notifications, audit, push (≥ 3 mo / 12 h / 3 d) | `/api/cron/cleanup` |
+| 00:00 | 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
+| 10:00 | 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
+| 21:00 | 04:00 | Cleanup — notifications, audit, push (12 h / 3 d / ≥ 3 mo). **ไม่ลบ `swap_requests` แล้ว** (2026-08-01) — เป็นประวัติถาวร ใช้โดย ShiftProvenance + shift-history admin view | `/api/cron/cleanup` |
+
+> ⚠️ ตารางนี้บอก schedule เดิมตอนรันบน GitHub Actions — จริง ๆ ย้ายไป VPS crontab แล้ว (`deploy/cron.d/pharmshift`, เวลาในนั้นเป็น Bangkok local time ตรง ๆ ไม่ต้องแปลง UTC) ตาราง UTC/Bangkok ด้านบนคงไว้เพื่ออ้างอิงเทียบเวลาเท่านั้น
 
 Secrets ที่ต้องตั้งใน GitHub repository:
 - `APP_URL` — deployed app URL
