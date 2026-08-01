@@ -49,26 +49,34 @@ graph TB
         CRON[Cron Routes<br/>/api/cron/*]
     end
 
-    subgraph Data["🗄️ Data (Supabase)"]
+    subgraph Data["🗄️ Data (self-hosted Supabase · Hostinger VPS)"]
         DB[(PostgreSQL<br/>RLS Enabled)]
         REALTIME[Realtime<br/>postgres_changes]
+        KONG[Kong API Gateway]
+        STUDIO[Studio + postgres-meta<br/>SSH-tunnel only, no public URL]
     end
 
     subgraph External["📡 External"]
         PUSH[Web Push API<br/>FCM / APNs]
-        GHA[GitHub Actions<br/>Scheduled Cron]
+        VCRON[VPS Crontab<br/>/etc/cron.d/pharmshift]
+        GHA[GitHub Actions<br/>manual fallback only]
     end
 
     UI -->|JWT Cookie| MW
     MW --> API
-    API --> DB
-    CRON --> DB
+    API --> KONG
+    KONG --> DB
+    CRON --> KONG
     CRON --> PUSH
-    GHA -->|Bearer CRON_SECRET| CRON
+    VCRON -->|Bearer CRON_SECRET| CRON
+    GHA -.->|workflow_dispatch fallback| CRON
     DB --> REALTIME
     REALTIME --> RT
+    STUDIO --> DB
     SW --> PUSH
 ```
+
+App (Vercel) and database (self-hosted Supabase, Hostinger VPS) are on separate hosts — see `deploy/VPS-INFRA.md` and `deploy/docker-compose.yml`.
 
 ---
 
@@ -153,18 +161,21 @@ mindmap
       Login Rate Limiting
       web-push VAPID lazy init
     Database
-      Supabase PostgreSQL
-      Supabase Realtime
+      Self-hosted Supabase Postgres
+      PostgREST + Kong + Realtime
       RLS Policies
       Atomic RPCs
+      Studio + postgres-meta local dashboard
     Export
       ExcelJS
       xlsx
       file-saver
       date-fns Thai locale
     DevOps
-      Vercel Deployment
-      GitHub Actions Cron
+      Vercel Deployment (app)
+      Hostinger VPS + Docker Compose (DB)
+      VPS Crontab (primary scheduler)
+      GitHub Actions (manual fallback)
       PWA Service Worker
 ```
 
@@ -178,7 +189,7 @@ pharmshift/
 │   ├── api/
 │   │   ├── auth/           # login · logout · me · change-password · verify-password
 │   │   ├── admin/
-│   │   │   ├── shifts/     # GET · PUT · DELETE · PATCH · /batch · /owners
+│   │   │   ├── shifts/     # GET · PUT · DELETE · PATCH · /batch · /owners · /history
 │   │   │   ├── users/      # GET · POST · PUT · /reset-password
 │   │   │   ├── compensation-rates/  # GET · PUT (admin only)
 │   │   │   └── audit-logs/ # GET cursor-paginated
@@ -195,7 +206,7 @@ pharmshift/
 │   ├── change-password/
 │   └── error.tsx · global-error.tsx · not-found.tsx  # error boundaries (กันจอขาว)
 ├── components/
-│   ├── calendar/           # Grids, modals, export buttons
+│   ├── calendar/           # Grids, modals, export buttons, ShiftHistoryModal
 │   ├── swap/               # SwapModal, NotificationsPanel
 │   ├── layout/             # Header, MobileBottomNav, MobileAdminMenu
 │   └── ui/                 # OfflineBanner, loading-overlay, icons3d, ripple
@@ -204,6 +215,9 @@ pharmshift/
 │   ├── useAutoSync.ts      # re-sync on tab focus / network reconnect
 │   ├── useIsMobile.ts
 │   └── useSwipeGesture.ts
+├── deploy/                 # Hostinger VPS: docker-compose (self-hosted Supabase
+│   │                       #   + Studio dashboard), Caddyfile, cron.d/pharmshift
+│   └── VPS-INFRA.md        #   VPS access, hardening, capacity, Studio tunnel steps
 ├── lib/
 │   ├── session.ts          # JWT sign/verify/cookie (sameSite=strict, 30d rolling)
 │   ├── password.ts         # bcrypt hash/verify + auto-rehash helper
@@ -373,17 +387,29 @@ npm run lint     # ESLint
    - `20260530_create_compensation_rates.sql` — ตารางอัตราค่าตอบแทน
    - `20260530_push_subscriptions_last_used_at.sql` — กัน cleanup ลบ device ที่ยังใช้งาน
 
-### GitHub Actions Cron (runner เดียว — Vercel cron ถูกถอดออก)
+### Database — self-hosted Supabase (Hostinger VPS)
 
-| UTC | Bangkok | Job | Endpoint |
-|---|---|---|---|
-| 00:00 | 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
-| 10:00 | 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
-| 21:00 | 04:00 | Cleanup — notifications, audit, push (12 h / 3 d / ≥ 3 mo). **ไม่ลบ `swap_requests` แล้ว** (2026-08-01) — เป็นประวัติถาวร ใช้โดย ShiftProvenance + shift-history admin view | `/api/cron/cleanup` |
+DB/PostgREST/Realtime/Kong run in Docker on a separate VPS (`db.codex074.tech`), **not** on Vercel — see `deploy/docker-compose.yml` and `deploy/VPS-INFRA.md` for the full setup. The Vercel app connects to it exactly like it would connect to Supabase Cloud (same `NEXT_PUBLIC_SUPABASE_URL` / anon / service-role key shape).
 
-> ⚠️ ตารางนี้บอก schedule เดิมตอนรันบน GitHub Actions — จริง ๆ ย้ายไป VPS crontab แล้ว (`deploy/cron.d/pharmshift`, เวลาในนั้นเป็น Bangkok local time ตรง ๆ ไม่ต้องแปลง UTC) ตาราง UTC/Bangkok ด้านบนคงไว้เพื่ออ้างอิงเทียบเวลาเท่านั้น
+A local-only **Studio + postgres-meta** dashboard (Table Editor / SQL Editor) also runs there, bound to `127.0.0.1:3000` on the VPS with no public URL:
+```bash
+ssh -i ~/.ssh/pharmshift_hostinger_vps -L 3000:localhost:3000 codex@<vps-ip>
+# then open http://localhost:3000
+```
 
-Secrets ที่ต้องตั้งใน GitHub repository:
+### Cron — VPS crontab (primary)
+
+Schedule lives in `/etc/cron.d/pharmshift` (installed from `deploy/cron.d/pharmshift`), already in Bangkok local time — no UTC math needed:
+
+| Bangkok | Job | Endpoint |
+|---|---|---|
+| 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
+| 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
+| 04:00 | Cleanup — notifications, audit_logs, push_subscriptions (12 h / 3 d / ≥ 3 mo) | `/api/cron/cleanup` |
+
+`cleanup` **no longer deletes `swap_requests` or `shift_logs`** (2026-08-01) — kept permanently as shift history, read by `ShiftProvenance` and the admin shift-history view (`GET /api/admin/shifts/history`).
+
+`.github/workflows/cron.yml` still exists as a `workflow_dispatch` **manual fallback only** — it is not the scheduled runner anymore. Secrets it needs if triggered manually:
 - `APP_URL` — deployed app URL
 - `CRON_SECRET` — same as env variable (fail-closed: ถ้าไม่ตั้ง cron route ตอบ 500)
 
