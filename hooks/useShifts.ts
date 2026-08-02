@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { supabase, supabaseRealtime } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { insertNotifications } from '@/lib/notifyUsers';
@@ -151,7 +151,7 @@ export function useShifts(year: number, month: number) {
   });
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
-  const channelRef = useRef<ReturnType<typeof supabaseRealtime.channel> | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const monthYear = toMonthYear(year, month);
 
@@ -210,7 +210,7 @@ export function useShifts(year: number, month: number) {
     fetchShifts();
 
     // Real-time subscription for shifts
-    const channel = supabaseRealtime
+    const channel = supabase
       .channel(`shifts-${monthYear}`)
       .on(
         'postgres_changes',
@@ -322,7 +322,7 @@ export function useSwapRequests(userId?: string) {
       });
     };
 
-    const channel = supabaseRealtime
+    const channel = supabase
       .channel(`swaps-${userId}`)
       .on(
         'postgres_changes',
@@ -497,7 +497,7 @@ export function useNotifications(userId?: string) {
     fetchNotifications();
     if (!userId) return;
     // Listen for INSERT events — refetch when any notification is added
-    const channel = supabaseRealtime
+    const channel = supabase
       .channel(`notifs-${userId}`)
       .on(
         'postgres_changes',
