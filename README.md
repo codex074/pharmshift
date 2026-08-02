@@ -405,9 +405,24 @@ Schedule lives in `/etc/cron.d/pharmshift` (installed from `deploy/cron.d/pharms
 |---|---|---|
 | 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
 | 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
-| 04:00 | Cleanup — notifications, audit_logs, push_subscriptions (12 h / 3 d / ≥ 3 mo) | `/api/cron/cleanup` |
+| 04:00 | Cleanup — notifications, audit_logs, push_subscriptions, push_delivery_log (12 h / 3 d / ≥ 3 mo / ≥ 3 mo) | `/api/cron/cleanup` |
 
 `cleanup` **no longer deletes `swap_requests` or `shift_logs`** (2026-08-01) — kept permanently as shift history, read by `ShiftProvenance` and the admin shift-history view (`GET /api/admin/shifts/history`).
+
+### Monitoring push delivery
+
+`push_delivery_log` (migration `20260802_create_push_delivery_log.sql`) records one row per push-send attempt from `lib/pushSender.ts` — `user_id`, `subscription_id`, `endpoint_host`, `success`, `status_code`, `error_message`, `tag` (e.g. `reminder-morning-2026-08-02`). Query it via the VPS Studio SQL editor to see who wasn't notified and why, e.g.:
+
+```sql
+select u.f_name, u.l_name, p.endpoint_host, p.status_code, p.error_message, p.created_at
+from push_delivery_log p
+join users u on u.id = p.user_id
+where p.success = false
+order by p.created_at desc
+limit 50;
+```
+
+Aggregate `sent`/`failed` counts per cron run are also visible in `/var/log/pharmshift-cron.log` (the route's JSON response, captured by the crontab's `curl` redirect).
 
 `.github/workflows/cron.yml` still exists as a `workflow_dispatch` **manual fallback only** — it is not the scheduled runner anymore. Secrets it needs if triggered manually:
 - `APP_URL` — deployed app URL

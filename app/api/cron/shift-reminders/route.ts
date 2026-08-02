@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 30; // seconds
 
 import { NextRequest, NextResponse } from 'next/server';
-import { sendPushToUsers, type NotificationPayload } from '@/lib/pushSender';
+import { sendPushToUsers, limitedAllSettled, type NotificationPayload } from '@/lib/pushSender';
 import { createClient } from '@supabase/supabase-js';
 
 /**
@@ -221,9 +221,13 @@ export async function GET(req: NextRequest) {
       console.log(`[Shift Reminders] ✅ Inserted ${notifRows.length} in-app notification(s)`);
     }
 
-    // Send push notifications
-    await Promise.allSettled(
-      entries.map(async ([userId, shiftDescs]) => {
+    // Send push notifications — bounded concurrency so a large roster can't
+    // fan out into hundreds of simultaneous requests and blow the cron's
+    // maxDuration cap.
+    await limitedAllSettled(
+      entries,
+      10,
+      async ([userId, shiftDescs]) => {
         const payload: NotificationPayload = {
           title: notifTitle,
           body: buildBody(shiftDescs),
@@ -234,7 +238,7 @@ export async function GET(req: NextRequest) {
         const result = await sendPushToUsers([userId], payload);
         totalSent += result.sent;
         totalFailed += result.failed;
-      })
+      }
     );
 
     return NextResponse.json({

@@ -34,7 +34,7 @@ function ensureVapidConfigured() {
   }
 }
 
-async function limitedAllSettled<T, R>(
+export async function limitedAllSettled<T, R>(
   items: T[],
   limit: number,
   fn: (item: T) => Promise<R>
@@ -62,12 +62,31 @@ export interface NotificationPayload {
   tag?: string;
 }
 
+interface DeliveryLogRow {
+  user_id: string;
+  subscription_id: string;
+  endpoint_host: string | null;
+  success: boolean;
+  status_code: number | null;
+  error_message: string | null;
+  tag: string | null;
+}
+
+function endpointHost(endpoint: string): string | null {
+  try {
+    return new URL(endpoint).host;
+  } catch {
+    return null;
+  }
+}
+
 /** Send push notification to a specific user (all their devices) */
 export async function sendPushToUser(
   userId: string,
   payload: NotificationPayload
 ): Promise<{ sent: number; failed: number }> {
   if (!ensureVapidConfigured()) {
+    console.error('[push] skipped send: VAPID not configured');
     return { sent: 0, failed: 0 };
   }
 
@@ -78,7 +97,11 @@ export async function sendPushToUser(
     .select('id, endpoint, p256dh, auth, user_agent')
     .eq('user_id', userId);
 
-  if (error || !subscriptions?.length) {
+  if (error) {
+    console.error('[push] failed to load subscriptions for user', userId, error);
+    return { sent: 0, failed: 0 };
+  }
+  if (!subscriptions?.length) {
     return { sent: 0, failed: 0 };
   }
 
@@ -86,12 +109,22 @@ export async function sendPushToUser(
   let failed = 0;
   const staleIds: string[] = [];
   const sentIds: string[] = [];
+  const logRows: DeliveryLogRow[] = [];
 
   await limitedAllSettled(
     subscriptions,
     10,
     async (sub) => {
       if (!isMobileUserAgent(sub.user_agent)) {
+        logRows.push({
+          user_id: userId,
+          subscription_id: sub.id,
+          endpoint_host: endpointHost(sub.endpoint),
+          success: false,
+          status_code: null,
+          error_message: 'skipped: non-mobile user_agent',
+          tag: payload.tag ?? null,
+        });
         return;
       }
 
@@ -107,15 +140,38 @@ export async function sendPushToUser(
         );
         sent++;
         sentIds.push(sub.id);
+        logRows.push({
+          user_id: userId,
+          subscription_id: sub.id,
+          endpoint_host: endpointHost(sub.endpoint),
+          success: true,
+          status_code: null,
+          error_message: null,
+          tag: payload.tag ?? null,
+        });
       } catch (err: any) {
         failed++;
         // 404 or 410 = subscription expired/invalid → cleanup
         if (err?.statusCode === 404 || err?.statusCode === 410) {
           staleIds.push(sub.id);
         }
+        logRows.push({
+          user_id: userId,
+          subscription_id: sub.id,
+          endpoint_host: endpointHost(sub.endpoint),
+          success: false,
+          status_code: err?.statusCode ?? null,
+          error_message: String(err?.message ?? err).slice(0, 500),
+          tag: payload.tag ?? null,
+        });
       }
     }
   );
+
+  if (logRows.length > 0) {
+    const { error: logErr } = await supabase.from('push_delivery_log').insert(logRows);
+    if (logErr) console.error('[push] delivery log insert failed:', logErr);
+  }
 
   // Cleanup stale subscriptions
   if (staleIds.length > 0) {

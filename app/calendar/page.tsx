@@ -34,6 +34,7 @@ import { AdminSettingsModal } from '@/components/calendar/AdminSettingsModal';
 import { Header } from '@/components/layout/Header';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { MobileAdminMenu } from '@/components/layout/MobileAdminMenu';
+import { PushEnableNudge } from '@/components/pwa/PushEnableNudge';
 import { format, endOfMonth, subMonths, addMonths, addDays } from 'date-fns';
 import { th } from 'date-fns/locale';
 import type { Shift, CalendarDay, UserRole, User, ShiftType } from '@/lib/types';
@@ -1124,6 +1125,8 @@ export default function CalendarPage() {
           onCompensation={() => setShowCompensationModal(true)}
         />
       )}
+
+      <PushEnableNudge userId={currentUser?.id} />
     </>
   );
 }

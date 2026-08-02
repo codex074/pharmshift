@@ -87,10 +87,19 @@ export async function GET(request: Request) {
 
   if (errPush) console.error('[cron/cleanup] push_subscriptions 60-day delete error:', errPush);
 
+  // ── Delete push_delivery_log older than 3 months ────────────────────────
+  const { error: errPushLog, count: countPushLog } = await supabase
+    .from('push_delivery_log')
+    .delete({ count: 'exact' })
+    .lt('created_at', cutoff3m.toISOString());
+
+  if (errPushLog) console.error('[cron/cleanup] push_delivery_log 3-month delete error:', errPushLog);
+
   console.log([
     `[cron/cleanup] notifications: ${countReminder ?? 0} reminders(>12h) | ${countNotif ?? 0} others(>3d)`,
     `[cron/cleanup] audit_logs: ${countAuditLogs ?? 0} old(>3mo)`,
     `[cron/cleanup] push_subscriptions: ${countPush ?? 0} inactive(>3mo)`,
+    `[cron/cleanup] push_delivery_log: ${countPushLog ?? 0} old(>3mo)`,
   ].join('\n'));
 
   return NextResponse.json({
@@ -100,5 +109,6 @@ export async function GET(request: Request) {
     deleted_other_notifs:           countNotif   ?? 0,
     deleted_audit_logs:             countAuditLogs ?? 0,
     deleted_push_subscriptions:     countPush    ?? 0,
+    deleted_push_delivery_log:      countPushLog ?? 0,
   });
 }
