@@ -64,3 +64,9 @@ sample_shifts.xlsx
 scripts/schedule.json
 AGENT.md
 CLAUDE.md
+
+# VPS infra config — kept local only, not on the public GitHub repo
+# (VPS IP, SSH access patterns, firewall/hardening details, ACME CA
+# diagnostics). See conversation 2026-08-02 for why this was purged
+# from git history entirely, not just gitignored going forward.
+deploy/
