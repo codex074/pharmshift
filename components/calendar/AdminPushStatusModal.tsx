@@ -9,6 +9,7 @@ import { ROLE_LABELS, type UserRole } from '@/lib/types';
 
 type PushStatusRow = {
   id: string;
+  phaId: string | null;
   name: string;
   role: UserRole;
   subscriptionCount: number;
@@ -61,7 +62,7 @@ export function AdminPushStatusModal() {
       if (role !== 'all' && row.role !== role) return false;
       const q = search.trim().toLowerCase();
       if (!q) return true;
-      return row.name.toLowerCase().includes(q);
+      return row.name.toLowerCase().includes(q) || (row.phaId || '').toLowerCase().includes(q);
     });
   }, [rows, role, search]);
 
@@ -99,7 +100,7 @@ export function AdminPushStatusModal() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="ค้นหาชื่อผู้ใช้..."
+              placeholder="ค้นหาชื่อหรือ pha_id..."
               className="w-full h-10 rounded-xl border border-gray-200 bg-gray-50 pl-9 pr-3 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-amber-200"
             />
           </div>
@@ -139,6 +140,9 @@ export function AdminPushStatusModal() {
               <div className="min-w-0 flex items-center gap-2">
                 <UserRound className="w-4 h-4 text-gray-400 shrink-0" />
                 <span className="font-semibold text-gray-900 truncate">{row.name}</span>
+                {row.phaId && (
+                  <span className="shrink-0 text-xs font-mono text-gray-400">{row.phaId}</span>
+                )}
                 {ROLE_BADGES[row.role] && (
                   <span className={cn(
                     'shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-semibold',

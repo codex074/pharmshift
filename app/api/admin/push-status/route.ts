@@ -18,7 +18,7 @@ export async function GET() {
 
     const { data: users, error: usersErr } = await supa
       .from('users')
-      .select('id, f_name, l_name, nickname, role')
+      .select('id, pha_id, f_name, l_name, nickname, role')
       .eq('is_active', true);
     if (usersErr) throw usersErr;
 
@@ -41,6 +41,7 @@ export async function GET() {
       const entry = byUser.get(u.id) || { count: 0, lastUsedAt: null };
       return {
         id: u.id,
+        phaId: u.pha_id,
         name: [u.f_name, u.l_name].filter(Boolean).join(' ') || u.nickname || 'ไม่ทราบชื่อ',
         role: u.role,
         subscriptionCount: entry.count,
