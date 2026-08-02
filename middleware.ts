@@ -68,8 +68,15 @@ export async function middleware(request: NextRequest) {
   // a period of inactivity.
   const iat = payload.iat as number | undefined;
   const now = Math.floor(Date.now() / 1000);
+  // Legacy tokens signed before `persistent` was tracked default to true,
+  // preserving prior behaviour until they naturally re-sign or expire.
+  const isPersistent = payload.persistent !== false;
 
-  if (!iat || now - iat > SLIDE_AFTER) {
+  // Desktop (non-persistent) sessions are plain session cookies that the
+  // browser already drops on close — do NOT slide/re-issue them with an
+  // expiry, or a tab left open past midnight would silently turn into a
+  // 400-day persistent cookie and defeat "log out on window close".
+  if (isPersistent && (!iat || now - iat > SLIDE_AFTER)) {
     // Strip JWT-internal claims, keep only our session data
     const { iat: _iat, exp: _exp, nbf: _nbf, jti: _jti, ...sessionData } = payload;
 

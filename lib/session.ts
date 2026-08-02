@@ -50,6 +50,7 @@ export async function createSession(user: Partial<User>, options?: CreateSession
     role: user.role,
     is_sub_admin: user.is_sub_admin ?? false,
     must_change_password: user.must_change_password,
+    persistent,
   };
   const session = await encrypt(sessionData);
 
