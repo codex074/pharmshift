@@ -13,6 +13,7 @@ dist-ssr
 *.local
 .next
 deploy/.env
+deploy/cron-runner/.env
 deploy/migrate/*.sql
 !deploy/migrate/00_extensions.sql
 !deploy/migrate/p3_realtime_config.sql

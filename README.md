@@ -401,11 +401,13 @@ ssh -i ~/.ssh/pharmshift_hostinger_vps -L 3000:localhost:3000 codex@<vps-ip>
 
 Schedule lives in `/etc/cron.d/pharmshift` (installed from `deploy/cron.d/pharmshift`), already in Bangkok local time — no UTC math needed:
 
-| Bangkok | Job | Endpoint |
+| Bangkok | Job | Runs as |
 |---|---|---|
-| 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `/api/cron/shift-reminders?run=morning` |
-| 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `/api/cron/shift-reminders?run=evening` |
-| 04:00 | Cleanup — notifications, audit_logs, push_subscriptions, push_delivery_log (12 h / 3 d / ≥ 3 mo / ≥ 3 mo) | `/api/cron/cleanup` |
+| 07:00 | Morning reminders — เวรวันนี้ (ยกเว้นรุ่งอรุณ) | `docker run pharmshift-cron-runner morning` — **native on the VPS**, no Vercel call (2026-08-02) |
+| 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `docker run pharmshift-cron-runner evening` — same |
+| 04:00 | Cleanup — notifications, audit_logs, push_subscriptions, push_delivery_log (12 h / 3 d / ≥ 3 mo / ≥ 3 mo) | `curl` → Vercel `/api/cron/cleanup` (unchanged) |
+
+Shift reminders moved off Vercel entirely — see `deploy/cron-runner/README.md` for the standalone runner (a hand-ported copy of `lib/pushSender.ts` + the shift-reminders route logic; **if you change one, port the change to the other**). The Vercel route `/api/cron/shift-reminders` is still live and unchanged — it's what the admin "ทดสอบแจ้งเตือน" manual trigger (`/api/cron/test-reminders`) calls.
 
 `cleanup` **no longer deletes `swap_requests` or `shift_logs`** (2026-08-01) — kept permanently as shift history, read by `ShiftProvenance` and the admin shift-history view (`GET /api/admin/shifts/history`).
 
@@ -422,7 +424,7 @@ order by p.created_at desc
 limit 50;
 ```
 
-Aggregate `sent`/`failed` counts per cron run are also visible in `/var/log/pharmshift-cron.log` (the route's JSON response, captured by the crontab's `curl` redirect).
+Aggregate `sent`/`failed` counts per cron run are also visible in `/var/log/pharmshift-cron.log` — each run's JSON result (from `curl`'s response body or the `docker run` script's stdout) is appended there via the crontab's `>>` redirect.
 
 `.github/workflows/cron.yml` still exists as a `workflow_dispatch` **manual fallback only** — it is not the scheduled runner anymore. Secrets it needs if triggered manually:
 - `APP_URL` — deployed app URL
