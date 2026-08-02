@@ -25,10 +25,11 @@ Progressive Web App สำหรับจัดการตารางเวร
 | 📅 **ตารางเวรรายเดือน** | 3 กลุ่มบุคลากร: เภสัชกร, เจ้าพนักงานเภสัชกรรม, เจ้าหน้าที่ |
 | 🔄 **สลับ / โอน / ขอคนแทน** | ตรวจเวรชน, atomic accept, auto-reject คำขอซ้ำ |
 | 🔔 **Push Notifications** | แจ้งเตือนเช้า / เย็น / ก่อนเวรดึก + In-app notification panel |
-| 📊 **Excel Export** | ตารางเวร, หลักฐานการปฏิบัติงาน, ค่าตอบแทน, ใบลงชื่อ |
+| 📊 **Excel Export** | ตารางเวร, เวรของฉัน, หลักฐานการปฏิบัติงาน, ค่าตอบแทน, ใบลงชื่อ |
 | 📤 **Excel Import** | อัปโหลดตารางเวรแบบ Bulk (≤ 3 MB) + overwrite mode (ยืนยันรหัสผ่าน admin) |
-| 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, อัตราค่าตอบแทน, Audit Log, Backup |
-| 🔐 **Auth ปลอดภัย** | JWT 30 วัน + rolling refresh, bcrypt hash, rate-limit login, cookie `sameSite=strict` |
+| 👤 **Admin Tools** | จัดการ User, วันหยุด, Publish/Unpublish, อัตราค่าตอบแทน, Backup |
+| 📈 **Admin Monitoring** | Audit Log, Access Log (ผู้ใช้งานรายวัน), สถานะ Push รายคน, ประวัติที่มาของเวรรายเวร |
+| 🔐 **Auth ปลอดภัย** | JWT + sliding refresh (มือถือคงสถานะ login ได้ยาว, เดสก์ท็อปหลุดเมื่อปิดหน้าต่าง), bcrypt hash, rate-limit login |
 | 📱 **PWA** | ติดตั้งบน Android / iOS ได้ · swipe เปลี่ยนเดือน · แจ้งเตือน offline · auto-sync เมื่อกลับเข้าแอป |
 
 ---
@@ -76,7 +77,9 @@ graph TB
     SW --> PUSH
 ```
 
-App (Vercel) and database (self-hosted Supabase, Hostinger VPS) are on separate hosts — see `deploy/VPS-INFRA.md` and `deploy/docker-compose.yml`.
+App (Vercel) and database (self-hosted Supabase, Hostinger VPS) are on separate hosts.
+
+> ℹ️ VPS infrastructure config (`deploy/` — docker-compose, Caddyfile, crontab, cron-runner, `VPS-INFRA.md`) is **kept local-only and is not part of this repository.** Ask the maintainer for access.
 
 ---
 
@@ -192,6 +195,8 @@ pharmshift/
 │   │   │   ├── shifts/     # GET · PUT · DELETE · PATCH · /batch · /owners · /history
 │   │   │   ├── users/      # GET · POST · PUT · /reset-password
 │   │   │   ├── compensation-rates/  # GET · PUT (admin only)
+│   │   │   ├── access-logs/         # GET ผู้ใช้งานรายวัน
+│   │   │   ├── push-status/         # GET สถานะ push รายคน (admin only)
 │   │   │   └── audit-logs/ # GET cursor-paginated
 │   │   ├── swap/accept/    # atomic swap/transfer/cover
 │   │   ├── push/           # subscribe · send (auth + rate-limited)
@@ -201,30 +206,31 @@ pharmshift/
 │   │   ├── user/profile/   # self-update
 │   │   ├── audit-log/      # POST (bulk client events)
 │   │   └── cron/           # shift-reminders (morning/evening) · cleanup
-│   ├── calendar/           # Main page (~970 LOC)
+│   ├── calendar/           # Main page — state + modal orchestration
 │   ├── login/
 │   ├── change-password/
 │   └── error.tsx · global-error.tsx · not-found.tsx  # error boundaries (กันจอขาว)
 ├── components/
-│   ├── calendar/           # Grids, modals, export buttons, ShiftHistoryModal
+│   ├── calendar/           # Grids, modals, export buttons, ShiftHistoryModal, ShiftProvenance
 │   ├── swap/               # SwapModal, NotificationsPanel
 │   ├── layout/             # Header, MobileBottomNav, MobileAdminMenu
+│   ├── pwa/                # PWAProvider, PushEnableNudge
 │   └── ui/                 # OfflineBanner, loading-overlay, icons3d, ripple
 ├── hooks/
 │   ├── useShifts.ts        # useShifts + useSwapRequests + useNotifications + useCurrentUser
 │   ├── useAutoSync.ts      # re-sync on tab focus / network reconnect
 │   ├── useIsMobile.ts
 │   └── useSwipeGesture.ts
-├── deploy/                 # Hostinger VPS: docker-compose (self-hosted Supabase
-│   │                       #   + Studio dashboard), Caddyfile, cron.d/pharmshift
-│   └── VPS-INFRA.md        #   VPS access, hardening, capacity, Studio tunnel steps
+├── deploy/                 # 🔒 local-only, not in this repo — Hostinger VPS infra
 ├── lib/
-│   ├── session.ts          # JWT sign/verify/cookie (sameSite=strict, 30d rolling)
+│   ├── session.ts          # JWT sign/verify/cookie (sameSite=lax, sliding refresh)
 │   ├── password.ts         # bcrypt hash/verify + auto-rehash helper
 │   ├── pushSender.ts       # Server-side Web Push (lazy VAPID + concurrency cap)
 │   ├── compensation.ts     # Rate categories + DB-backed rates loader
+│   ├── accessLog.ts        # บันทึกผู้ใช้งานรายวัน (เรียกจาก GET /api/auth/me)
 │   ├── excelExport.ts      # Evidence + Compensation (5 sheets)
 │   ├── scheduleTableExport.ts
+│   ├── myScheduleExport.ts # "เวรของฉัน" รายเดือน
 │   ├── signSheetExport.ts  # 7 shift configs
 │   ├── shiftSlotRules.ts   # Slot validation (เช่น MED บ่าย ห้ามซ้อน)
 │   └── types.ts            # Domain types + role helpers
@@ -233,7 +239,7 @@ pharmshift/
 │   ├── manifest.json       # PWA (เวรดี๊ดี · theme #8b5cf6)
 │   └── sw.js               # Service Worker
 └── .github/workflows/
-    └── cron.yml            # GitHub Actions (Bangkok timezone)
+    └── cron.yml            # workflow_dispatch manual fallback (schedule ปิดไว้)
 ```
 
 ---
@@ -256,6 +262,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         uuid original_user_id
+        jsonb user_snapshot
         uuid department_id FK
         date date
         string shift_type
@@ -300,11 +307,27 @@ erDiagram
         string role PK
         numeric rate
     }
+    access_logs {
+        uuid id PK
+        uuid user_id FK
+        date day
+        integer hit_count
+    }
+    push_delivery_log {
+        uuid id PK
+        uuid user_id FK
+        boolean success
+        integer status_code
+        string error_message
+        string tag
+    }
 
     users ||--o{ shifts : "อยู่เวร"
     users ||--o{ swap_requests : "ขอสลับ"
     users ||--o{ notifications : "รับแจ้งเตือน"
     users ||--o{ push_subscriptions : "subscribe"
+    users ||--o{ access_logs : "เปิดแอป"
+    users ||--o{ push_delivery_log : "ผลส่ง push"
     shifts ||--o{ swap_requests : "เป็นเป้าหมาย"
 ```
 
@@ -389,17 +412,13 @@ npm run lint     # ESLint
 
 ### Database — self-hosted Supabase (Hostinger VPS)
 
-DB/PostgREST/Realtime/Kong run in Docker on a separate VPS (`db.codex074.tech`), **not** on Vercel — see `deploy/docker-compose.yml` and `deploy/VPS-INFRA.md` for the full setup. The Vercel app connects to it exactly like it would connect to Supabase Cloud (same `NEXT_PUBLIC_SUPABASE_URL` / anon / service-role key shape).
+DB/PostgREST/Realtime/Kong run in Docker on a separate VPS (`db.codex074.tech`, fronted by Cloudflare), **not** on Vercel. The Vercel app connects to it exactly like it would connect to Supabase Cloud (same `NEXT_PUBLIC_SUPABASE_URL` / anon / service-role key shape), so no application code changes were needed.
 
-A local-only **Studio + postgres-meta** dashboard (Table Editor / SQL Editor) also runs there, bound to `127.0.0.1:3000` on the VPS with no public URL:
-```bash
-ssh -i ~/.ssh/pharmshift_hostinger_vps -L 3000:localhost:3000 codex@<vps-ip>
-# then open http://localhost:3000
-```
+A **Studio + postgres-meta** dashboard (Table Editor / SQL Editor) also runs there, bound to localhost on the VPS with no public URL — reachable over an SSH tunnel. Compose files, Caddy config, and access instructions are kept local-only (see the note under Architecture).
 
 ### Cron — VPS crontab (primary)
 
-Schedule lives in `/etc/cron.d/pharmshift` (installed from `deploy/cron.d/pharmshift`), already in Bangkok local time — no UTC math needed:
+Schedule lives in `/etc/cron.d/pharmshift` on the VPS (installed from the local-only `deploy/` config), already in Bangkok local time — no UTC math needed:
 
 | Bangkok | Job | Runs as |
 |---|---|---|
@@ -407,7 +426,7 @@ Schedule lives in `/etc/cron.d/pharmshift` (installed from `deploy/cron.d/pharms
 | 17:00 | Evening reminders — เวรพรุ่งนี้ (ทุกประเภท) | `docker run pharmshift-cron-runner evening` — same |
 | 04:00 | Cleanup — notifications, audit_logs, push_subscriptions, push_delivery_log (12 h / 3 d / ≥ 3 mo / ≥ 3 mo) | `curl` → Vercel `/api/cron/cleanup` (unchanged) |
 
-Shift reminders moved off Vercel entirely — see `deploy/cron-runner/README.md` for the standalone runner (a hand-ported copy of `lib/pushSender.ts` + the shift-reminders route logic; **if you change one, port the change to the other**). The Vercel route `/api/cron/shift-reminders` is still live and unchanged — it's what the admin "ทดสอบแจ้งเตือน" manual trigger (`/api/cron/test-reminders`) calls.
+Shift reminders moved off Vercel entirely, onto a standalone runner on the VPS — a hand-ported copy of `lib/pushSender.ts` + the shift-reminders route logic (**if you change one, port the change to the other**; the runner lives in the local-only `deploy/` config). The Vercel route `/api/cron/shift-reminders` is still live and unchanged — it's what the admin "ทดสอบแจ้งเตือน" manual trigger (`/api/cron/test-reminders`) calls.
 
 `cleanup` **no longer deletes `swap_requests` or `shift_logs`** (2026-08-01) — kept permanently as shift history, read by `ShiftProvenance` and the admin shift-history view (`GET /api/admin/shifts/history`).
 
