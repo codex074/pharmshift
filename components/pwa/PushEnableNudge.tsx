@@ -9,6 +9,7 @@ import {
   isPWA,
   getPermissionStatus,
   getSubscriptionStatus,
+  getDeniedPushMessage,
   subscribeToPush,
 } from '@/lib/pushNotifications';
 
@@ -46,8 +47,15 @@ export function PushEnableNudge({ userId }: PushEnableNudgeProps) {
     }
 
     if (permission === 'granted') {
-      getSubscriptionStatus().then((subscribed) => {
-        if (!subscribed) setStatus('default');
+      // app/calendar/page.tsx already re-subscribes in the background whenever
+      // permission is granted, so don't call subscribeToPush here too — two
+      // concurrent PushManager.subscribe() calls can fail each other. Recheck
+      // once after a short delay to give that background call a chance to
+      // land before flagging the banner.
+      getSubscriptionStatus().then(async (subscribed) => {
+        if (subscribed) return;
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        if (!(await getSubscriptionStatus())) setStatus('default');
       });
       return;
     }
@@ -101,9 +109,7 @@ export function PushEnableNudge({ userId }: PushEnableNudgeProps) {
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-gray-900">เปิดการแจ้งเตือนเวร</p>
           {status === 'denied' ? (
-            <p className="mt-1 text-sm leading-6 text-gray-600">
-              เครื่องนี้ปิดการแจ้งเตือนไว้ — เปิดผ่านตั้งค่าเบราว์เซอร์ &gt; การแจ้งเตือน แล้วอนุญาตให้เว็บนี้ส่งแจ้งเตือนได้
-            </p>
+            <p className="mt-1 text-sm leading-6 text-gray-600">{getDeniedPushMessage()}</p>
           ) : (
             <p className="mt-1 text-sm leading-6 text-gray-600">
               เปิดไว้จะได้รับแจ้งเตือนทันทีเมื่อมีเวรหรือมีคนขอแลกเวร จะได้ไม่ลืม

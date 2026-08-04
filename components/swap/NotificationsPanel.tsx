@@ -8,7 +8,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { isPushSupported, isIosNonPwa, isMobilePushDevice, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus } from '@/lib/pushNotifications';
+import { isPushSupported, isIosNonPwa, isMobilePushDevice, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus, getDeniedPushMessage } from '@/lib/pushNotifications';
 
 /** "เช้า SURG (Cont) 23 มี.ค." */
 function shiftLabel(s: any): string {
@@ -245,7 +245,7 @@ export function NotificationsPanel({
               toast.error('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน Push');
               break;
             case 'PERMISSION_DENIED':
-              toast.error('ถูกบล็อก — กรุณาอนุญาต Notification ในการตั้งค่าเบราว์เซอร์');
+              toast.error(getDeniedPushMessage(), { duration: 8000 });
               break;
             case 'PERMISSION_DISMISSED':
               toast.info('กรุณากดอนุญาต (Allow) เมื่อมีป๊อปอัพถาม');

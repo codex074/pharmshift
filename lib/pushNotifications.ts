@@ -42,19 +42,32 @@ export function isPWA(): boolean {
   );
 }
 
+/** Check if running on iOS/iPadOS (any browser) */
+export function isIOS(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = window.navigator.userAgent;
+  return /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
+}
+
 /** Check if running on iOS Safari (non-PWA) — push requires standalone mode on iOS */
 export function isIosNonPwa(): boolean {
   if (typeof window === 'undefined') return false;
   const ua = window.navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/.test(ua) || (ua.includes('Macintosh') && 'ontouchend' in document);
   const isSafari = /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS/.test(ua);
-  return isIos && isSafari && !isPWA();
+  return isIOS() && isSafari && !isPWA();
 }
 
 /** Get current notification permission status */
 export function getPermissionStatus(): NotificationPermission | 'unsupported' {
   if (!isPushSupported()) return 'unsupported';
   return Notification.permission;
+}
+
+/** Thai copy for recovering from a denied permission — the OS settings path differs on iOS vs Android */
+export function getDeniedPushMessage(): string {
+  return isIOS()
+    ? 'เครื่องนี้ปิดการแจ้งเตือนไว้ — ไปที่ตั้งค่าเครื่อง (Settings) > การแจ้งเตือน (Notifications) > เวรดี๊ดี แล้วเปิดอนุญาตให้แจ้งเตือน'
+    : 'เครื่องนี้ปิดการแจ้งเตือนไว้ — กดค้างไอคอนแอปนี้ > ข้อมูลแอป > การแจ้งเตือน แล้วเปิดอนุญาต (หรือผ่านตั้งค่าเบราว์เซอร์ > สิทธิ์เว็บไซต์ > การแจ้งเตือน)';
 }
 
 // ── Subscribe result ──
