@@ -47,12 +47,19 @@
   border-color: hsl(var(--border));
 }
 
+html {
+  /* Prevent elastic bounce-scroll, which can leave fixed-position elements
+     (e.g. the mobile bottom nav) stuck mid-viewport on iOS standalone PWA */
+  overscroll-behavior-y: none;
+}
+
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
   font-family: "Inter", "Sarabun", sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
   /* iOS safe area */
   padding-bottom: env(safe-area-inset-bottom, 0);
   padding-left: env(safe-area-inset-left, 0);

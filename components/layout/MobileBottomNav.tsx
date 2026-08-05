@@ -45,7 +45,12 @@ export function MobileBottomNav({
   return (
     <nav
       className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white/90 backdrop-blur-xl border-t border-gray-200/60 shadow-[0_-4px_24px_rgba(0,0,0,0.06)]"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)', WebkitBackdropFilter: 'blur(20px) saturate(180%)' }}
+      style={{
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        transform: 'translateZ(0)',
+        WebkitTransform: 'translateZ(0)',
+      }}
     >
       <div className="flex items-center justify-around h-[58px]">
         {tabs.map((tab) => {
