@@ -81,6 +81,22 @@ function duplicateRequestMessage(name: string | undefined) {
   return `ส่งคำขอถึง ${name || 'ผู้ใช้รายนี้'} ไปแล้วก่อนหน้านี้`;
 }
 
+/** After creating a swap_requests row, checks whether it exactly mirrors an
+ *  already-pending request from the other side (e.g. cover ↔ transfer of the
+ *  same shift, or reciprocal swap requests) and auto-confirms both if so. */
+async function checkAutoMatch(newRequestId: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/swap/auto-match', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ newRequestId }),
+    });
+    const data = await res.json().catch(() => null);
+    return !!data?.matched;
+  } catch {
+    return false;
+  }
+}
+
 function formatAuditShift(shift: Shift | null | undefined) {
   if (!shift) return 'เวร';
   const rawDept = (shift.department as { name?: string } | undefined)?.name || '';
@@ -276,16 +292,21 @@ export function SwapModal({
         description: `ขอโอน${formatAuditShift(shift)} ให้ ${selectedUser.f_name || selectedUser.nickname || 'ผู้ใช้'}`,
         entityId: insertedTransfer?.id ?? null,
       });
-      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
-      const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
-      const notifTitle = '📩 คำขอโอนเวร';
-      const notifBody = `${requesterName} ขอให้คุณรับ ${formatNotificationShift(shift, shiftDateFmt)}${colliding.length > 0 ? ' ⚠️ มีเวรซ้อน' : ''}`;
-      fetch('/api/push/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
-      }).catch(() => {});
-      insertNotifications([selectedUser.id], 'swap_request', notifTitle, notifBody);
-      toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
+      const autoMatched = insertedTransfer?.id ? await checkAutoMatch(insertedTransfer.id) : false;
+      if (autoMatched) {
+        toast.success('จับคู่กับคำขอของอีกฝ่ายโดยอัตโนมัติ — รายการสำเร็จแล้ว!');
+      } else {
+        const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+        const shiftDateFmt = format(shiftDate, 'd MMM', { locale: th });
+        const notifTitle = '📩 คำขอโอนเวร';
+        const notifBody = `${requesterName} ขอให้คุณรับ ${formatNotificationShift(shift, shiftDateFmt)}${colliding.length > 0 ? ' ⚠️ มีเวรซ้อน' : ''}`;
+        fetch('/api/push/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
+        }).catch(() => {});
+        insertNotifications([selectedUser.id], 'swap_request', notifTitle, notifBody);
+        toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
+      }
       onClose();
     } catch (err: any) {
       const messageText = normalizeSubmitError(err);
@@ -344,17 +365,22 @@ export function SwapModal({
         description: `ขอแลก${formatAuditShift(selectedMyShift)} กับ ${ownerLabel} (${formatAuditShift(shift)})`,
         entityId: insertedSwap?.id ?? null,
       });
-      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
-      const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
-      const yourDateFmt  = format(shiftDate, 'd MMM', { locale: th });
-      const notifTitle = '🔄 คำขอแลกเวร';
-      const notifBody  = `${requesterName} เสนอแลก ${formatNotificationShift(selectedMyShift, myDateFmt)} ของเขา กับ ${formatNotificationShift(shift, yourDateFmt)} ของคุณ`;
-      fetch('/api/push/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
-      }).catch(() => {});
-      insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
-      toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
+      const autoMatched = insertedSwap?.id ? await checkAutoMatch(insertedSwap.id) : false;
+      if (autoMatched) {
+        toast.success('จับคู่กับคำขอของอีกฝ่ายโดยอัตโนมัติ — รายการสำเร็จแล้ว!');
+      } else {
+        const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+        const myDateFmt    = format(new Date(selectedMyShift.date + 'T00:00:00'), 'd MMM', { locale: th });
+        const yourDateFmt  = format(shiftDate, 'd MMM', { locale: th });
+        const notifTitle = '🔄 คำขอแลกเวร';
+        const notifBody  = `${requesterName} เสนอแลก ${formatNotificationShift(selectedMyShift, myDateFmt)} ของเขา กับ ${formatNotificationShift(shift, yourDateFmt)} ของคุณ`;
+        fetch('/api/push/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
+        }).catch(() => {});
+        insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
+        toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
+      }
       onClose();
     } catch (err: any) {
       const messageText = normalizeSubmitError(err);
@@ -404,16 +430,21 @@ export function SwapModal({
         description: `ขออยู่แทน ${ownerLabel} ใน${formatAuditShift(shift)}`,
         entityId: insertedCover?.id ?? null,
       });
-      const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
-      const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });
-      const notifTitle = '🙋 คำขออยู่เวรแทน';
-      const notifBody = `${requesterName} ต้องการขออยู่${formatNotificationShift(shift, shiftDateFmt)} แทนคุณ`;
-      fetch('/api/push/send', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
-      }).catch(() => {});
-      insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
-      toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
+      const autoMatched = insertedCover?.id ? await checkAutoMatch(insertedCover.id) : false;
+      if (autoMatched) {
+        toast.success('จับคู่กับคำขอของอีกฝ่ายโดยอัตโนมัติ — รายการสำเร็จแล้ว!');
+      } else {
+        const requesterName = currentUser.nickname || currentUser.f_name || 'เพื่อนร่วมงาน';
+        const shiftDateFmt = format(shiftDate, 'd/M', { locale: th });
+        const notifTitle = '🙋 คำขออยู่เวรแทน';
+        const notifBody = `${requesterName} ต้องการขออยู่${formatNotificationShift(shift, shiftDateFmt)} แทนคุณ`;
+        fetch('/api/push/send', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
+        }).catch(() => {});
+        insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
+        toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
+      }
       onClose();
     } catch (err: any) {
       const messageText = normalizeSubmitError(err);
