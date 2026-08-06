@@ -7,7 +7,8 @@ export type CompensationCategoryKey =
   | 'project'
   | 'regular'
   | 'smc'
-  | 'chemo';
+  | 'chemo'
+  | 'song_ya';
 
 export type CompensationRatesMap = Record<
   CompensationCategoryKey,
@@ -93,8 +94,17 @@ export const COMPENSATION_CATEGORIES: CompensationCategory[] = [
     unitValue: 1,
     filter: (s) =>
       ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) &&
-      !['โครงการ', 'SMC', 'Chemo'].includes(getDeptName(s)),
+      !['โครงการ', 'SMC', 'Chemo', 'ส่งยา สอ.'].includes(getDeptName(s)),
     color: 'bg-indigo-50 text-indigo-700 border-indigo-100',
+  },
+  {
+    key: 'song_ya',
+    name: 'เวรส่งยา สอ. (เสาร์)',
+    rateLabel: 'อัตรา/ชม.',
+    unitLabel: 'ชั่วโมง',
+    unitValue: 5,
+    filter: (s) => getDeptName(s) === 'ส่งยา สอ.',
+    color: 'bg-cyan-50 text-cyan-700 border-cyan-100',
   },
   {
     key: 'smc',
@@ -141,6 +151,11 @@ export const DEFAULT_COMPENSATION_RATES: CompensationRatesMap = {
     pharmacist: 390,
     pharmacy_technician: 390,
     officer: 390,
+  },
+  song_ya: {
+    pharmacist: 60,
+    pharmacy_technician: 60,
+    officer: 60,
   },
 };
 

@@ -67,7 +67,7 @@ create table if not exists public.compensation_rates (
   updated_at timestamptz not null default now(),
   primary key (category, role),
   constraint compensation_rates_category_check check (
-    category in ('rung_arun', 'project', 'regular', 'smc', 'chemo')
+    category in ('rung_arun', 'project', 'regular', 'smc', 'chemo', 'song_ya')
   ),
   constraint compensation_rates_role_check check (
     role in ('pharmacist', 'pharmacy_technician', 'officer')
@@ -89,7 +89,10 @@ insert into public.compensation_rates (category, role, rate) values
   ('smc', 'officer', 375),
   ('chemo', 'pharmacist', 390),
   ('chemo', 'pharmacy_technician', 390),
-  ('chemo', 'officer', 390)
+  ('chemo', 'officer', 390),
+  ('song_ya', 'pharmacist', 60),
+  ('song_ya', 'pharmacy_technician', 60),
+  ('song_ya', 'officer', 60)
 on conflict (category, role) do nothing;
 
 alter table public.compensation_rates enable row level security;

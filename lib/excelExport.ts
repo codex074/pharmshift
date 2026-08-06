@@ -261,10 +261,25 @@ export async function exportCompensationExcel(
       rateColLabel: 'อัตรา\nต่อเวร',
       totalColLabel: 'รวม\n\nเวร',
       getRate: (role: string) => getCompensationRate(rateMap, 'regular', role),
-      filter: (s: Shift) => ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) && !['โครงการ', 'SMC', 'Chemo'].includes(getDeptName(s)),
+      filter: (s: Shift) => ['เช้า', 'บ่าย', 'ดึก'].includes(s.shift_type) && !['โครงการ', 'SMC', 'Chemo', 'ส่งยา สอ.'].includes(getDeptName(s)),
       getValue: () => 1, // 1 shift
       getCode: getShiftCode,
       note: 'เวรดึก(ด) = 00.30 น. - 08.30 น.     เวรเช้า(ช) = 08.30 น. - 16.30 น.     เวรบ่าย(บ)  = 16.30 น. - 00.30 น.',
+    },
+    {
+      name: 'ส่งยา สอ.',
+      title: `${titlePrefix} (เวรส่งยา สอ.)`,
+      rateColLabel: 'อัตรา\nต่อชม.',
+      totalColLabel: 'รวม\n\nชม.',
+      getRate: (role: string) => getCompensationRate(rateMap, 'song_ya', role),
+      filter: (s: Shift) => getDeptName(s) === 'ส่งยา สอ.',
+      getValue: () => 5, // 5 hours per shift
+      note: 'เวรส่งยา สอ. วันเสาร์ เวลา 08.00 น. - 13.00 น. (5 ชั่วโมง)',
+      signatures: [
+        { name: 'นายสมหมาย พิมพ์อูบ', title: 'ผู้ตรวจสอบ' },
+        { name: 'นางสาวนรารักษ์ อยู่เกิด', title: 'หัวหน้างาน' },
+        { name: 'นางมัณทนา คันทะเรศร์', title: 'หัวหน้ากลุ่มงาน' },
+      ],
     },
     {
       name: 'SMC',
@@ -459,7 +474,7 @@ export async function exportCompensationExcel(
       const headerRow1 = worksheet.addRow([
         'ลำดับ\nที่', 'เลขที่รับ\nเงินเดือน', 'ชื่อ-สกุล', '', 'ตำ\nแหน่ง', config.rateColLabel,
         'วันที่ปฏิบัติงาน', ...Array(30).fill(''),
-        'รวม\n\n' + (config.name === 'รุ่งอรุณ' || config.name === 'โครงการ' ? 'ชม.' : 'เวร'),
+        'รวม\n\n' + (isHourlySheet ? 'ชม.' : 'เวร'),
         'จำนวน\n\nเงิน',
         ...(!isEvidence ? ['ลงชื่อผู้รับเงิน\n\nขอรับรองว่า\nได้ปฏิบัติงานจริง'] : []),
       ]);
@@ -713,7 +728,49 @@ export async function exportCompensationExcel(
       }
       noteRow.font = { name: 'TH SarabunPSK', size: 16 };
 
-      if (!isEvidence) {
+      const customSignatures = (config as any).signatures as { name: string; title: string }[] | undefined;
+
+      if (!isEvidence && customSignatures?.length === 3) {
+        worksheet.addRow([]); // empty row
+        const certRow = worksheet.addRow([]);
+        certRow.getCell(2).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
+        certRow.getCell(12).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
+        certRow.getCell(30).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
+        certRow.font = { name: 'TH SarabunPSK', size: 16 };
+        certRow.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`B${certRow.number}:J${certRow.number}`);
+        worksheet.mergeCells(`L${certRow.number}:T${certRow.number}`);
+        worksheet.mergeCells(`AD${certRow.number}:AN${certRow.number}`);
+        worksheet.addRow([]); // empty row
+
+        const signRow1 = worksheet.addRow([]);
+        signRow1.getCell(2).value = `ลงชื่อ..............................................................${customSignatures[0].title}`;
+        signRow1.getCell(12).value = `ลงชื่อ..............................................................${customSignatures[1].title}`;
+        signRow1.getCell(30).value = `ลงชื่อ..............................................................${customSignatures[2].title}`;
+        signRow1.font = { name: 'TH SarabunPSK', size: 16 };
+        signRow1.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`B${signRow1.number}:J${signRow1.number}`);
+        worksheet.mergeCells(`L${signRow1.number}:T${signRow1.number}`);
+        worksheet.mergeCells(`AD${signRow1.number}:AN${signRow1.number}`);
+
+        const signRow2 = worksheet.addRow([]);
+        signRow2.getCell(2).value = `(${customSignatures[0].name})`;
+        signRow2.getCell(12).value = `(${customSignatures[1].name})`;
+        signRow2.getCell(30).value = `(${customSignatures[2].name})`;
+        signRow2.font = { name: 'TH SarabunPSK', size: 16 };
+        signRow2.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`B${signRow2.number}:J${signRow2.number}`);
+        worksheet.mergeCells(`L${signRow2.number}:T${signRow2.number}`);
+        worksheet.mergeCells(`AD${signRow2.number}:AN${signRow2.number}`);
+
+        worksheet.addRow([]); // empty row
+        worksheet.addRow([]); // empty row
+        const signRow3 = worksheet.addRow([]);
+        signRow3.getCell(16).value = 'ลงชื่อ..............................................................ผู้จ่ายเงิน';
+        signRow3.font = { name: 'TH SarabunPSK', size: 16 };
+        signRow3.alignment = { horizontal: 'center' };
+        worksheet.mergeCells(`P${signRow3.number}:AB${signRow3.number}`);
+      } else if (!isEvidence) {
         worksheet.addRow([]); // empty row
         const certRow = worksheet.addRow([]);
         certRow.getCell(2).value = 'ขอรับรองว่าได้ปฏิบัติงานจริง';
@@ -725,7 +782,7 @@ export async function exportCompensationExcel(
         worksheet.addRow([]); // empty row
         const signRow1 = worksheet.addRow([]);
         // Position column (2)
-        if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+        if (config.name === 'Chemo') {
           signRow1.getCell(2).value = 'ลงชื่อ..............................................................หัวหน้างาน';
         } else {
           signRow1.getCell(2).value = 'ลงชื่อ..............................................................ผู้ตรวจสอบ';
@@ -738,7 +795,7 @@ export async function exportCompensationExcel(
 
         const signRow2 = worksheet.addRow([]);
         // Name column (2)
-        if (config.name === 'Chemo' || config.name === 'ส่งยา สอ.') {
+        if (config.name === 'Chemo') {
           signRow2.getCell(2).value = '(นางแสงเธียร คณิตปัญญาเจริญ)';
         } else {
           signRow2.getCell(2).value = '(นายอภิเสก คงศิริ)';
