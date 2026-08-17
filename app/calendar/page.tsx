@@ -109,7 +109,20 @@ export default function CalendarPage() {
   const [mobileEditDaySelected, setMobileEditDaySelected] = useState<CalendarDay | null>(null);
 
   const { user: currentUser, loading: authLoading } = useCurrentUser();
-  const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month);
+
+  // Wait for currentUser (and the role-group correction below) before fetching
+  // any shifts, so staff never fetch the 'pharmacist' default by mistake (R22).
+  const [hasSyncedInitialRole, setHasSyncedInitialRole] = useState(false);
+  useEffect(() => {
+    if (!currentUser) return;
+    if (STAFF_ROLES.includes(currentUser.role as UserRole)) {
+      setViewRoleGroup(currentUser.role as UserRole);
+    }
+    setHasSyncedInitialRole(true);
+  }, [currentUser]);
+  const shiftsRoleGroup: UserRole | null = hasSyncedInitialRole ? viewRoleGroup : null;
+
+  const { shifts: allShifts, holidays, isPublished, publishedRoles, loading: shiftsLoading, refetch } = useShifts(year, month, shiftsRoleGroup);
   const { notifications, unreadCount: notifUnreadCount, fetchNotifications, markAllRead: markNotifsRead } = useNotifications(currentUser?.id);
 
   const [prevMonthLastDayShifts, setPrevMonthLastDayShifts] = useState<Shift[]>([]);
@@ -234,12 +247,6 @@ export default function CalendarPage() {
   const ownRoleGroup = STAFF_ROLES.includes(currentUser?.role as UserRole)
     ? (currentUser?.role as UserRole)
     : 'pharmacist';
-
-  useEffect(() => {
-    if (STAFF_ROLES.includes(currentUser?.role as UserRole)) {
-      setViewRoleGroup(currentUser?.role as UserRole);
-    }
-  }, [currentUser?.role]);
 
   const effectiveRoleGroup: UserRole = viewRoleGroup;
   const canManageActiveRoleGroup = canManageRoleGroup(currentUser, effectiveRoleGroup);

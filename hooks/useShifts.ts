@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, supabaseRealtime } from '@/lib/supabase';
-import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification } from '@/lib/types';
+import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification, UserRole } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
@@ -23,6 +23,33 @@ const SHIFT_SELECT = `
   created_at,
   department:departments(id, name),
   user:users!user_id(id, prefix, f_name, l_name, nickname, profile_image, role),
+  original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
+`;
+
+// Same shape, but hints an inner join on `user` so `.eq('user.role', role)`
+// actually filters rows (PostgREST needs !inner for embedded-resource
+// filters) — used to fetch one role group's shifts at a time instead of the
+// whole month across every role (R22).
+// Filtered on the current holder (user_id), not original_user_id, to match
+// every existing role-tab filter in app/calendar/page.tsx, which has always
+// keyed "which tab a shift belongs to" on the current holder's role. Keeping
+// the same field here means a shift is fetched under the exact tab it will
+// be displayed in — using original_user_id instead would require changing
+// those display filters too, or a covered shift could be fetched into one
+// role's data but rendered looking for it under another.
+const SHIFT_SELECT_BY_ROLE = `
+  id,
+  date,
+  department_id,
+  shift_type,
+  position,
+  user_id,
+  original_user_id,
+  user_snapshot,
+  month_year,
+  created_at,
+  department:departments(id, name),
+  user:users!user_id!inner(id, prefix, f_name, l_name, nickname, profile_image, role),
   original_user:users!original_user_id(id, prefix, f_name, l_name, nickname, profile_image, role)
 `;
 
@@ -141,7 +168,7 @@ function buildSwapRequestNotificationMatcher(req: {
   };
 }
 
-export function useShifts(year: number, month: number) {
+export function useShifts(year: number, month: number, roleGroup: UserRole | null) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isPublished, setIsPublished] = useState(false);
   const [publishedRoles, setPublishedRoles] = useState<Record<string, boolean>>({
@@ -152,6 +179,8 @@ export function useShifts(year: number, month: number) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(true);
   const channelRef = useRef<ReturnType<typeof supabaseRealtime.channel> | null>(null);
+  const loadedRolesRef = useRef<Set<UserRole>>(new Set());
+  const prevMonthYearRef = useRef<string | null>(null);
 
   const monthYear = toMonthYear(year, month);
 
@@ -166,50 +195,97 @@ export function useShifts(year: number, month: number) {
     return data as unknown as Shift;
   }, []);
 
-  const fetchShifts = useCallback(async () => {
-    setLoading(true);
+  const fetchHolidays = useCallback(async () => {
+    const { data, error } = await supabase
+      .from('holidays')
+      .select('id, date, name, created_at');
 
+    if (!error && data) {
+      setHolidays(data as Holiday[]);
+    }
+  }, []);
+
+  const fetchPublishStatus = useCallback(async () => {
     const { data: publishData } = await supabase
       .from('published_months')
       .select('is_published, pharmacist_published, pharmacy_technician_published, officer_published')
       .eq('month_year', monthYear)
       .maybeSingle();
-      
+
     setIsPublished(publishData?.is_published ?? false);
     setPublishedRoles({
       pharmacist: publishData?.pharmacist_published ?? publishData?.is_published ?? false,
       pharmacy_technician: publishData?.pharmacy_technician_published ?? publishData?.is_published ?? false,
       officer: publishData?.officer_published ?? publishData?.is_published ?? false,
     });
-
-    const { data, error } = await supabase
-      .from('shifts')
-      .select(SHIFT_SELECT)
-      .eq('month_year', monthYear)
-      .order('date', { ascending: true });
-
-    const { data: holidaysData, error: holidaysError } = await supabase
-      .from('holidays')
-      .select('id, date, name, created_at');
-
-    if (!error && data) {
-      setShifts(data as unknown as Shift[]);
-    } else if (error) {
-      // R25: don't leave the user staring at an empty calendar with no explanation
-      toastError('โหลดตารางเวรไม่สำเร็จ — กรุณารีเฟรชอีกครั้ง');
-    }
-
-    if (!holidaysError && holidaysData) {
-      setHolidays(holidaysData as Holiday[]);
-    }
-
-    setLoading(false);
   }, [monthYear]);
 
-  useEffect(() => {
-    fetchShifts();
+  // Fetches one role group's shifts for the month and replaces just that
+  // role's slice of state, leaving already-loaded roles untouched (R22 —
+  // previously every role's shifts were fetched together on every month change).
+  const fetchShiftsForRole = useCallback(async (role: UserRole) => {
+    const { data, error } = await supabase
+      .from('shifts')
+      .select(SHIFT_SELECT_BY_ROLE)
+      .eq('month_year', monthYear)
+      .eq('user.role', role)
+      .order('date', { ascending: true });
 
-    // Real-time subscription for shifts
+    if (error) {
+      // R25: don't leave the user staring at an empty calendar with no explanation
+      toastError('โหลดตารางเวรไม่สำเร็จ — กรุณารีเฟรชอีกครั้ง');
+      return;
+    }
+
+    const fresh = (data ?? []) as unknown as Shift[];
+    setShifts((prev) => [
+      ...prev.filter((s) => (s.user as any)?.role !== role),
+      ...fresh,
+    ]);
+  }, [monthYear]);
+
+  // Load only the currently viewed role group's shifts — fetch a role the
+  // first time it's viewed for this month, skip it on later visits/tab
+  // switches within the same month.
+  useEffect(() => {
+    if (!roleGroup) return;
+
+    if (prevMonthYearRef.current !== monthYear) {
+      prevMonthYearRef.current = monthYear;
+      loadedRolesRef.current = new Set();
+      setShifts([]);
+    }
+
+    if (loadedRolesRef.current.has(roleGroup)) return;
+    loadedRolesRef.current.add(roleGroup);
+
+    setLoading(true);
+    Promise.all([fetchPublishStatus(), fetchShiftsForRole(roleGroup)])
+      .finally(() => setLoading(false));
+  }, [monthYear, roleGroup, fetchPublishStatus, fetchShiftsForRole]);
+
+  // Holidays don't vary by month — fetch once on mount instead of on every
+  // month navigation (R22). refetch() below still refreshes it on demand.
+  useEffect(() => {
+    fetchHolidays();
+  }, [fetchHolidays]);
+
+  const refetch = useCallback(async () => {
+    const roles = Array.from(loadedRolesRef.current);
+    setLoading(true);
+    await Promise.all([
+      fetchPublishStatus(),
+      fetchHolidays(),
+      ...roles.map((role) => fetchShiftsForRole(role)),
+    ]);
+    setLoading(false);
+  }, [fetchPublishStatus, fetchHolidays, fetchShiftsForRole]);
+
+  useEffect(() => {
+    // Real-time subscription for shifts — still scoped to month_year only:
+    // Realtime filters can't reach the joined user's role, so a change to any
+    // role's shift arrives here regardless; fetchShiftById re-fetches just
+    // that one row and merges it in.
     const channel = supabaseRealtime
       .channel(`shifts-${monthYear}`)
       .on(
@@ -233,7 +309,7 @@ export function useShifts(year: number, month: number) {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'published_months', filter: `month_year=eq.${monthYear}` },
-        () => { fetchShifts(); }
+        () => { fetchPublishStatus(); }
       )
       .subscribe();
 
@@ -242,9 +318,9 @@ export function useShifts(year: number, month: number) {
     return () => {
       channel.unsubscribe();
     };
-  }, [monthYear, fetchShifts, fetchShiftById]);
+  }, [monthYear, fetchShiftById, fetchPublishStatus]);
 
-  return { shifts, holidays, isPublished, publishedRoles, loading, refetch: fetchShifts };
+  return { shifts, holidays, isPublished, publishedRoles, loading, refetch };
 }
 
 export function useSwapRequests(userId?: string) {
