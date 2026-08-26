@@ -156,6 +156,8 @@ interface RowGroup {
   pharmacists: string[];
   pharm_dc: string[];
   pharm_cont: string[];
+  pharm_m2: string[];
+  pharm_m3: string[];
   pharm_techs: string[];
   officers: string[];
   medOfficers: { pos: string; name: string }[];
@@ -215,14 +217,16 @@ function buildGroups(
       : effectiveDate; // med-morning and simple both group by date only
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_techs: [], officers: [], medOfficers: [], chemoNames: [] });
+      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_m2: [], pharm_m3: [], pharm_techs: [], officers: [], medOfficers: [], chemoNames: [] });
     }
     const grp = groupMap.get(key)!;
     if (config.layout === 'chemo') grp.chemoNames.push(displayName);
     else if (config.layout === 'med-morning' && role === 'pharmacist') {
       const pos = s.position || '';
-      if (pos === 'D/C') grp.pharm_dc.push(displayName);
-      else if (pos === 'Cont') grp.pharm_cont.push(displayName);
+      if (pos === 'DC' || pos === 'D/C') grp.pharm_dc.push(displayName);
+      else if (pos === 'M1' || pos === 'Cont') grp.pharm_cont.push(displayName);
+      else if (pos === 'M2') grp.pharm_m2.push(displayName);
+      else if (pos === 'M3') grp.pharm_m3.push(displayName);
       else grp.pharmacists.push(displayName);
     } else if (role === 'pharmacist') grp.pharmacists.push(displayName);
     else if (role === 'pharmacy_technician') grp.pharm_techs.push(displayName);
@@ -399,12 +403,15 @@ export async function exportSignSheet(
         const startRow = ws.lastRow!.number + 1;
         const medOfficers = MED_OFFICER_POS
           .map((p) => grp.medOfficers.find((o) => o.pos === p)?.name || '');
-        // Row 1: D/C  → เภสัช D/C + จพง. m1 + จนท. m1
-        // Row 2: Cont → เภสัช Cont + จพง. m2 + จนท. m2
-        // Row 3: จนท. m3 (เภสัช/จพง. ทาสีดำ)
+        // Row 1: DC → เภสัช DC + จพง. m1 + จนท. m1
+        // Row 2: M1 → เภสัช M1 + จพง. m2 + จนท. m2
+        // Row 3: M2 → เภสัช M2 + จนท. m3
+        // Row 4: M3 → เภสัช M3 (จพง./จนท. ทาสีดำ — ไม่มีตำแหน่งคู่กันเหลือ)
         const pairs: Array<[string, string, string, string]> = [
-          ['D/C',  grp.pharm_dc[0]   || '', grp.pharm_techs[0] || '', medOfficers[0]],
-          ['Cont', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
+          ['DC', grp.pharm_dc[0]   || '', grp.pharm_techs[0] || '', medOfficers[0]],
+          ['M1', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
+          ['M2', grp.pharm_m2[0]   || '', '',                       medOfficers[2]],
+          ['M3', grp.pharm_m3[0]   || '', '',                       ''],
         ];
         pairs.forEach(([label, pharm, pt, off], i) => {
           const vals = new Array(15).fill('');
@@ -427,23 +434,9 @@ export async function exportSignSheet(
           });
         });
 
-        // Officer row — ตำแหน่ง cell เป็นสีดำ, ชื่อจนท. m3 อยู่คอลัมน์ จนท.
-        const offVals = new Array(15).fill('');
-        offVals[4] = medOfficers[2];
-        const offRow = ws.addRow(offVals);
-        styleDataRow(offRow, 15, new Set([1, 2, 9, 10, 11, 12]));
-        offRow.getCell(2).fill = blackFill;
-        offRow.getCell(12).fill = blackFill;
-        [[3, 13], [4, 14], [5, 15]].forEach(([origCol, actualCol]) => {
-          if (!offRow.getCell(origCol).value) {
-            offRow.getCell(origCol).fill = blackFill;
-            offRow.getCell(actualCol).fill = blackFill;
-          }
-        });
-
-        // Merge date cols across 3 rows
-        ws.mergeCells(startRow, 1, startRow + 2, 1);
-        ws.mergeCells(startRow, 10, startRow + 2, 10);
+        // Merge date cols across 4 rows
+        ws.mergeCells(startRow, 1, startRow + 3, 1);
+        ws.mergeCells(startRow, 10, startRow + 3, 10);
       }
 
       ws.views = [{ state: 'frozen', ySplit: 3 }];

@@ -157,11 +157,12 @@ function buildDay(dayNum: number, dateObj: Date, shifts: Shift[], hols: Set<stri
   const baiER = findAll('บ่าย', 'ER');
   const chemo = role === 'officer' ? [] : findAll('เช้า', 'Chemo');
   const isOfficerOrTech = role === 'pharmacy_technician' || role === 'officer';
+  const legacySurgAll = findAll('เช้า', 'SURG'); // pre-merge pharmacist SURG shifts — kept forever, never rewritten
   const surg = isOfficerOrTech
     ? [find('เช้า', 'SURG', 's1'), find('เช้า', 'SURG', 's2')].filter(Boolean)
-    : findAll('เช้า', 'SURG');
-  const medTop = isOfficerOrTech ? find('เช้า', 'MED', 'm1') : find('เช้า', 'MED', 'D/C');
-  const medBottom = isOfficerOrTech ? find('เช้า', 'MED', 'm2') : find('เช้า', 'MED', 'Cont');
+    : [find('เช้า', 'MED', 'M2') || legacySurgAll[0] || '', find('เช้า', 'MED', 'M3') || legacySurgAll[1] || ''];
+  const medTop = isOfficerOrTech ? find('เช้า', 'MED', 'm1') : (find('เช้า', 'MED', 'DC') || find('เช้า', 'MED', 'D/C'));
+  const medBottom = isOfficerOrTech ? find('เช้า', 'MED', 'm2') : (find('เช้า', 'MED', 'M1') || find('เช้า', 'MED', 'Cont'));
 
   return {
     date: dayNum, dow, isHoliday, isPublicHoliday,
@@ -349,7 +350,7 @@ export async function exportScheduleTable(
         { label: 'รุ่งอรุณ', items: ['รายชื่อบน = รo1/รo2', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
       ]
     : [
-        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = Cont'], color: PAL.chao.hdr },
+        { label: 'MED', items: ['ซ้ายบน = DC, ซ้ายล่าง = M1', 'ขวาบน = M2, ขวาล่าง = M3'], color: PAL.chao.hdr },
         { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
       ];
@@ -628,16 +629,15 @@ function renderWeek(
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'SURG', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c2, 0, c3, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
 
       merge(1, c1, 2, c1, day.project, { font: nameFont });
-      set(1, c2, day.surg1, { font: nameFont });
-      set(2, c2, day.surg2, { font: nameFont });
-      set(1, c3, day.medDC, { font: nameFont });
-      set(2, c3, day.medCont, { font: nameFont });
+      set(1, c2, day.medDC, { font: nameFont });
+      set(2, c2, day.medCont, { font: nameFont });
+      set(1, c3, day.surg1, { font: nameFont });
+      set(2, c3, day.surg2, { font: nameFont });
       merge(1, c4, 1, c5, day.baiER, { font: nameFont });
       merge(2, c4, 2, c5, day.baiMED, { font: nameFont });
 
@@ -693,15 +693,14 @@ function renderWeek(
       // ══ Weekday holiday: 4 cols (pharmacist) ══
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
 
-      set(0, c1, 'SURG',  { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'MED',   { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c1, 0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai),  fill: cellFill(PAL.bai.hdr) });
       set(0, c4, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 
-      set(1, c1, day.surg1,  { font: nameFont });
-      set(2, c1, day.surg2,  { font: nameFont });
-      set(1, c2, day.medDC,  { font: nameFont });
-      set(2, c2, day.medCont,{ font: nameFont });
+      set(1, c1, day.medDC,  { font: nameFont });
+      set(2, c1, day.medCont,{ font: nameFont });
+      set(1, c2, day.surg1,  { font: nameFont });
+      set(2, c2, day.surg2,  { font: nameFont });
       merge(1, c3, 1, c4, day.baiER,  { font: nameFont });
       merge(2, c3, 2, c4, day.baiMED, { font: nameFont });
 

@@ -9,9 +9,10 @@ import { toast } from 'sonner';
 const SHIFT_GUIDE = {
   เภสัช: [
     { code: 'e',   label: 'เช้า ER' },
-    { code: 'd',   label: 'เช้า MED D/C' },
-    { code: 'c',   label: 'เช้า MED Cont' },
-    { code: 's',   label: 'เช้า SURG' },
+    { code: 'd',   label: 'เช้า MED DC' },
+    { code: 'm1',  label: 'เช้า MED M1' },
+    { code: 'm2',  label: 'เช้า MED M2' },
+    { code: 'm3',  label: 'เช้า MED M3' },
     { code: 'ext', label: 'โครงการ' },
     { code: 'ch',  label: 'Chemo' },
     { code: 'smc', label: 'SMC' },

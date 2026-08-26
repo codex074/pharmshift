@@ -121,8 +121,8 @@ export function PersonalShiftsModal({
                         </span>
                         <span className="text-sm font-semibold text-gray-900 truncate">
                           {getDeptName(shift) !== 'ไม่ระบุ' ? (
-                            shift.shift_type === 'เช้า' && getDeptName(shift) === 'MED' && shift.position && (shift.position === 'D/C' || shift.position === 'Cont') 
-                              ? `${getDeptName(shift)} (${shift.position})` 
+                            shift.shift_type === 'เช้า' && getDeptName(shift) === 'MED' && shift.position
+                              ? `${getDeptName(shift)} (${shift.position})`
                               : getDeptName(shift)
                           ) : ''}
                         </span>

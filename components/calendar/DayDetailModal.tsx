@@ -24,6 +24,23 @@ function getDeptName(s: Shift): string {
   return (s as any).department_name || s.department?.name || '';
 }
 
+// Merged pharmacist เช้า MED group: DC, M1 first, then legacy SURG-department
+// shifts (blank/s1/s2 position) displayed as M2/M3 in encounter order.
+const PHARM_MED_ORDER: Record<string, number> = { 'D/C': 0, M1: 1, M2: 2, M3: 3 };
+function pharmMedDisplayOrder(shifts: Shift[]): { shift: Shift; label?: string }[] {
+  let legacyIdx = 0;
+  const withLabel = shifts.map((s) => {
+    const rawPos = (s as any).position || '';
+    let label: string;
+    if (rawPos === 'DC' || rawPos === 'D/C') label = 'D/C';
+    else if (rawPos === 'M1' || rawPos === 'Cont') label = 'M1';
+    else if (rawPos === 'M2' || rawPos === 'M3') label = rawPos;
+    else { label = legacyIdx === 0 ? 'M2' : 'M3'; legacyIdx += 1; }
+    return { shift: s, label };
+  });
+  return withLabel.sort((a, b) => (PHARM_MED_ORDER[a.label] ?? 4) - (PHARM_MED_ORDER[b.label] ?? 4));
+}
+
 // Shift display order (chronological)
 const TIMELINE_ORDER: ShiftType[] = ['รุ่งอรุณ', 'เช้า', 'smc', 'บ่าย', 'ดึก'];
 
@@ -33,11 +50,13 @@ function TimelineView({
   currentUser,
   canRequestAction,
   onSwapClick,
+  roleGroup,
 }: {
   day: CalendarDay;
   currentUser: User | null;
   canRequestAction: boolean;
   onSwapClick: (s: Shift) => void;
+  roleGroup?: string;
 }) {
   const groups = TIMELINE_ORDER
     .map((type) => ({ type, shifts: day.shifts.filter((s) => s.shift_type === type) }))
@@ -65,7 +84,10 @@ function TimelineView({
           // Group shifts by department for display
           const deptMap = new Map<string, Shift[]>();
           for (const s of shifts) {
-            const dept = getDeptName(s) || 'ทั่วไป';
+            let dept = getDeptName(s) || 'ทั่วไป';
+            // Pharmacist เช้า SURG rooms were merged into MED (M2/M3) — legacy SURG-department
+            // shifts keep their real department in the DB, but display grouped under MED.
+            if (roleGroup === 'pharmacist' && type === 'เช้า' && dept === 'SURG') dept = 'MED';
             if (!deptMap.has(dept)) deptMap.set(dept, []);
             deptMap.get(dept)!.push(s);
           }
@@ -109,7 +131,12 @@ function TimelineView({
                 </div>
 
                 {/* Staff per department */}
-                {depts.map(([dept, deptShifts]) => (
+                {depts.map(([dept, deptShifts]) => {
+                  const isPharmMedMerged = roleGroup === 'pharmacist' && type === 'เช้า' && dept === 'MED';
+                  const ordered = isPharmMedMerged
+                    ? pharmMedDisplayOrder(deptShifts)
+                    : deptShifts.map((s) => ({ shift: s, label: (s as any).position || undefined }));
+                  return (
                   <div
                     key={dept}
                     className="px-3 py-2 border-t border-gray-50 flex flex-wrap items-center gap-1.5"
@@ -122,9 +149,8 @@ function TimelineView({
                         {dept}
                       </span>
                     )}
-                    {deptShifts.map((s) => {
+                    {ordered.map(({ shift: s, label }) => {
                       const isMe = currentUser?.id === s.user_id;
-                      const pos = (s as any).position;
                       return (
                         <button
                           key={s.id}
@@ -142,12 +168,13 @@ function TimelineView({
                           )}
                         >
                           {getUserName(s)}
-                          {pos ? <span className="opacity-60 text-[9px] ml-0.5">({pos})</span> : null}
+                          {label ? <span className="opacity-60 text-[9px] ml-0.5">({label})</span> : null}
                         </button>
                       );
                     })}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           );
@@ -240,7 +267,7 @@ export function DayDetailModal({ day, currentUser, roleGroup, canRequestAction =
 
         {/* Timeline content */}
         <div className="px-3 py-3 max-h-[60vh] overflow-y-auto">
-          <TimelineView day={day} currentUser={currentUser} canRequestAction={canRequestAction} onSwapClick={onSwapClick} />
+          <TimelineView day={day} currentUser={currentUser} canRequestAction={canRequestAction} onSwapClick={onSwapClick} roleGroup={roleGroup} />
         </div>
 
         {/* Footer */}

@@ -170,7 +170,7 @@ export function CompensationModal({
                           <div key={i} className="flex justify-between items-center py-1.5 px-3 bg-white/40 rounded-lg">
                             <span>
                               <span className="font-semibold">{format(compensationDate, 'dd')}</span> {format(compensationDate, 'MMM', { locale: th })} {s.shift_type} {getDeptName(s) ? (
-                                s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position && (s.position === 'D/C' || s.position === 'Cont')
+                                s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position
                                   ? `(${getDeptName(s)} ${s.position})`
                                   : `(${getDeptName(s)})`
                               ) : ''}

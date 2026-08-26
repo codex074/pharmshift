@@ -156,7 +156,9 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
 
                         // Short label (mobile)
                         let mobileLabel: string;
-                        if (shift.shift_type === 'รุ่งอรุณ') {
+                        if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
+                          mobileLabel = `MED ${position}`;
+                        } else if (shift.shift_type === 'รุ่งอรุณ') {
                           mobileLabel = position ? `รุ่ง${position}` : 'รุ่ง';
                         } else if (shift.shift_type === 'ดึก') {
                           mobileLabel = 'ดึก';

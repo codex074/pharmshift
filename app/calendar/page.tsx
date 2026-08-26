@@ -796,7 +796,7 @@ export default function CalendarPage() {
             <div className="flex flex-col gap-2 p-3 sm:p-4 rounded-xl border border-slate-200 bg-slate-50/80 shadow-sm max-w-2xl text-xs sm:text-sm font-medium">
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-amber-400" />
-                <span className="text-amber-900">Med รายชื่อ 1 = D/C, รายชื่อ 2 = ยา Cont</span>
+                <span className="text-amber-900">MED: ซ้ายบน = DC, ซ้ายล่าง = M1, ขวาบน = M2, ขวาล่าง = M3</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-orange-400" />

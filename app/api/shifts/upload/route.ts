@@ -29,9 +29,7 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
   if (role === 'pharmacist') {
     switch (c) {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
-      case 'd':   return { dept: 'MED',       type: 'เช้า',      position: 'D/C' };
-      case 'c':   return { dept: 'MED',       type: 'เช้า',      position: 'Cont' };
-      case 's':   return { dept: 'SURG',      type: 'เช้า',      position: '' };
+      case 'd':   return { dept: 'MED',       type: 'เช้า',      position: 'DC' };
       case 'ext': return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: '' };
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
@@ -42,6 +40,7 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
       case 'ch':  return { dept: 'Chemo',     type: 'เช้า',      position: '' };
       case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
+    if (/^m[1-3]$/.test(c)) return { dept: 'MED', type: 'เช้า', position: c.toUpperCase() };
   }
 
   // ── เจ้าพนักงานเภสัชกรรม ──

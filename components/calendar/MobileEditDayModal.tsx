@@ -27,6 +27,8 @@ interface SlotConfig {
   shiftType: ShiftType;
   department: string;
   position?: string;
+  legacyPositions?: string[]; // same-department alt values that also satisfy this slot (pre-rename data)
+  readOnly?: boolean; // display-only — no add button (used for legacy cross-department fallbacks)
   index?: number;
   roleGroup?: UserRole;
 }
@@ -74,12 +76,17 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
     ];
 
     if (isWeekendOrHoliday) {
+      const legacySurg = day.shifts.filter(s => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG');
       return [
         { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
           { label: 'โครงการ', shiftType: 'เช้า', department: 'โครงการ', index: 0 },
-          ...rangeLabels('SURG', 2, 'เช้า', 'SURG', roleGroup),
-          { label: 'MED D/C', shiftType: 'เช้า', department: 'MED', position: 'D/C' },
-          { label: 'MED Cont', shiftType: 'เช้า', department: 'MED', position: 'Cont' },
+          { label: 'MED DC', shiftType: 'เช้า', department: 'MED', position: 'DC', legacyPositions: ['D/C'] },
+          { label: 'MED M1', shiftType: 'เช้า', department: 'MED', position: 'M1', legacyPositions: ['Cont'] },
+          { label: 'MED M2', shiftType: 'เช้า', department: 'MED', position: 'M2' },
+          { label: 'MED M3', shiftType: 'เช้า', department: 'MED', position: 'M3' },
+          ...legacySurg.map((_s, i): SlotConfig => ({
+            label: `SURG (เก่า) ${i + 1}`, shiftType: 'เช้า', department: 'SURG', index: i, readOnly: true,
+          })),
           { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
           ...rangeLabels('Chemo', 2, 'เช้า', 'Chemo', roleGroup),
         ]},
@@ -189,7 +196,7 @@ function resolveSlotState(slot: SlotConfig, day: CalendarDay, pendingAdds: Pendi
       (item) =>
         item.shift_type === slot.shiftType &&
         getDeptName(item) === slot.department &&
-        (item.position || '') === slot.position,
+        ((item.position || '') === slot.position || (slot.legacyPositions?.includes(item.position || '') ?? false)),
     );
     const isIndexedPosition = slot.index !== undefined && slot.roleGroup !== undefined;
     const countPriorExactShifts = () => {
@@ -415,7 +422,7 @@ export function MobileEditDayModal({
                           </div>
                         )}
 
-                        {!shift && !pendingEntry && canAdd && (
+                        {!shift && !pendingEntry && canAdd && !slot.readOnly && (
                           <button
                             onClick={() => onAddShift({ date: dateKey, shift_type: slot.shiftType, department: slot.department, position: slot.position || '' })}
                             className="mt-2 w-full flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-green-300 bg-green-50 py-2.5 text-[12px] font-semibold text-green-700"

@@ -305,34 +305,9 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ct
     (!position || (s as any).position === position)
   );
 
-  if (deptName === 'MED' && shiftType === 'เช้า' && !position) {
-    const posOrder: Record<string, number> = { 'D/C': 0, 'Cont': 1 };
-    matching.sort((a, b) => (posOrder[(a as any).position] ?? 99) - (posOrder[(b as any).position] ?? 99));
-  }
-
   const badges = matching.map((s) => renderShiftBadge(s, ctx));
   const pendingBadges = dateStr ? renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, position) : null;
   const hasPendingAdds = pendingBadges?.some(Boolean);
-
-  // MED เช้า (ไม่ระบุ position) — แยก D/C และ Cont เป็น 2 slot อิสระ
-  if (deptName === 'MED' && shiftType === 'เช้า' && !position && dateStr) {
-    const dcShift   = matching.find(s => (s as any).position === 'D/C');
-    const contShift = matching.find(s => (s as any).position === 'Cont');
-    const dcPending   = renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, 'D/C');
-    const contPending = renderPendingAddsForCell(dateStr, shiftType, deptName, ctx, 'Cont');
-    const hasDC   = !!dcShift   || dcPending?.some(Boolean);
-    const hasCont = !!contShift || contPending?.some(Boolean);
-    return (
-      <>
-        {dcShift   && renderShiftBadge(dcShift, ctx)}
-        {!dcShift  && dcPending}
-        {!hasDC    && renderAddButton(dateStr, shiftType, deptName, ctx, 'D/C')}
-        {contShift   && renderShiftBadge(contShift, ctx)}
-        {!contShift  && contPending}
-        {!hasCont    && renderAddButton(dateStr, shiftType, deptName, ctx, 'Cont')}
-      </>
-    );
-  }
 
   // Only show + button when there are NO existing shifts and NO pending adds
   let addBtn: React.ReactNode = null;
@@ -354,6 +329,41 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ct
 function renderPersonalShift(s: Shift | undefined, ctx: RenderContext) {
   if (!s) return null;
   return renderShiftBadge(s, ctx);
+}
+
+// MED เช้า (pharmacist) — 4 fixed named slots (DC/M1/M2/M3). DC/M1 also match their
+// pre-rename literal values (D/C/Cont) so old data keeps displaying; M2/M3 additionally
+// fall back to a legacy SURG-department slot (a different department entirely) without
+// ever hiding it if both happen to exist on the same day.
+function renderMedChaoSlot(
+  shifts: Shift[],
+  ctx: RenderContext,
+  dateStr: string,
+  canonicalPosition: string,
+  legacyPositions: string[] = [],
+  legacySurgSlot?: IndexedSlot,
+) {
+  const matching = shifts.filter(s =>
+    s.shift_type === 'เช้า' &&
+    getDeptName(s) === 'MED' &&
+    ((s as any).position === canonicalPosition || legacyPositions.includes((s as any).position))
+  );
+  const pendingBadges = renderPendingAddsForCell(dateStr, 'เช้า', 'MED', ctx, canonicalPosition);
+  const hasPendingAdds = pendingBadges?.some(Boolean);
+  const hasLegacySurg = !!legacySurgSlot;
+  const addBtn = (matching.length === 0 && !hasPendingAdds && !hasLegacySurg)
+    ? renderAddButton(dateStr, 'เช้า', 'MED', ctx, canonicalPosition)
+    : null;
+
+  return (
+    <>
+      {matching.map(s => renderShiftBadge(s, ctx))}
+      {pendingBadges}
+      {legacySurgSlot?.type === 'real'    && renderPersonalShift(legacySurgSlot.shift, ctx)}
+      {legacySurgSlot?.type === 'pending' && renderPendingAddBadge(legacySurgSlot.add, legacySurgSlot.globalIdx, ctx)}
+      {addBtn}
+    </>
+  );
 }
 
 type IndexedSlot =
@@ -474,35 +484,28 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
 
       {/* ROW 1 — section labels + date number */}
       <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>SURG</div>
-      <div className={hdr('chao')} style={{ gridArea: '1 / 3 / 2 / 4' }}>MED</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 4' }}>MED</div>
       <div className={hdr('bai')}  style={{ gridArea: '1 / 4 / 2 / 5' }}>บ่าย</div>
       <div className={cn(hdr('neutral'), dateBg, 'text-[20px] font-black')} style={{ gridArea: '1 / 5 / 2 / 6' }}>{dayNum}</div>
 
       {/* ROW 2 & 3 — morning / afternoon cells */}
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 3' }}>
-        {/* SURG slot บน */}
+      <div className="grid grid-cols-2 grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 4' }}>
+        {/* DC — top-left (distinct color from M1/M2/M3) */}
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-r border-gray-200')} style={{ backgroundColor: '#e8d8bf' }}>
+          {renderMedChaoSlot(day.shifts, ctx, dateStr, 'DC', ['D/C'])}
+        </div>
+        {/* M2 — top-right (legacy: SURG slot 1) */}
         <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
-          {surgSlot0?.type === 'real'    && renderPersonalShift(surgSlot0.shift, ctx)}
-          {surgSlot0?.type === 'pending' && renderPendingAddBadge(surgSlot0.add, surgSlot0.globalIdx, ctx)}
-          {!surgSlot0                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx, 's1', '+')}
+          {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M2', [], surgSlot0)}
         </div>
-        {/* SURG slot ล่าง */}
+        {/* M1 — bottom-left (legacy: Cont) */}
+        <div className={cn(nameCell('chao'), 'flex-col border-r border-gray-200')}>
+          {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M1', ['Cont'])}
+        </div>
+        {/* M3 — bottom-right (legacy: SURG slot 2) */}
         <div className={cn(nameCell('chao'), 'flex-col')}>
-          {surgSlot1?.type === 'real'    && renderPersonalShift(surgSlot1.shift, ctx)}
-          {surgSlot1?.type === 'pending' && renderPendingAddBadge(surgSlot1.add, surgSlot1.globalIdx, ctx)}
-          {!surgSlot1                    && renderAddButton(dateStr, 'เช้า', 'SURG', ctx, 's2', '+')}
-        </div>
-      </div>
-      <div className="grid grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 3 / 4 / 4' }}>
-        {/* MED D/C slot บน */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
-          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'D/C', dateStr)}
-        </div>
-        {/* MED Cont slot ล่าง */}
-        <div className={cn(nameCell('chao'), 'flex-col')}>
-          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'Cont', dateStr)}
+          {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M3', [], surgSlot1)}
         </div>
       </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 4 / 3 / 6' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
