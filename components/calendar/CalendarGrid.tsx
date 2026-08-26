@@ -492,19 +492,19 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
       <div className="grid grid-cols-2 grid-rows-2 border-r border-gray-200" style={{ gridArea: '2 / 2 / 4 / 4' }}>
         {/* DC — top-left (distinct color from M1/M2/M3) */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-r border-gray-200')} style={{ backgroundColor: '#e8d8bf' }}>
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-r border-gray-200')} style={{ backgroundColor: '#C8F4C0' }} title="เช้า MED ตำแหน่ง DC">
           {renderMedChaoSlot(day.shifts, ctx, dateStr, 'DC', ['D/C'])}
         </div>
         {/* M2 — top-right (legacy: SURG slot 1) */}
-        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')}>
+        <div className={cn(nameCell('chao'), 'flex-col border-b border-gray-200')} title="เช้า MED ตำแหน่ง M2">
           {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M2', [], surgSlot0)}
         </div>
         {/* M1 — bottom-left (legacy: Cont) */}
-        <div className={cn(nameCell('chao'), 'flex-col border-r border-gray-200')}>
+        <div className={cn(nameCell('chao'), 'flex-col border-r border-gray-200')} title="เช้า MED ตำแหน่ง M1">
           {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M1', ['Cont'])}
         </div>
         {/* M3 — bottom-right (legacy: SURG slot 2) */}
-        <div className={cn(nameCell('chao'), 'flex-col')}>
+        <div className={cn(nameCell('chao'), 'flex-col')} title="เช้า MED ตำแหน่ง M3">
           {renderMedChaoSlot(day.shifts, ctx, dateStr, 'M3', [], surgSlot1)}
         </div>
       </div>
