@@ -58,6 +58,18 @@ function deptDisplayLabel(name?: string | null, role?: string | null): string {
   return name === 'MED' ? 'IPD' : (name ?? '');
 }
 
+const PHARM_TECH_IPD_POSITION_MAP: Record<string, string> = { m1: 'I1', m2: 'I2', s1: 'I3', s2: 'I4' };
+
+/** Display-only relabel of the MED/SURG position code shown in reminder text. */
+function positionDisplayLabel(name?: string | null, position?: string | null, role?: string | null): string {
+  if (name !== 'MED' && name !== 'SURG') return '';
+  if (role === 'pharmacy_technician' && position && PHARM_TECH_IPD_POSITION_MAP[position]) {
+    return PHARM_TECH_IPD_POSITION_MAP[position];
+  }
+  const m = position ? /^M([1-3])$/.exec(position) : null;
+  return m ? `I${m[1]}` : '';
+}
+
 const SHIFT_TYPE_LABELS: Record<string, string> = {
   'เช้า': 'เวรเช้า',
   'บ่าย': 'เวรบ่าย',
@@ -187,11 +199,14 @@ export async function GET(req: NextRequest) {
     for (const s of filteredShifts) {
       if (!s.user_id) continue;
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
-      const deptName = deptDisplayLabel((s.department as any)?.name, (s.user as any)?.role);
+      const rawDeptName = (s.department as any)?.name;
+      const role = (s.user as any)?.role;
+      const deptName = deptDisplayLabel(rawDeptName, role);
+      const posLabel = positionDisplayLabel(rawDeptName, s.position, role);
       // รุ่งอรุณ: ห้อง (ER/OPD/HIV) เก็บใน position ไม่ใช่ department (dept = ชื่อเดียวกับ shift_type)
       const detail = s.shift_type === 'รุ่งอรุณ' && s.position
         ? ` (${s.position})`
-        : deptName && deptName !== s.shift_type ? ` (${deptName})` : '';
+        : deptName && deptName !== s.shift_type ? ` (${deptName}${posLabel ? ` ${posLabel}` : ''})` : '';
       const desc = isNightRun ? 'เวรดึก' : `${label}${detail}`;
       const existing = userShifts.get(s.user_id) || [];
       existing.push(desc);

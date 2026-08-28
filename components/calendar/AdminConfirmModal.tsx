@@ -133,9 +133,14 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
       try { return format(new Date(d + 'T00:00'), 'd MMM', { locale: th }); }
       catch { return d; }
     };
-    /** ป้ายกำกับ: ใช้ position ถ้ามี, ไม่งั้นใช้ dept (ถ้า dept ≠ shiftType เพื่อหลีกเลี่ยงซ้ำซ้อน) */
-    const shiftLabel = (shiftType: string, dept?: string, position?: string, role?: string): string =>
-      positionDisplayLabelForRole(role, dept, position) || (dept && dept !== shiftType ? deptDisplayLabelForRole(role, dept) : '') || '';
+    /** ป้ายกำกับ: MED/SURG (กลุ่ม IPD) แสดง "IPD <รหัส>" เสมอ, อื่นๆ ใช้ position ถ้ามี ไม่งั้นใช้ dept (ถ้า dept ≠ shiftType) */
+    const shiftLabel = (shiftType: string, dept?: string, position?: string, role?: string): string => {
+      if (dept === 'MED' || dept === 'SURG') {
+        const posLabel = positionDisplayLabelForRole(role, dept, position);
+        return posLabel ? `${deptDisplayLabelForRole(role, dept)} ${posLabel}` : deptDisplayLabelForRole(role, dept);
+      }
+      return positionDisplayLabelForRole(role, dept, position) || (dept && dept !== shiftType ? deptDisplayLabelForRole(role, dept) : '') || '';
+    };
     /** Format one shift line: "20 มี.ค. รุ่งอรุณ (HIV)" */
     const fmtShift = (date: string, shiftType: string, dept?: string, position?: string, role?: string) => {
       const label = shiftLabel(shiftType, dept, position, role);
