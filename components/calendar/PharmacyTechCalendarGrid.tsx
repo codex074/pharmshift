@@ -466,23 +466,13 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       </div>
 
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
-      <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-yellow-100" style={{ gridArea: '2 / 2 / 4 / 3' }}>
+      <div className="grid grid-rows-4 border-r border-b border-gray-200 bg-yellow-100" style={{ gridArea: '2 / 2 / 8 / 3' }}>
         <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
           {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm1', dateStr, '+I1')}
         </div>
-        <div className="flex min-h-0 items-center justify-center px-1">
+        <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
           {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm2', dateStr, '+I2')}
         </div>
-      </div>
-      <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
-      <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
-
-      <div className={hdr('chao')} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
-      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>IPD</div>
-      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 5' }}>ดึก</div>
-
-      <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
-      <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-[#E8F9FA]" style={{ gridArea: '5 / 2 / 8 / 3' }}>
         <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
           {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's1', dateStr, '+I3')}
         </div>
@@ -490,6 +480,13 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
           {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's2', dateStr, '+I4')}
         </div>
       </div>
+      <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
+      <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
+
+      <div className={hdr('chao')} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
+      <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 5' }}>ดึก</div>
+
+      <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
       <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>
     </div>
   );
