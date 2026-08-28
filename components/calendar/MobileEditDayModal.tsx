@@ -5,7 +5,7 @@ import { th } from 'date-fns/locale';
 import { Pencil, Plus, Trash2, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CalendarDay, Shift, ShiftType, User, UserRole } from '@/lib/types';
-import { SHIFT_CONFIG } from '@/lib/types';
+import { SHIFT_CONFIG, deptDisplayLabelForRole, positionDisplayLabelForRole } from '@/lib/types';
 import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
 import type { PendingAdd, AddShiftContext } from './AdminAddShiftModal';
 
@@ -120,9 +120,11 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
       return [
         { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
           { label: 'โครงการ', shiftType: 'เช้า', department: 'โครงการ', index: 0 },
-          ...rangeLabels('SURG', 2, 'เช้า', 'SURG', roleGroup),
           { label: 'ER', shiftType: 'เช้า', department: 'ER', index: 0 },
-          ...rangeLabels('IPD', 2, 'เช้า', 'MED', roleGroup),
+          { label: 'IPD I1', shiftType: 'เช้า', department: 'MED', position: 'm1' },
+          { label: 'IPD I2', shiftType: 'เช้า', department: 'MED', position: 'm2' },
+          { label: 'IPD I3', shiftType: 'เช้า', department: 'SURG', position: 's1' },
+          { label: 'IPD I4', shiftType: 'เช้า', department: 'SURG', position: 's2' },
         ]},
         { id: 'afternoon', title: 'บ่าย', shiftType: 'บ่าย', slots: [
           { label: 'บ่าย IPD', shiftType: 'บ่าย', department: 'MED', index: 0 },
@@ -352,7 +354,7 @@ export function MobileEditDayModal({
                         <div className="flex items-start justify-between gap-2">
                           <div>
                             <p className="text-[13px] font-bold leading-tight text-gray-900">{slot.label}</p>
-                            <p className="text-[10px] text-gray-500">{slot.department}{slot.position ? ` / ${slot.position}` : ''}</p>
+                            <p className="text-[10px] text-gray-500">{deptDisplayLabelForRole(roleGroup, slot.department)}{slot.position ? ` / ${positionDisplayLabelForRole(roleGroup, slot.department, slot.position)}` : ''}</p>
                           </div>
                           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-white text-gray-500 border border-gray-200 shrink-0">
                             {slot.shiftType}

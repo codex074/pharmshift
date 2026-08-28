@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Loader2, X, Search } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
-import { userFullName } from '@/lib/types';
+import { userFullName, deptDisplayLabelForRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { toastError } from '@/lib/swal';
 
@@ -68,7 +68,7 @@ export function AdminShiftSubstituteModal({ shift, onClose, onSelectSubstitute }
         <div className="p-5 flex flex-col gap-4">
           <div className="bg-gray-50 border border-gray-100 p-3 rounded-lg text-sm flex flex-col gap-1">
             <div className="font-medium">แก้ไขเวรวันที่ {shift.date}</div>
-            <div className="text-gray-500 text-xs">แผนก/ผลัด: {shift.shift_type} {(shift as any).department_name || ''}</div>
+            <div className="text-gray-500 text-xs">แผนก/ผลัด: {shift.shift_type} {deptDisplayLabelForRole(currentRole, (shift as any).department_name || (shift as any).department?.name)}</div>
             <div className="text-gray-500 text-xs mt-1">
               เจ้าของเวรเดิม: <span className="text-slate-700 font-semibold">{currentUserText}</span>
             </div>

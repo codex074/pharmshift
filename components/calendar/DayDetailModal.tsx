@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { THAI_MONTHS, THAI_DAYS as UTILS_THAI_DAYS } from '@/lib/utils';
 import type { CalendarDay, Shift, User, ShiftType } from '@/lib/types';
-import { DEPT_COLORS, SHIFT_CONFIG, deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
+import { DEPT_COLORS, SHIFT_CONFIG, deptDisplayLabel, positionDisplayLabel, isPharmTechMergedIpdDept, positionDisplayLabelForRole } from '@/lib/types';
 
 interface DayDetailModalProps {
   day: CalendarDay;
@@ -39,6 +39,18 @@ function pharmMedDisplayOrder(shifts: Shift[]): { shift: Shift; label?: string }
     return { shift: s, label };
   });
   return withLabel.sort((a, b) => (PHARM_MED_ORDER[a.label] ?? 4) - (PHARM_MED_ORDER[b.label] ?? 4));
+}
+
+// Merged pharmacy_technician เช้า IPD group: MED m1/m2 + SURG s1/s2 -> I1-I4.
+const PHARM_TECH_IPD_ORDER: Record<string, number> = { m1: 0, m2: 1, s1: 2, s2: 3 };
+function pharmTechIpdDisplayOrder(shifts: Shift[]): { shift: Shift; label?: string }[] {
+  const withLabel = shifts.map((s) => {
+    const rawPos = (s as any).position || '';
+    return { shift: s, rawPos, label: positionDisplayLabelForRole('pharmacy_technician', 'MED', rawPos) };
+  });
+  return withLabel
+    .sort((a, b) => (PHARM_TECH_IPD_ORDER[a.rawPos] ?? 4) - (PHARM_TECH_IPD_ORDER[b.rawPos] ?? 4))
+    .map(({ shift, label }) => ({ shift, label }));
 }
 
 // Shift display order (chronological)
@@ -88,6 +100,8 @@ function TimelineView({
             // Pharmacist เช้า SURG rooms were merged into MED (M2/M3) — legacy SURG-department
             // shifts keep their real department in the DB, but display grouped under MED.
             if (roleGroup === 'pharmacist' && type === 'เช้า' && dept === 'SURG') dept = 'MED';
+            // pharmacy_technician เช้า MED+SURG merged into one "IPD" group (I1-I4) — same trick.
+            if (type === 'เช้า' && isPharmTechMergedIpdDept(roleGroup, dept)) dept = 'MED';
             if (!deptMap.has(dept)) deptMap.set(dept, []);
             deptMap.get(dept)!.push(s);
           }
@@ -133,8 +147,11 @@ function TimelineView({
                 {/* Staff per department */}
                 {depts.map(([dept, deptShifts]) => {
                   const isPharmMedMerged = roleGroup === 'pharmacist' && type === 'เช้า' && dept === 'MED';
+                  const isPharmTechIpdMerged = roleGroup === 'pharmacy_technician' && type === 'เช้า' && dept === 'MED';
                   const ordered = isPharmMedMerged
                     ? pharmMedDisplayOrder(deptShifts)
+                    : isPharmTechIpdMerged
+                    ? pharmTechIpdDisplayOrder(deptShifts)
                     : deptShifts.map((s) => ({ shift: s, label: (s as any).position || undefined }));
                   return (
                   <div

@@ -5,7 +5,7 @@ import { th } from 'date-fns/locale';
 import { buildCalendarWeeks } from './calendarMonthGrid';
 import { THAI_MONTHS } from './utils';
 import type { Shift, Holiday } from './types';
-import { deptDisplayLabel, positionDisplayLabel } from './types';
+import { deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept } from './types';
 
 // ── Colours matching MyCalendarGrid / web UI ─────────────────────
 const DOW_BG: Record<number, string> = {
@@ -40,6 +40,8 @@ function getDeptName(s: Shift): string {
 function shiftLabel(s: Shift): string {
   const dept = getDeptName(s);
   const pos = (s as any).position || '';
+  const role = (s as any).user?.role;
+  if (s.shift_type === 'เช้า' && isPharmTechMergedIpdDept(role, dept) && pos) return `IPD ${positionDisplayLabelForRole(role, dept, pos)}`;
   if (s.shift_type === 'เช้า' && dept === 'MED' && pos) return `${deptDisplayLabel(dept)} ${positionDisplayLabel(pos)}`;
   if (s.shift_type === 'เช้า' && dept === 'SURG') return 'SURG';
   if (dept === 'Chemo') return 'Chemo';

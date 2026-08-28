@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, supabaseRealtime } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification, UserRole } from '@/lib/types';
-import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
+import { deptDisplayLabelForRole, positionDisplayLabelForRole } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
@@ -66,8 +66,8 @@ const SWAP_REQUEST_SELECT = `
   requester_read,
   created_at,
   updated_at,
-  shift:shifts!shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name)),
-  target_shift:shifts!target_shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name)),
+  shift:shifts!shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name), user:users!user_id(role)),
+  target_shift:shifts!target_shift_id(id, date, department_id, shift_type, position, user_id, original_user_id, month_year, department:departments(id, name), user:users!user_id(role)),
   requester:users!requester_id(id, prefix, f_name, l_name, nickname),
   target_user:users!target_user_id(id, prefix, f_name, l_name, nickname)
 `;
@@ -76,9 +76,10 @@ const SWAP_REQUEST_SELECT = `
 function fmtShiftNotif(s: Shift | null | undefined): string {
   if (!s) return 'เวรดังกล่าว';
   const date = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
+  const role = (s as any).user?.role;
   const rawDept = (s as any).department?.name || '';
-  const dept = rawDept && rawDept !== s.shift_type ? deptDisplayLabel(rawDept) : '';
-  const pos = positionDisplayLabel((s as any).position) || '';
+  const dept = rawDept && rawDept !== s.shift_type ? deptDisplayLabelForRole(role, rawDept) : '';
+  const pos = positionDisplayLabelForRole(role, rawDept, (s as any).position) || '';
   const area = [dept, pos].filter(Boolean).join(' ');
   return `เวร${s.shift_type}${date ? ` ${date}` : ''}${area ? ` (${area})` : ''}`;
 }

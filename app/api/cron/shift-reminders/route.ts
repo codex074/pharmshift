@@ -48,8 +48,13 @@ function toMonthYear(dateStr: string): string {
   return dateStr.substring(0, 7); // "YYYY-MM"
 }
 
-/** Display-only relabel of the MED department name shown in reminder text — DB value stays 'MED'. */
-function deptDisplayLabel(name?: string | null): string {
+/**
+ * Display-only relabel of the department name shown in reminder text — DB values
+ * stay 'MED'/'SURG'. For pharmacy_technician, MED and SURG are shown merged as "IPD"
+ * (mirrors the pharmacist MED+SURG merge); other roles only get MED -> IPD.
+ */
+function deptDisplayLabel(name?: string | null, role?: string | null): string {
+  if (role === 'pharmacy_technician' && (name === 'MED' || name === 'SURG')) return 'IPD';
   return name === 'MED' ? 'IPD' : (name ?? '');
 }
 
@@ -182,7 +187,7 @@ export async function GET(req: NextRequest) {
     for (const s of filteredShifts) {
       if (!s.user_id) continue;
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
-      const deptName = deptDisplayLabel((s.department as any)?.name);
+      const deptName = deptDisplayLabel((s.department as any)?.name, (s.user as any)?.role);
       // รุ่งอรุณ: ห้อง (ER/OPD/HIV) เก็บใน position ไม่ใช่ department (dept = ชื่อเดียวกับ shift_type)
       const detail = s.shift_type === 'รุ่งอรุณ' && s.position
         ? ` (${s.position})`

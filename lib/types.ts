@@ -56,6 +56,34 @@ export function positionDisplayLabel(position?: string | null): string {
   return m ? `I${m[1]}` : (position ?? '');
 }
 
+/**
+ * pharmacy_technician's morning MED (m1/m2) and SURG (s1/s2) slots are shown
+ * merged as one "IPD" group — display-only, mirroring the pharmacist rename.
+ * DB values stay 'MED'/'m1'/'m2' and 'SURG'/'s1'/'s2'; other roles (officer's
+ * own SURG s1/s2/s3, pharmacist's M1/M2/M3) are untouched.
+ */
+const PHARM_TECH_IPD_POSITION_MAP: Record<string, string> = {
+  m1: 'I1', m2: 'I2', s1: 'I3', s2: 'I4',
+};
+
+export function isPharmTechMergedIpdDept(role?: string | null, dept?: string | null): boolean {
+  return role === 'pharmacy_technician' && (dept === 'MED' || dept === 'SURG');
+}
+
+/** Role-aware department label — adds the pharmacy_technician MED+SURG -> IPD merge. */
+export function deptDisplayLabelForRole(role?: string | null, name?: string | null): string {
+  if (isPharmTechMergedIpdDept(role, name)) return 'IPD';
+  return deptDisplayLabel(name);
+}
+
+/** Role-aware position label — adds the pharmacy_technician m1/m2/s1/s2 -> I1-I4 merge. */
+export function positionDisplayLabelForRole(role?: string | null, dept?: string | null, position?: string | null): string {
+  if (isPharmTechMergedIpdDept(role, dept) && position && PHARM_TECH_IPD_POSITION_MAP[position]) {
+    return PHARM_TECH_IPD_POSITION_MAP[position];
+  }
+  return positionDisplayLabel(position);
+}
+
 // ─── Sub-Admin Helpers ─────────────────────────────────────────────────────────
 
 /** True if user is full admin */

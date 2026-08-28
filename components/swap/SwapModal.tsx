@@ -8,7 +8,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
-import { DEPT_STYLES, ROLE_LABELS, deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
+import { DEPT_STYLES, ROLE_LABELS, deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
 import { insertNotifications } from '@/lib/notifyUsers';
@@ -29,7 +29,8 @@ function getShiftPillStyle(shiftType: string): string {
   return 'bg-violet-100 border-violet-300 text-violet-800';
 }
 
-function getShiftLabel(shiftType: string, deptName: string, position?: string): string {
+function getShiftLabel(shiftType: string, deptName: string, position?: string, role?: string): string {
+  if (shiftType === 'เช้า' && isPharmTechMergedIpdDept(role, deptName) && position) return `IPD ${positionDisplayLabelForRole(role, deptName, position)}`;
   if (shiftType === 'เช้า' && deptName === 'MED' && position) return `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
   if (shiftType === 'เช้า' && deptName === 'SURG') return 'SURG';
   if (deptName === 'Chemo') return 'Chemo';
@@ -161,7 +162,9 @@ export function SwapModal({
   const roleName = ROLE_LABELS[ownerRole] || 'เภสัชกร';
   const shiftDate = shift ? new Date(shift.date + 'T00:00:00') : new Date();
   const deptName = (shift?.department as { name: string })?.name || '';
-  const displayDeptName = shift?.position
+  const displayDeptName = isPharmTechMergedIpdDept(ownerRole, deptName) && shift?.position
+    ? `IPD ${positionDisplayLabelForRole(ownerRole, deptName, shift.position)}`
+    : shift?.position
     ? `${deptDisplayLabel(deptName)} ${shift.position === 'D/C' ? 'D/D' : positionDisplayLabel(shift.position)}`
     : deptDisplayLabel(deptName);
 
@@ -726,7 +729,7 @@ export function SwapModal({
                               'text-[8px] sm:text-[10px] lg:text-xs font-semibold px-0.5 py-px sm:py-0.5 rounded border leading-tight w-full text-center truncate',
                               getShiftPillStyle(s.shift_type),
                             )}>
-                              {getShiftLabel(s.shift_type, dept, pos)}
+                              {getShiftLabel(s.shift_type, dept, pos, currentUser?.role)}
                             </span>
                           );
                         })}

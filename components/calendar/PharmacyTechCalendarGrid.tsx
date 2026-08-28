@@ -280,6 +280,7 @@ function renderPendingAddBadge(add: PendingAdd, globalIndex: number, ctx: Render
 function renderAddButton(dateStr: string, shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string, buttonLabel?: string) {
   if (!ctx.isEditMode || !ctx.onAddShift) return null;
   const label = buttonLabel ?? (position ? `+${position}` : '+');
+  const titleSuffix = buttonLabel ? buttonLabel.replace(/^\+/, '') : position;
   return (
     <button
       onClick={(e) => {
@@ -290,7 +291,7 @@ function renderAddButton(dateStr: string, shiftType: ShiftType, deptName: string
         "bg-green-100 hover:bg-green-200 text-green-700 hover:text-green-900 flex items-center justify-center font-bold transition-all mt-0.5 pointer-events-auto border border-green-300 shadow-[0_2px_0_0_rgba(34,197,94,1)] active:shadow-[0_0_0_0_rgba(34,197,94,1)] active:translate-y-[2px] -translate-y-[1px]",
         position ? "px-1.5 h-6 rounded-lg text-[9px]" : "w-6 h-6 rounded-full text-base"
       )}
-      title={`เพิ่มเวร${position ? ` (${position})` : ''}`}
+      title={`เพิ่มเวร${titleSuffix ? ` (${titleSuffix})` : ''}`}
     >
       {label}
     </button>
@@ -313,7 +314,7 @@ function renderPendingAddsForCell(dateStr: string, shiftType: ShiftType, deptNam
   });
 }
 
-function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string, dateStr?: string) {
+function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ctx: RenderContext, position?: string, dateStr?: string, buttonLabel?: string) {
   const matching = shifts.filter(s =>
     s.shift_type === shiftType &&
     getDeptName(s) === deptName &&
@@ -328,7 +329,7 @@ function renderNames(shifts: Shift[], shiftType: ShiftType, deptName: string, ct
 
   let addBtn: React.ReactNode = null;
   if (dateStr && matching.length === 0 && !hasPendingAdds) {
-    addBtn = renderAddButton(dateStr, shiftType, deptName, ctx, position);
+    addBtn = renderAddButton(dateStr, shiftType, deptName, ctx, position, buttonLabel);
   }
 
   if (badges.length === 0 && !hasPendingAdds && !addBtn) return null;
@@ -467,26 +468,26 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
       <div className={nameCell('chao')} style={{ gridArea: '2 / 1 / 4 / 2' }}>{renderNames(day.shifts, 'เช้า', 'โครงการ', ctx, undefined, dateStr)}</div>
       <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-yellow-100" style={{ gridArea: '2 / 2 / 4 / 3' }}>
         <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
-          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm1', dateStr)}
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm1', dateStr, '+I1')}
         </div>
         <div className="flex min-h-0 items-center justify-center px-1">
-          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm2', dateStr)}
+          {renderNames(day.shifts, 'เช้า', 'MED', ctx, 'm2', dateStr, '+I2')}
         </div>
       </div>
       <div className={nameCell('bai')} style={{ gridArea: '2 / 3 / 3 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'ER', ctx, undefined, dateStr)}</div>
       <div className={nameCell('bai')} style={{ gridArea: '3 / 3 / 4 / 5' }}>{renderNames(day.shifts, 'บ่าย', 'MED', ctx, undefined, dateStr)}</div>
 
       <div className={hdr('chao')} style={{ gridArea: '4 / 1 / 5 / 2' }}>ER</div>
-      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>SURG</div>
+      <div className={hdr('chao')} style={{ gridArea: '4 / 2 / 5 / 3' }}>IPD</div>
       <div className={hdr('duek')} style={{ gridArea: '4 / 3 / 5 / 5' }}>ดึก</div>
 
       <div className={nameCell('chao')} style={{ gridArea: '5 / 1 / 8 / 2' }}>{renderNames(day.shifts, 'เช้า', 'ER', ctx, undefined, dateStr)}</div>
       <div className="grid grid-rows-2 border-r border-b border-gray-200 bg-[#E8F9FA]" style={{ gridArea: '5 / 2 / 8 / 3' }}>
         <div className="flex min-h-0 items-center justify-center border-b border-gray-200 px-1">
-          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's1', dateStr)}
+          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's1', dateStr, '+I3')}
         </div>
         <div className="flex min-h-0 items-center justify-center px-1">
-          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's2', dateStr)}
+          {renderNames(day.shifts, 'เช้า', 'SURG', ctx, 's2', dateStr, '+I4')}
         </div>
       </div>
       <div className={centeredNameCell('duek')} style={{ gridArea: '5 / 3 / 8 / 5' }}>{renderNames(day.shifts, 'ดึก', 'ER', ctx, undefined, dateStr)}</div>

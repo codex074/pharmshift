@@ -5,7 +5,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { X, Coins, ChevronDown, ChevronUp } from 'lucide-react';
 import type { Shift, User } from '@/lib/types';
-import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel, isPharmTechMergedIpdDept, positionDisplayLabelForRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import {
   COMPENSATION_CATEGORIES,
@@ -171,7 +171,9 @@ export function CompensationModal({
                           <div key={i} className="flex justify-between items-center py-1.5 px-3 bg-white/40 rounded-lg">
                             <span>
                               <span className="font-semibold">{format(compensationDate, 'dd')}</span> {format(compensationDate, 'MMM', { locale: th })} {s.shift_type} {getDeptName(s) ? (
-                                s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position
+                                s.shift_type === 'เช้า' && isPharmTechMergedIpdDept(role, getDeptName(s)) && s.position
+                                  ? `(IPD ${positionDisplayLabelForRole(role, getDeptName(s), s.position)})`
+                                  : s.shift_type === 'เช้า' && getDeptName(s) === 'MED' && s.position
                                   ? `(${deptDisplayLabel(getDeptName(s))} ${positionDisplayLabel(s.position)})`
                                   : `(${deptDisplayLabel(getDeptName(s))})`
                               ) : ''}

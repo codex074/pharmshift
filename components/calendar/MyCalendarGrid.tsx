@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, CalendarDay, Holiday } from '@/lib/types';
-import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 
@@ -133,11 +133,14 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                       {day.shifts.map((shift, i) => {
                         const deptName = getDeptName(shift);
                         const position = (shift as any).position;
+                        const shiftRole = (shift as any).user?.role;
                         const isPending = pendingShiftIds?.has(shift.id) ?? false;
 
                         // Full label (desktop)
                         let shiftLabel: string;
-                        if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
+                        if (shift.shift_type === 'เช้า' && isPharmTechMergedIpdDept(shiftRole, deptName) && position) {
+                          shiftLabel = `IPD ${positionDisplayLabelForRole(shiftRole, deptName, position)}`;
+                        } else if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
                           shiftLabel = `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
                         } else if (shift.shift_type === 'เช้า' && deptName === 'SURG') {
                           shiftLabel = 'SURG';
@@ -157,7 +160,9 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
 
                         // Short label (mobile)
                         let mobileLabel: string;
-                        if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
+                        if (shift.shift_type === 'เช้า' && isPharmTechMergedIpdDept(shiftRole, deptName) && position) {
+                          mobileLabel = `IPD ${positionDisplayLabelForRole(shiftRole, deptName, position)}`;
+                        } else if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
                           mobileLabel = `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
                         } else if (shift.shift_type === 'รุ่งอรุณ') {
                           mobileLabel = position ? `รุ่ง${position}` : 'รุ่ง';

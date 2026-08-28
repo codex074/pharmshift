@@ -1,5 +1,6 @@
 import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
+import { deptDisplayLabelForRole, positionDisplayLabelForRole } from './types';
 
 /**
  * Shared collision-detection helpers for swap/transfer/cover acceptance.
@@ -72,9 +73,10 @@ async function hasDuekChaoSeq(
 export function fmtShift(s: any): string {
   if (!s) return 'เวรดังกล่าว';
   const d = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
+  const role = s.user?.role;
   const rawDept = s.department?.name || '';
-  const dept = rawDept && rawDept !== s.shift_type ? rawDept : '';
-  const pos = s.position || '';
+  const dept = rawDept && rawDept !== s.shift_type ? deptDisplayLabelForRole(role, rawDept) : '';
+  const pos = positionDisplayLabelForRole(role, rawDept, s.position) || '';
   const area = [dept, pos].filter(Boolean).join(' ');
   return `เวร${s.shift_type}${d ? ` ${d}` : ''}${area ? ` (${area})` : ''}`;
 }
