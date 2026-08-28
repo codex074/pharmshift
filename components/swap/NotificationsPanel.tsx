@@ -7,16 +7,18 @@ import { th } from 'date-fns/locale';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import type { SwapRequest, User, AppNotification } from '@/lib/types';
+import { deptDisplayLabelForRole, positionDisplayLabelForRole } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { isPushSupported, isIosNonPwa, isMobilePushDevice, subscribeToPush, unsubscribeFromPush, getPermissionStatus, getSubscriptionStatus, getDeniedPushMessage } from '@/lib/pushNotifications';
 
-/** "เช้า SURG (Cont) 23 มี.ค." */
+/** "เช้า IPD (I1) 23 มี.ค." */
 function shiftLabel(s: any): string {
   if (!s) return '?';
   const d    = s.date ? format(new Date(s.date + 'T00:00:00'), 'd/M') : '';
+  const role = s.user?.role;
   const rawDept = s.shift_type === 'ดึก' ? '' : (s.department?.name || '');
-  const dept = rawDept && rawDept !== s.shift_type ? rawDept : '';
-  const pos  = s.position || '';
+  const dept = rawDept && rawDept !== s.shift_type ? deptDisplayLabelForRole(role, rawDept) : '';
+  const pos  = positionDisplayLabelForRole(role, rawDept, s.position) || '';
   return `${s.shift_type}${dept ? ` ${dept}` : ''}${pos ? ` (${pos})` : ''}${d ? ` ${d}` : ''}`;
 }
 
