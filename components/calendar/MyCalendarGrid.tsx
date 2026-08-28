@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, CalendarDay, Holiday } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 
@@ -137,7 +138,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                         // Full label (desktop)
                         let shiftLabel: string;
                         if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
-                          shiftLabel = `MED ${position}`;
+                          shiftLabel = `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
                         } else if (shift.shift_type === 'เช้า' && deptName === 'SURG') {
                           shiftLabel = 'SURG';
                         } else if (deptName === 'Chemo') {
@@ -151,13 +152,13 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                         } else if (deptName === 'โครงการ') {
                           shiftLabel = 'โครงการ';
                         } else {
-                          shiftLabel = `${shift.shift_type} ${deptName}`;
+                          shiftLabel = `${shift.shift_type} ${deptDisplayLabel(deptName)}`;
                         }
 
                         // Short label (mobile)
                         let mobileLabel: string;
                         if (shift.shift_type === 'เช้า' && deptName === 'MED' && position) {
-                          mobileLabel = `MED ${position}`;
+                          mobileLabel = `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
                         } else if (shift.shift_type === 'รุ่งอรุณ') {
                           mobileLabel = position ? `รุ่ง${position}` : 'รุ่ง';
                         } else if (shift.shift_type === 'ดึก') {
@@ -169,7 +170,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                         } else if (deptName === 'ส่งยา สอ.' || deptName === 'สอ.') {
                           mobileLabel = 'สอ.';
                         } else if (deptName) {
-                          mobileLabel = deptName;
+                          mobileLabel = deptDisplayLabel(deptName);
                         } else {
                           mobileLabel = shift.shift_type;
                         }

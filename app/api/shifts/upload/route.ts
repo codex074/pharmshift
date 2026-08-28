@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
 
       const key = afternoonMedSlotKey({ date: record.date, shift_type: record.shift_type, department: departmentName }, sheetRole);
       if (afternoonMedSlots.has(key)) {
-        afternoonMedErrors.push(`${record.date}: เวรบ่าย MED มีมากกว่า 1 คนในไฟล์`);
+        afternoonMedErrors.push(`${record.date}: เวรบ่าย IPD มีมากกว่า 1 คนในไฟล์`);
         return;
       }
       afternoonMedSlots.add(key);

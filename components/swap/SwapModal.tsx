@@ -8,7 +8,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
-import { DEPT_STYLES, ROLE_LABELS } from '@/lib/types';
+import { DEPT_STYLES, ROLE_LABELS, deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
 import { insertNotifications } from '@/lib/notifyUsers';
@@ -30,7 +30,7 @@ function getShiftPillStyle(shiftType: string): string {
 }
 
 function getShiftLabel(shiftType: string, deptName: string, position?: string): string {
-  if (shiftType === 'เช้า' && deptName === 'MED' && position) return `MED ${position}`;
+  if (shiftType === 'เช้า' && deptName === 'MED' && position) return `${deptDisplayLabel(deptName)} ${positionDisplayLabel(position)}`;
   if (shiftType === 'เช้า' && deptName === 'SURG') return 'SURG';
   if (deptName === 'Chemo') return 'Chemo';
   if (shiftType === 'บ่าย' && deptName === 'SMC') return 'SMC';
@@ -38,7 +38,7 @@ function getShiftLabel(shiftType: string, deptName: string, position?: string): 
   if (shiftType === 'รุ่งอรุณ') return position ? `รุ่ง${position}` : 'รุ่ง';
   if (deptName === 'โครงการ') return 'Ext';
   if (deptName === 'Chemo') return 'Chem';
-  if (deptName) return deptName;
+  if (deptName) return deptDisplayLabel(deptName);
   return shiftType;
 }
 
@@ -162,8 +162,8 @@ export function SwapModal({
   const shiftDate = shift ? new Date(shift.date + 'T00:00:00') : new Date();
   const deptName = (shift?.department as { name: string })?.name || '';
   const displayDeptName = shift?.position
-    ? `${deptName} ${shift.position === 'D/C' ? 'D/D' : shift.position}`
-    : deptName;
+    ? `${deptDisplayLabel(deptName)} ${shift.position === 'D/C' ? 'D/D' : positionDisplayLabel(shift.position)}`
+    : deptDisplayLabel(deptName);
 
   // ── Fetch users for transfer mode ────────────────────────────────────
   useEffect(() => {

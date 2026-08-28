@@ -375,7 +375,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <div className="flex">
           <div className={cn(colW, br, subHdr('chao'))}>โครงการ</div>
           <div className={cn(colW, br, subHdr('chao'))}>Surg</div>
-          <div className={cn(colW, br, subHdr('chao'))}>MED</div>
+          <div className={cn(colW, br, subHdr('chao'))}>IPD</div>
           <div className={cn(colW, br, subHdr('bai'))}>บ่าย</div>
           <div className={cn(colW, fixedRowH, bb, 'flex items-center justify-center border-gray-400/60 text-[10px] xl:text-[11px] font-semibold', dateBg, dateColor)}>
             {dayNum}
@@ -524,7 +524,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         <div className="flex">
           <div className={cn(c1, br, subHdr('chao'))}>โครงการ</div>
           <div className={cn(c2, br, subHdr('chao'))}>Surg</div>
-          <div className={cn(c3, br, subHdr('chao'))}>MED</div>
+          <div className={cn(c3, br, subHdr('chao'))}>IPD</div>
           <div className={cn(c4, br, subHdr('bai'))}>บ่าย</div>
           <div className={cn(c5, isSat ? br : '', fixedRowH, bb, 'flex items-center justify-center border-gray-400/60 text-[10px] xl:text-[11px] font-semibold', dateBg, dateColor)}>{dayNum}</div>
           {isSat && <div className={cn('flex-1', subHdr('neutral'))}>ส่งยา สอ.</div>}

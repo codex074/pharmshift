@@ -311,7 +311,7 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
                 <p className="text-xs font-bold text-slate-700">ส่งคำขอ</p>
                 <span className="text-slate-400 text-xs">✕</span>
               </div>
-              <p className="text-[11px] text-gray-500 text-center px-3 py-2">เลือกประเภทสำหรับเวร <strong>บ่าย MED</strong></p>
+              <p className="text-[11px] text-gray-500 text-center px-3 py-2">เลือกประเภทสำหรับเวร <strong>บ่าย IPD</strong></p>
               <div className="px-3 pb-3 flex gap-2">
                 <div className="flex-1 border-2 border-emerald-200 bg-emerald-50 rounded-xl p-2 text-center">
                   <p className="text-base">🙋</p>
@@ -357,7 +357,7 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
             <div className="flex items-start gap-2 text-xs">
               <span>⇄</span>
               <div className="flex-1">
-                <p className="font-semibold text-slate-700">A ขอแลกเวร — บ่าย MED 5 เม.ย. 69</p>
+                <p className="font-semibold text-slate-700">A ขอแลกเวร — บ่าย IPD 5 เม.ย. 69</p>
                 <div className="flex gap-2 mt-1.5">
                   <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-[11px] font-semibold">ยืนยัน</span>
                   <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-[11px] font-semibold">ปฏิเสธ</span>

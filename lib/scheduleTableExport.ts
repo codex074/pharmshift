@@ -338,20 +338,20 @@ export async function exportScheduleTable(
   const legendBold = { ...legendFont, bold: true };
   const legends = role === 'pharmacy_technician'
     ? [
-        { label: 'MED', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = IPD'], color: PAL.chao.hdr },
-        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'IPD', items: ['รายชื่อ 1 = D/C', 'รายชื่อ 2 = IPD'], color: PAL.chao.hdr },
+        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย IPD'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
       ]
     : role === 'officer'
     ? [
-        { label: 'MED', items: ['รายชื่อ 1 = m1', 'รายชื่อ 2 = m2', '(m3, m4 = แถวล่าง)'], color: PAL.chao.hdr },
+        { label: 'IPD', items: ['รายชื่อ 1 = m1', 'รายชื่อ 2 = m2', '(m3, m4 = แถวล่าง)'], color: PAL.chao.hdr },
         { label: 'SURG', items: ['รายชื่อ 1 = s1', 'รายชื่อ 2 = s2', '(s3 = แถวล่าง)'], color: PAL.chao.hdr },
-        { label: 'บ่าย', items: ['ชื่อบน = บ่าย ER', 'ชื่อล่าง = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'บ่าย', items: ['ชื่อบน = บ่าย ER', 'ชื่อล่าง = บ่าย IPD'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อบน = รo1/รo2', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
       ]
     : [
-        { label: 'MED', items: ['ซ้ายบน = DC, ซ้ายล่าง = M1', 'ขวาบน = M2, ขวาล่าง = M3'], color: PAL.chao.hdr },
-        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย MED'], color: PAL.bai.hdr },
+        { label: 'IPD', items: ['ซ้ายบน = DC, ซ้ายล่าง = I1', 'ขวาบน = I2, ขวาล่าง = I3'], color: PAL.chao.hdr },
+        { label: 'บ่าย', items: ['รายชื่อ 1 = บ่าย ER', 'รายชื่อ 2 = บ่าย IPD'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อ 1 = OPD', 'รายชื่อ 2 = ER', 'รายชื่อ 3 = HIV'], color: PAL.rung.hdr },
       ];
   for (const lg of legends) {
@@ -517,7 +517,7 @@ function renderWeek(
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       merge(0, c3, 0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
 
@@ -541,7 +541,7 @@ function renderWeek(
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c2, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c4, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 
@@ -574,7 +574,7 @@ function renderWeek(
       // Header row 0
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c2, 'SURG',    { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'MED',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'IPD',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย',    { font: hdrFont(PAL.bai),  fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 || day.isPublicHoliday ? 'FFFEE2E2' : PAL.date.hdr) });
       if (c6 !== null) set(0, c6, 'ส่งยา สอ.', { font: hdrFont(PAL.date), fill: cellFill(PAL.date.hdr) });
@@ -629,7 +629,7 @@ function renderWeek(
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      merge(0, c2, 0, c3, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c2, 0, c3, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย', { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 ? 'FFFEE2E2' : PAL.date.hdr) });
 
@@ -657,7 +657,7 @@ function renderWeek(
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c2, 'SURG',    { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'MED',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      set(0, c3, 'IPD',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย',    { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 
@@ -693,7 +693,7 @@ function renderWeek(
       // ══ Weekday holiday: 4 cols (pharmacist) ══
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = dateCol;
 
-      merge(0, c1, 0, c2, 'MED', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c1, 0, c2, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c3, 'บ่าย', { font: hdrFont(PAL.bai),  fill: cellFill(PAL.bai.hdr) });
       set(0, c4, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 

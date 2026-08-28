@@ -5,6 +5,7 @@ import { th } from 'date-fns/locale';
 import { buildCalendarWeeks } from './calendarMonthGrid';
 import { THAI_MONTHS } from './utils';
 import type { Shift, Holiday } from './types';
+import { deptDisplayLabel, positionDisplayLabel } from './types';
 
 // ── Colours matching MyCalendarGrid / web UI ─────────────────────
 const DOW_BG: Record<number, string> = {
@@ -39,15 +40,15 @@ function getDeptName(s: Shift): string {
 function shiftLabel(s: Shift): string {
   const dept = getDeptName(s);
   const pos = (s as any).position || '';
-  if (s.shift_type === 'เช้า' && dept === 'MED' && pos) return `MED ${pos}`;
+  if (s.shift_type === 'เช้า' && dept === 'MED' && pos) return `${deptDisplayLabel(dept)} ${positionDisplayLabel(pos)}`;
   if (s.shift_type === 'เช้า' && dept === 'SURG') return 'SURG';
   if (dept === 'Chemo') return 'Chemo';
   if (s.shift_type === 'บ่าย' && dept === 'SMC') return 'SMC';
   if (s.shift_type === 'ดึก') return 'ดึก';
   if (s.shift_type === 'รุ่งอรุณ') return pos ? `รุ่งอรุณ ${pos}` : 'รุ่งอรุณ';
   if (dept === 'โครงการ') return 'โครงการ';
-  if (s.shift_type === 'บ่าย' && dept) return `บ่าย ${dept}`;
-  return s.shift_type + (dept ? ` ${dept}` : '');
+  if (s.shift_type === 'บ่าย' && dept) return `บ่าย ${deptDisplayLabel(dept)}`;
+  return s.shift_type + (dept ? ` ${deptDisplayLabel(dept)}` : '');
 }
 
 type Border = { style: ExcelJS.BorderStyle; color: { argb: string } };

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase, supabaseRealtime } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification, UserRole } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
@@ -76,8 +77,8 @@ function fmtShiftNotif(s: Shift | null | undefined): string {
   if (!s) return 'เวรดังกล่าว';
   const date = s.date ? format(new Date(s.date + 'T00:00:00'), 'd MMM', { locale: th }) : '';
   const rawDept = (s as any).department?.name || '';
-  const dept = rawDept && rawDept !== s.shift_type ? rawDept : '';
-  const pos = (s as any).position || '';
+  const dept = rawDept && rawDept !== s.shift_type ? deptDisplayLabel(rawDept) : '';
+  const pos = positionDisplayLabel((s as any).position) || '';
   const area = [dept, pos].filter(Boolean).join(' ');
   return `เวร${s.shift_type}${date ? ` ${date}` : ''}${area ? ` (${area})` : ''}`;
 }

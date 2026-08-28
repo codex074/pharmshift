@@ -5,7 +5,7 @@ import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { THAI_MONTHS, THAI_DAYS as UTILS_THAI_DAYS } from '@/lib/utils';
 import type { CalendarDay, Shift, User, ShiftType } from '@/lib/types';
-import { DEPT_COLORS, SHIFT_CONFIG } from '@/lib/types';
+import { DEPT_COLORS, SHIFT_CONFIG, deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 
 interface DayDetailModalProps {
   day: CalendarDay;
@@ -146,7 +146,7 @@ function TimelineView({
                         className="text-[10px] font-bold px-2 py-0.5 rounded-md text-white flex-shrink-0"
                         style={{ backgroundColor: DEPT_COLORS[dept] || '#9ca3af' }}
                       >
-                        {dept}
+                        {deptDisplayLabel(dept)}
                       </span>
                     )}
                     {ordered.map(({ shift: s, label }) => {
@@ -168,7 +168,7 @@ function TimelineView({
                           )}
                         >
                           {getUserName(s)}
-                          {label ? <span className="opacity-60 text-[9px] ml-0.5">({label})</span> : null}
+                          {label ? <span className="opacity-60 text-[9px] ml-0.5">({positionDisplayLabel(label)})</span> : null}
                         </button>
                       );
                     })}

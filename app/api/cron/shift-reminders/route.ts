@@ -48,6 +48,11 @@ function toMonthYear(dateStr: string): string {
   return dateStr.substring(0, 7); // "YYYY-MM"
 }
 
+/** Display-only relabel of the MED department name shown in reminder text — DB value stays 'MED'. */
+function deptDisplayLabel(name?: string | null): string {
+  return name === 'MED' ? 'IPD' : (name ?? '');
+}
+
 const SHIFT_TYPE_LABELS: Record<string, string> = {
   'เช้า': 'เวรเช้า',
   'บ่าย': 'เวรบ่าย',
@@ -177,7 +182,7 @@ export async function GET(req: NextRequest) {
     for (const s of filteredShifts) {
       if (!s.user_id) continue;
       const label = SHIFT_TYPE_LABELS[s.shift_type] || s.shift_type;
-      const deptName = (s.department as any)?.name;
+      const deptName = deptDisplayLabel((s.department as any)?.name);
       // รุ่งอรุณ: ห้อง (ER/OPD/HIV) เก็บใน position ไม่ใช่ department (dept = ชื่อเดียวกับ shift_type)
       const detail = s.shift_type === 'รุ่งอรุณ' && s.position
         ? ` (${s.position})`

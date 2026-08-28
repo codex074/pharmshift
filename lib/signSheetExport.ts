@@ -71,8 +71,8 @@ const SHEET_CONFIGS: SheetConfig[] = [
     blackFillEmpty: true,
   },
   {
-    name: 'เช้า MED',
-    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยาอายุรกรรม(Med)เช้า เดือน ${m} ${y}`,
+    name: 'เช้า IPD',
+    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยาอายุรกรรม(IPD)เช้า เดือน ${m} ${y}`,
     filter: (s) => s.shift_type === 'เช้า' && getDeptName(s) === 'MED',
     layout: 'med-morning',
   },
@@ -100,8 +100,8 @@ const SHEET_CONFIGS: SheetConfig[] = [
     blackFillEmpty: true,
   },
   {
-    name: 'บ่าย MED',
-    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรเดือน ${m} ${y} เวรบ่าย MED เวลา 16.30 – 24.00 น.`,
+    name: 'บ่าย IPD',
+    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรเดือน ${m} ${y} เวรบ่าย IPD เวลา 16.30 – 24.00 น.`,
     filter: (s) => s.shift_type === 'บ่าย' && getDeptName(s) === 'MED',
     layout: 'simple',
     blackFillEmpty: true,
@@ -409,9 +409,9 @@ export async function exportSignSheet(
         // Row 4: M3 → เภสัช M3 (จพง./จนท. ทาสีดำ — ไม่มีตำแหน่งคู่กันเหลือ)
         const pairs: Array<[string, string, string, string]> = [
           ['DC', grp.pharm_dc[0]   || '', grp.pharm_techs[0] || '', medOfficers[0]],
-          ['M1', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
-          ['M2', grp.pharm_m2[0]   || '', '',                       medOfficers[2]],
-          ['M3', grp.pharm_m3[0]   || '', '',                       ''],
+          ['I1', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
+          ['I2', grp.pharm_m2[0]   || '', '',                       medOfficers[2]],
+          ['I3', grp.pharm_m3[0]   || '', '',                       ''],
         ];
         pairs.forEach(([label, pharm, pt, off], i) => {
           const vals = new Array(15).fill('');

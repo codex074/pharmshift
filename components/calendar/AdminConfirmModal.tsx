@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { toastError, toastSuccess } from '@/lib/swal';
 import { Loader2, X, AlertTriangle, Eye, EyeOff } from 'lucide-react';
 import type { Shift, ShiftType, User } from '@/lib/types';
-import { userFullName, userDisplayName } from '@/lib/types';
+import { userFullName, userDisplayName, deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 import { insertNotifications } from '@/lib/notifyUsers';
 import { shiftsOverlap } from '@/lib/utils';
 import { verifyCurrentPassword } from '@/lib/clientAuth';
@@ -135,7 +135,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
     };
     /** ป้ายกำกับ: ใช้ position ถ้ามี, ไม่งั้นใช้ dept (ถ้า dept ≠ shiftType เพื่อหลีกเลี่ยงซ้ำซ้อน) */
     const shiftLabel = (shiftType: string, dept?: string, position?: string): string =>
-      position || (dept && dept !== shiftType ? dept : '') || '';
+      positionDisplayLabel(position) || (dept && dept !== shiftType ? deptDisplayLabel(dept) : '') || '';
     /** Format one shift line: "20 มี.ค. รุ่งอรุณ (HIV)" */
     const fmtShift = (date: string, shiftType: string, dept?: string, position?: string) => {
       const label = shiftLabel(shiftType, dept, position);
@@ -373,7 +373,7 @@ export function AdminConfirmModal({ pendingDeletes, pendingEdits, pendingAdds, a
                     <li key={idx} className={`flex flex-col p-2 rounded border ${addConflicts.length > 0 ? 'bg-yellow-50 border-yellow-300 text-yellow-900' : 'bg-green-50 border-green-100 text-green-900'}`}>
                       <span className="font-medium flex items-center gap-1">
                         {addConflicts.length > 0 && <AlertTriangle className="w-3.5 h-3.5 text-yellow-600 shrink-0" />}
-                        {add.date} | {add.shift_type} | {add.department}{add.position ? ` (${add.position})` : ''}
+                        {add.date} | {add.shift_type} | {deptDisplayLabel(add.department)}{add.position ? ` (${positionDisplayLabel(add.position)})` : ''}
                       </span>
                       <span className="text-xs">
                         ผู้มีเวร: <span className="font-bold">{userFullName(add.user)} {add.user.nickname ? `(${add.user.nickname})` : ''}</span>

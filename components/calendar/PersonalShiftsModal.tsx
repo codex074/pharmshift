@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { th } from 'date-fns/locale';
 import { CalendarDays, X } from 'lucide-react';
 import type { Shift, ShiftType } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface PersonalShiftsModalProps {
@@ -122,8 +123,8 @@ export function PersonalShiftsModal({
                         <span className="text-sm font-semibold text-gray-900 truncate">
                           {getDeptName(shift) !== 'ไม่ระบุ' ? (
                             shift.shift_type === 'เช้า' && getDeptName(shift) === 'MED' && shift.position
-                              ? `${getDeptName(shift)} (${shift.position})`
-                              : getDeptName(shift)
+                              ? `${deptDisplayLabel(getDeptName(shift))} (${positionDisplayLabel(shift.position)})`
+                              : deptDisplayLabel(getDeptName(shift))
                           ) : ''}
                         </span>
                       </div>

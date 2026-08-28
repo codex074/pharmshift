@@ -42,6 +42,20 @@ export function userDisplayName(u: Pick<User, 'nickname' | 'f_name'> | null | un
   return u.nickname || u.f_name || '—';
 }
 
+/**
+ * Display-only relabel: the MED department row/position values ('MED', 'M1'/'M2'/'M3')
+ * stay as-is in the DB and in slot/business-rule comparisons — only what's shown to
+ * users is renamed to IPD/I1/I2/I3. Never use these for equality checks against stored data.
+ */
+export function deptDisplayLabel(name?: string | null): string {
+  return name === 'MED' ? 'IPD' : (name ?? '');
+}
+
+export function positionDisplayLabel(position?: string | null): string {
+  const m = position ? /^M([1-3])$/.exec(position) : null;
+  return m ? `I${m[1]}` : (position ?? '');
+}
+
 // ─── Sub-Admin Helpers ─────────────────────────────────────────────────────────
 
 /** True if user is full admin */

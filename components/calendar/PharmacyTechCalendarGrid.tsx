@@ -459,7 +459,7 @@ function WeekendGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderCo
   return (
     <div className="grid h-full grid-cols-4" style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }} onClick={() => onDayClick(day)}>
       <div className={hdr('chao')} style={{ gridArea: '1 / 1 / 2 / 2' }}>โครงการ</div>
-      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>MED</div>
+      <div className={hdr('chao')} style={{ gridArea: '1 / 2 / 2 / 3' }}>IPD</div>
       <div className="h-full" style={{ gridArea: '1 / 3 / 2 / 5' }}>
         {headerWithDate('บ่าย', 'bai', dayNum, isSundayOrHoliday ? 'bg-red-100 text-red-600' : 'bg-indigo-100 text-indigo-700')}
       </div>

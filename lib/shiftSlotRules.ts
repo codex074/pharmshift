@@ -10,7 +10,7 @@ export type ShiftSlotLike = {
 };
 
 export const AFTERNOON_MED_SLOT_FULL_MESSAGE =
-  'เวรบ่าย MED รับได้แค่ 1 คนต่อวันในแต่ละกลุ่มตำแหน่ง';
+  'เวรบ่าย IPD รับได้แค่ 1 คนต่อวันในแต่ละกลุ่มตำแหน่ง';
 
 export const DUPLICATE_SHIFT_MESSAGE =
   'รายการเวรนี้ถูกเพิ่มไว้แล้ว กรุณารอระบบตอบกลับหรือรีเฟรชแล้วลองอีกครั้ง';
