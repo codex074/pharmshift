@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { getSession } from '@/lib/session';
 import { canManageRoleGroup, type UserRole } from '@/lib/types';
+import { resolveSwapDirection } from '@/lib/shiftHistory';
 
 // GET /api/admin/shifts/history?shiftId=...
 // Read-only: every swap/transfer/cover request that ever touched this shift
@@ -58,17 +59,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       originalOwner: shift.original_user_id ? (originalUser?.nickname || originalUser?.f_name || null) : null,
       requests: (requests || []).map((r: any) => {
-        const isCounterOffer = r.shift_id !== shiftId; // this shift was the requester's side of a 'swap'
-
-        // Who actually held THIS shift before/after, per request_type:
-        // - transfer: shift_id belongs to the requester (giving it away).
-        // - swap/cover, viewed via shift_id: shift_id belongs to the target
-        //   (requester is the one receiving it).
-        // - swap, viewed via target_shift_id (isCounterOffer): that shift
-        //   belongs to the requester (mirror of the transfer case).
-        const requesterOwnsFirst = r.request_type === 'transfer' || isCounterOffer;
-        const fromUser = requesterOwnsFirst ? r.requester : r.target_user;
-        const toUser = requesterOwnsFirst ? r.target_user : r.requester;
+        const { isCounterOffer, fromUser, toUser } = resolveSwapDirection(r, shiftId);
 
         return {
           id: r.id,

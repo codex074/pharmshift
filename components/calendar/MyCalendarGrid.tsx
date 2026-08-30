@@ -28,13 +28,15 @@ interface MyCalendarGridProps {
   onDayClick: (day: CalendarDay) => void;
   onShiftClick?: (shift: Shift) => void;
   pendingShiftIds?: Set<string>;
+  /** shift id -> how it reached me, e.g. 'รับโอนจาก สมชาย' (see lib/shiftHistory) */
+  provenanceByShiftId?: Map<string, string>;
 }
 
 function getDeptName(shift: Shift): string {
   return (shift as any).department_name || shift.department?.name || '';
 }
 
-export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDayShifts, onDayClick, onShiftClick, pendingShiftIds }: MyCalendarGridProps) {
+export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDayShifts, onDayClick, onShiftClick, pendingShiftIds, provenanceByShiftId }: MyCalendarGridProps) {
   // ── Improvement 3: Empty state ───────────────────────────────────────
   if (shifts.length === 0) {
     return (
@@ -191,7 +193,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                         return (
                           <div
                             key={i}
-                            title={shiftHoverLabel(shiftRole, shift.shift_type, deptName, position)}
+                            title={[shiftHoverLabel(shiftRole, shift.shift_type, deptName, position), provenanceByShiftId?.get(shift.id)].filter(Boolean).join(' · ')}
                             onClick={onShiftClick ? (e) => { e.stopPropagation(); onShiftClick(shift); } : undefined}
                             className={cn(
                               'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',

@@ -22,6 +22,7 @@ import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubst
 import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
 import { AdminManageShiftsModal } from '@/components/calendar/AdminManageShiftsModal';
 import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
+import { provenancePhrase, resolveSwapDirection, swapPartyName } from '@/lib/shiftHistory';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 import { AdminExportModal } from '@/components/calendar/AdminExportModal';
@@ -485,6 +486,31 @@ export default function CalendarPage() {
     const shiftMonthKey = s.month_year || s.date.slice(0, 7);
     return shiftMonthKey === viewedMonthKey;
   });
+  // How each of my shifts reached me — derived from the swap_requests already in
+  // memory (useSwapRequests fetches every status with both parties joined), so the
+  // hover tooltips in "เวรของฉัน" cost no extra query.
+  const provenanceByShiftId = new Map<string, string>();
+  if (currentUser) {
+    const lastGiverByShiftId = new Map<string, string | undefined>();
+    const acceptedOldestFirst = swapRequests
+      .filter(r => r.status === 'accepted')
+      .slice()
+      .sort((a, b) => (a.updated_at || a.created_at || '').localeCompare(b.updated_at || b.created_at || ''));
+    for (const r of acceptedOldestFirst) {
+      // A swap moves two shifts, so check both sides: I may have received either one.
+      for (const shiftId of [r.shift_id, r.target_shift_id]) {
+        if (!shiftId) continue;
+        const { fromUser, toUser } = resolveSwapDirection(r as any, shiftId);
+        if (toUser?.id !== currentUser.id) continue;
+        // An auto-matched pair (accept_matched_swap_pair_atomic) accepts a transfer and
+        // its mirrored cover — two rows for one hand-off. Keep the first of the pair,
+        // but let a genuinely later hand-off from someone else win.
+        if (lastGiverByShiftId.has(shiftId) && lastGiverByShiftId.get(shiftId) === fromUser?.id) continue;
+        lastGiverByShiftId.set(shiftId, fromUser?.id);
+        provenanceByShiftId.set(shiftId, provenancePhrase(r.request_type, swapPartyName(fromUser)));
+      }
+    }
+  }
   // Improvement 2: shift IDs with outgoing pending requests
   const pendingShiftIds = new Set(
     swapRequests
@@ -873,6 +899,7 @@ export default function CalendarPage() {
                   else if (canViewOwnRoleSchedule) setDetailShift(s);
                 }}
                 pendingShiftIds={pendingShiftIds}
+                provenanceByShiftId={provenanceByShiftId}
               />
             ) : isMobile ? (
               <MobileCalendarGrid

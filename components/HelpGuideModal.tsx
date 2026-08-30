@@ -248,7 +248,7 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
             </div>
           </div>
           <div className="p-3 rounded-xl bg-white border border-violet-200 space-y-2">
-            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">ที่มาของเวร (3 แบบ)</p>
+            <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">ที่มาของเวร</p>
             <div className="p-2.5 rounded-lg border text-xs font-semibold text-slate-700"
               style={{ background: '#F8F5FC', borderColor: '#D8C8EC' }}>
               📋 ได้รับมอบหมายตั้งแต่ประกาศตารางเวร
@@ -257,7 +257,15 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
               style={{ background: '#EEF0FF', borderColor: '#99ABFF' }}>
               <span>🔀</span>
               <div>
-                <p className="font-bold" style={{ color: '#4338ca' }}>แลกเวร</p>
+                <p className="font-bold" style={{ color: '#4338ca' }}>แลกเวรกับ สมชาย</p>
+                <p className="text-gray-500">เมื่อวันที่ ...</p>
+              </div>
+            </div>
+            <div className="p-2.5 rounded-lg border flex items-center gap-2 text-xs"
+              style={{ background: '#F3EDF8', borderColor: '#9E76B4' }}>
+              <span>📥</span>
+              <div>
+                <p className="font-bold text-violet-700">รับโอนจาก สมหญิง</p>
                 <p className="text-gray-500">เมื่อวันที่ ...</p>
               </div>
             </div>
@@ -265,10 +273,11 @@ export function HelpGuideModal({ onClose, isAdmin }: HelpGuideModalProps) {
               style={{ background: '#ecfdf5', borderColor: '#6ee7b7' }}>
               <span>✅</span>
               <div>
-                <p className="font-bold text-emerald-700">รับเวร</p>
+                <p className="font-bold text-emerald-700">อยู่เวรแทน มานะ</p>
                 <p className="text-gray-500">เมื่อวันที่ ...</p>
               </div>
             </div>
+            <p className="text-[10px] text-gray-400">ถ้าเวรถูกแลก/โอนหลายทอด จะแสดงครบทุกทอด เรียงจากเก่าไปใหม่</p>
           </div>
         </>
       ),
