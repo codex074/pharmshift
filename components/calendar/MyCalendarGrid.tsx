@@ -3,7 +3,7 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, CalendarDay, Holiday } from '@/lib/types';
-import { deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept } from '@/lib/types';
+import { deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept, shiftHoverLabel } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 
@@ -191,6 +191,7 @@ export function MyCalendarGrid({ year, month, shifts, holidays, prevMonthLastDay
                         return (
                           <div
                             key={i}
+                            title={shiftHoverLabel(shiftRole, shift.shift_type, deptName, position)}
                             onClick={onShiftClick ? (e) => { e.stopPropagation(); onShiftClick(shift); } : undefined}
                             className={cn(
                               'relative flex items-center justify-center px-0.5 py-0.5 sm:p-1.5 rounded sm:rounded-lg border sm:border-2 transition-all overflow-hidden [.exporting-pdf_&]:overflow-visible [.exporting-pdf_&]:bg-none [.exporting-pdf_&]:shadow-none',

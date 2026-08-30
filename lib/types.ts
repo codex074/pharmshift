@@ -84,6 +84,40 @@ export function positionDisplayLabelForRole(role?: string | null, dept?: string 
   return positionDisplayLabel(position);
 }
 
+// Pharmacist MED positions written before the 4-slot rename (see renderMedChaoSlot).
+const PHARM_LEGACY_POSITION: Record<string, string> = { Cont: 'M1', 'D/C': 'DC' };
+
+/**
+ * Hover text for one shift on the desktop grids — "เช้า IPD ตำแหน่ง I1".
+ * Uses the same display-only relabels as the cells themselves, so the tooltip
+ * never names a department or slot the grid doesn't show.
+ */
+export function shiftHoverLabel(
+  role: string | null | undefined,
+  shiftType?: string | null,
+  deptName?: string | null,
+  position?: string | null,
+): string {
+  const typeLabel = SHIFT_CONFIG[shiftType as ShiftType]?.label ?? (shiftType ?? '');
+
+  // A pharmacist's เช้า SURG room is displayed inside the IPD group, but its stored
+  // position belongs to SURG (blank/s1/s2) and cannot name the IPD slot — drop it.
+  const isPharmLegacySurg = role === 'pharmacist' && shiftType === 'เช้า' && deptName === 'SURG';
+  const dept = isPharmLegacySurg ? 'MED' : (deptName ?? '');
+  let rawPosition = isPharmLegacySurg ? '' : (position ?? '');
+  if (role === 'pharmacist') rawPosition = PHARM_LEGACY_POSITION[rawPosition] ?? rawPosition;
+
+  let deptLabel = deptDisplayLabelForRole(role, dept);
+  // จนท keeps MED and SURG as two เช้า groups inside one IPD area — same names as mobile.
+  if (role === 'officer' && shiftType === 'เช้า' && (dept === 'MED' || dept === 'SURG')) {
+    deptLabel = `IPD ${dept}`;
+  }
+
+  const positionLabel = positionDisplayLabelForRole(role, deptName, rawPosition);
+  const head = deptLabel && deptLabel !== typeLabel ? `${typeLabel} ${deptLabel}`.trim() : typeLabel;
+  return positionLabel ? `${head} ตำแหน่ง ${positionLabel}` : head;
+}
+
 // ─── Sub-Admin Helpers ─────────────────────────────────────────────────────────
 
 /** True if user is full admin */

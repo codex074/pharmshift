@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
+import { shiftHoverLabel } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
@@ -197,6 +198,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const pendingSub = ctx.pendingEdits?.[s.id];
 
   const displayName = pendingSub ? (pendingSub.nickname || pendingSub.f_name) : getUserName(s);
+  const hoverLabel = shiftHoverLabel('pharmacy_technician', s.shift_type, getDeptName(s), (s as any).position);
 
   if (ctx.isEditMode) {
     return (
@@ -208,7 +210,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         )}
         onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
       >
-        <span title={displayName} className={cn("text-[11px] flex-1 min-w-0 truncate mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+        <span title={`${displayName} — ${hoverLabel}`} className={cn("text-[11px] flex-1 min-w-0 truncate mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
           {displayName}
         </span>
         <button
@@ -224,7 +226,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   if (isMe) {
     return (
       <span
-        key={s.id}
+        key={s.id} title={hoverLabel}
         className={cn(
           "block text-center w-full py-[2px] sm:py-[3px] leading-[1.28] whitespace-normal break-words line-clamp-2 [.exporting-pdf_&]:leading-[1.05] [.exporting-pdf_&]:line-clamp-none [.exporting-pdf_&]:inline-block [.exporting-pdf_&]:w-auto [.exporting-pdf_&]:py-[1px]",
           canClickShift && "cursor-pointer",
@@ -245,7 +247,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
 
   return (
     <span
-      key={s.id}
+      key={s.id} title={hoverLabel}
       className={cn(
         nameTextStyle,
         'text-slate-700 rounded-sm transition-colors',

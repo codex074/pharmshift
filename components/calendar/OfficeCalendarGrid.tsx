@@ -3,6 +3,7 @@
 import { cn } from '@/lib/utils';
 import { THAI_DAYS } from '@/lib/utils';
 import type { Shift, User, CalendarDay, ShiftType, Holiday } from '@/lib/types';
+import { shiftHoverLabel } from '@/lib/types';
 import { format } from 'date-fns';
 import { buildCalendarWeeks } from '@/lib/calendarMonthGrid';
 import { getIndexedSlotPosition } from '@/lib/shiftSlotRules';
@@ -153,6 +154,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   const pendingSub = ctx.pendingEdits?.[s.id];
 
   const displayName = pendingSub ? pendingSub.f_name : getUserName(s);
+  const hoverLabel = shiftHoverLabel('officer', s.shift_type, getDeptName(s), (s as any).position);
 
   if (ctx.isEditMode) {
     return (
@@ -164,7 +166,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
         )}
         onClick={(e) => { e.stopPropagation(); if (ctx.onEditShift) ctx.onEditShift(s); }}
       >
-        <span title={displayName} className={cn("text-[11px] truncate flex-1 min-w-0 leading-tight mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
+        <span title={`${displayName} — ${hoverLabel}`} className={cn("text-[11px] truncate flex-1 min-w-0 leading-tight mr-1", isPendingDelete && "line-through text-red-400", pendingSub && "text-indigo-700 font-bold")}>
           {displayName}
         </span>
         <button 
@@ -180,7 +182,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   if (isMe) {
     return (
       <span
-        key={s.id}
+        key={s.id} title={hoverLabel}
         className={cn(
           nameTextStyle,
           'text-violet-700 font-bold bg-violet-100 rounded-sm',
@@ -196,7 +198,7 @@ function renderShiftBadge(s: Shift, ctx: RenderContext) {
   /* Other people's shifts — clickable for swap */
   return (
     <span
-      key={s.id}
+      key={s.id} title={hoverLabel}
       className={cn(
         nameTextStyle,
         'text-slate-800 transition-colors rounded-sm',
