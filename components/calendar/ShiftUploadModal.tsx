@@ -9,14 +9,14 @@ import { toast } from 'sonner';
 const SHIFT_GUIDE = {
   เภสัช: [
     { code: 'e',   label: 'เช้า ER' },
-    { code: 'd',   label: 'เช้า MED DC' },
-    { code: 'm1',  label: 'เช้า MED M1' },
-    { code: 'm2',  label: 'เช้า MED M2' },
-    { code: 'm3',  label: 'เช้า MED M3' },
+    { code: 'dc',  label: 'เช้า IPD DC' },
+    { code: 'i1',  label: 'เช้า IPD I1' },
+    { code: 'i2',  label: 'เช้า IPD I2' },
+    { code: 'i3',  label: 'เช้า IPD I3' },
     { code: 'ext', label: 'โครงการ' },
     { code: 'ch',  label: 'Chemo' },
     { code: 'smc', label: 'SMC' },
-    { code: 'บm',  label: 'บ่าย MED' },
+    { code: 'บi',  label: 'บ่าย IPD' },
     { code: 'บe',  label: 'บ่าย ER' },
     { code: 'รo',  label: 'รุ่งอรุณ OPD' },
     { code: 'รe',  label: 'รุ่งอรุณ ER' },
@@ -25,15 +25,15 @@ const SHIFT_GUIDE = {
   ],
   จพง: [
     { code: 'e',    label: 'เช้า ER' },
-    { code: 'm1',   label: 'เช้า MED ชื่อ 1 (D/C)' },
-    { code: 'm2',   label: 'เช้า MED ชื่อ 2 (IPD)' },
-    { code: 's1',   label: 'SURG ตำแหน่ง 1' },
-    { code: 's2',   label: 'SURG ตำแหน่ง 2' },
+    { code: 'i1',   label: 'เช้า IPD I1 (D/C)' },
+    { code: 'i2',   label: 'เช้า IPD I2' },
+    { code: 'i3',   label: 'เช้า IPD I3' },
+    { code: 'i4',   label: 'เช้า IPD I4' },
     { code: 'ext',  label: 'โครงการ' },
     { code: 'smc1', label: 'SMC ตำแหน่ง 1' },
     { code: 'smc2', label: 'SMC ตำแหน่ง 2' },
     { code: 'บe',   label: 'บ่าย ชื่อ 1 (บ่าย ER)' },
-    { code: 'บm',   label: 'บ่าย ชื่อ 2 (บ่าย MED)' },
+    { code: 'บi',   label: 'บ่าย ชื่อ 2 (บ่าย IPD)' },
     { code: 'รo',   label: 'รุ่งอรุณ OPD' },
     { code: 'รe',   label: 'รุ่งอรุณ ER' },
     { code: 'รh',   label: 'รุ่งอรุณ HIV' },
@@ -52,7 +52,7 @@ const SHIFT_GUIDE = {
     { code: 'ext2', label: 'โครงการ ตำแหน่ง 2' },
     { code: 'smc1', label: 'SMC ตำแหน่ง 1' },
     { code: 'smc2', label: 'SMC ตำแหน่ง 2' },
-    { code: 'บm',   label: 'บ่าย MED' },
+    { code: 'บi',   label: 'บ่าย IPD' },
     { code: 'บe1',  label: 'บ่าย ER ตำแหน่ง 1' },
     { code: 'บe2',  label: 'บ่าย ER ตำแหน่ง 2' },
     { code: 'รo1',  label: 'รุ่งอรุณ OPD ตำแหน่ง 1' },
@@ -271,6 +271,7 @@ export function ShiftUploadModal({ onClose, onSuccess }: ShiftUploadModalProps) 
                   ))}
                 </div>
                 <p className="text-[10px] text-gray-400">ใส่ได้หลายเวรต่อวันโดยคั่นด้วย , เช่น <span className="font-mono font-bold text-gray-500">e,s</span></p>
+                <p className="text-[10px] text-gray-400">ไฟล์เก่าที่ใช้รหัสเดิม (<span className="font-mono font-bold text-gray-500">{guideRole === 'เภสัช' ? 'd, m1-m3, บm' : guideRole === 'จพง' ? 'm1, m2, s1, s2, บm' : 'บm'}</span>) ยังอัปโหลดได้เหมือนเดิม</p>
               </div>
             )}
           </div>

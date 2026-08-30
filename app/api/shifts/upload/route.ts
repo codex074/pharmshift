@@ -29,8 +29,10 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
   if (role === 'pharmacist') {
     switch (c) {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
+      case 'dc':
       case 'd':   return { dept: 'MED',       type: 'เช้า',      position: 'DC' };
       case 'ext': return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: '' };
+      case 'บi':
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
       case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
@@ -40,7 +42,7 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
       case 'ch':  return { dept: 'Chemo',     type: 'เช้า',      position: '' };
       case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
     }
-    if (/^m[1-3]$/.test(c)) return { dept: 'MED', type: 'เช้า', position: c.toUpperCase() };
+    if (/^[im][1-3]$/.test(c)) return { dept: 'MED', type: 'เช้า', position: `M${c[1]}` };
   }
 
   // ── เจ้าพนักงานเภสัชกรรม ──
@@ -48,12 +50,21 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
     switch (c) {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
       case 'บe':  return { dept: 'ER',        type: 'บ่าย',      position: '' };
+      case 'บi':
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
       case 'ext': return { dept: 'โครงการ',  type: projectShiftType(dateContext), position: '' };
       case 'รo':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'OPD' };
       case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
       case 'รh':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'HIV' };
       case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
+    }
+    // i1-i4 = the merged IPD numbering shown in the calendar; m1/m2 + s1/s2 are the legacy codes
+    const ipd = /^i([1-4])$/.exec(c);
+    if (ipd) {
+      const n = Number(ipd[1]);
+      return n <= 2
+        ? { dept: 'MED',  type: 'เช้า', position: `m${n}` }
+        : { dept: 'SURG', type: 'เช้า', position: `s${n - 2}` };
     }
     if (/^m[1-2]$/.test(c))   return { dept: 'MED',  type: 'เช้า',  position: c };
     if (/^s[1-2]$/.test(c))   return { dept: 'SURG', type: 'เช้า',  position: c };
@@ -64,6 +75,7 @@ const mapShiftCode = (code: string, dateContext: ShiftDateContext, role: string)
   if (role === 'officer') {
     switch (c) {
       case 'e':   return { dept: 'ER',        type: 'เช้า',      position: '' };
+      case 'บi':
       case 'บm':  return { dept: 'MED',       type: 'บ่าย',      position: '' };
       case 'รe':  return { dept: 'รุ่งอรุณ', type: 'รุ่งอรุณ', position: 'ER' };
       case 'ด':   return { dept: 'ER',        type: 'ดึก',       position: '' };
