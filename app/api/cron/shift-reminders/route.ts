@@ -133,11 +133,16 @@ export async function GET(req: NextRequest) {
 
     // Check if this month is published for any role group
     // The actual table is `published_months` with per-role boolean columns
-    const { data: publishData } = await supabase
+    // Must throw on error, not just read `data`: a failed query leaves publishData
+    // null, which is indistinguishable from "nothing published" and would make the
+    // run report ok/sent:0 while silently notifying nobody.
+    const { data: publishData, error: publishErr } = await supabase
       .from('published_months')
       .select('is_published, pharmacist_published, pharmacy_technician_published, officer_published')
       .eq('month_year', monthYear)
       .maybeSingle();
+
+    if (publishErr) throw publishErr;
 
     // Build set of published roles from the per-role flags
     const publishedRoles = new Set<string>();
