@@ -53,6 +53,13 @@ function pharmTechIpdDisplayOrder(shifts: Shift[]): { shift: Shift; label?: stri
     .map(({ shift, label }) => ({ shift, label }));
 }
 
+// Officer เช้า keeps MED and SURG as two separate groups (the grid never renumbered
+// them to I1-I6), so they are shown side by side as "IPD MED" / "IPD SURG".
+// Display-only — department values in the DB stay 'MED'/'SURG'.
+function isOfficerIpdDept(roleGroup: string | undefined, type: ShiftType, dept: string): boolean {
+  return roleGroup === 'officer' && type === 'เช้า' && (dept === 'MED' || dept === 'SURG');
+}
+
 // Shift display order (chronological)
 const TIMELINE_ORDER: ShiftType[] = ['รุ่งอรุณ', 'เช้า', 'smc', 'บ่าย', 'ดึก'];
 
@@ -106,6 +113,11 @@ function TimelineView({
             deptMap.get(dept)!.push(s);
           }
           const depts = Array.from(deptMap.entries());
+          // Officer เช้า: pull MED + SURG together at the end so the two IPD groups sit side by side.
+          if (roleGroup === 'officer' && type === 'เช้า') {
+            const ipdRank = (d: string) => (d === 'MED' ? 1 : d === 'SURG' ? 2 : 0);
+            depts.sort((a, b) => ipdRank(a[0]) - ipdRank(b[0]));
+          }
 
           const isLast = idx === groups.length - 1;
 
@@ -163,7 +175,7 @@ function TimelineView({
                         className="text-[10px] font-bold px-2 py-0.5 rounded-md text-white flex-shrink-0"
                         style={{ backgroundColor: DEPT_COLORS[dept] || '#9ca3af' }}
                       >
-                        {deptDisplayLabel(dept)}
+                        {isOfficerIpdDept(roleGroup, type, dept) ? `IPD ${dept}` : deptDisplayLabel(dept)}
                       </span>
                     )}
                     {ordered.map(({ shift: s, label }) => {
