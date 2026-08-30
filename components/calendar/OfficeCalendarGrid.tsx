@@ -374,8 +374,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
       <div className="flex flex-col h-full w-full" onClick={() => onDayClick(day)}>
         <div className="flex">
           <div className={cn(colW, br, subHdr('chao'))}>โครงการ</div>
-          <div className={cn(colW, br, subHdr('chao'))}>Surg</div>
-          <div className={cn(colW, br, subHdr('chao'))}>IPD</div>
+          <div className={cn('w-[40%]', br, subHdr('chao'))}>IPD</div>
           <div className={cn(colW, br, subHdr('bai'))}>บ่าย</div>
           <div className={cn(colW, fixedRowH, bb, 'flex items-center justify-center border-gray-400/60 text-[10px] xl:text-[11px] font-semibold', dateBg, dateColor)}>
             {dayNum}
@@ -449,6 +448,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   //
   // เสาร์: 6 คอล — โครงการ | Surg | MED | บ่าย | วันที่ | ส่งยา สอ.
   // อาทิตย์: 5 คอล — โครงการ | Surg | MED | บ่าย | วันที่
+  // หัวตาราง: Surg + MED รวมเป็นหัวเดียว "IPD" (ช่องด้านล่างยังแยก S1-S3 / M1-M3 เหมือนเดิม)
   //
   // Layout (2 morning rows + ER row + post-ER rows):
   //   Row 0: โครงการ[0] | Surg[0] | MED[0] | บ่ายER[0] | บ่ายER[1]
@@ -523,8 +523,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
         {/* Column sub-headers */}
         <div className="flex">
           <div className={cn(c1, br, subHdr('chao'))}>โครงการ</div>
-          <div className={cn(c2, br, subHdr('chao'))}>Surg</div>
-          <div className={cn(c3, br, subHdr('chao'))}>IPD</div>
+          <div className={cn(isSat ? 'w-[30%]' : 'w-[40%]', br, subHdr('chao'))}>IPD</div>
           <div className={cn(c4, br, subHdr('bai'))}>บ่าย</div>
           <div className={cn(c5, isSat ? br : '', fixedRowH, bb, 'flex items-center justify-center border-gray-400/60 text-[10px] xl:text-[11px] font-semibold', dateBg, dateColor)}>{dayNum}</div>
           {isSat && <div className={cn('flex-1', subHdr('neutral'))}>ส่งยา สอ.</div>}

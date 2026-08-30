@@ -344,8 +344,8 @@ export async function exportScheduleTable(
       ]
     : role === 'officer'
     ? [
-        { label: 'IPD', items: ['รายชื่อ 1 = m1', 'รายชื่อ 2 = m2', '(m3, m4 = แถวล่าง)'], color: PAL.chao.hdr },
-        { label: 'SURG', items: ['รายชื่อ 1 = s1', 'รายชื่อ 2 = s2', '(s3 = แถวล่าง)'], color: PAL.chao.hdr },
+        { label: 'IPD (S)', items: ['รายชื่อ 1 = s1', 'รายชื่อ 2 = s2', '(s3 = แถวล่าง)'], color: PAL.chao.hdr },
+        { label: 'IPD (M)', items: ['รายชื่อ 1 = m1', 'รายชื่อ 2 = m2', '(m3, m4 = แถวล่าง)'], color: PAL.chao.hdr },
         { label: 'บ่าย', items: ['ชื่อบน = บ่าย ER', 'ชื่อล่าง = บ่าย IPD'], color: PAL.bai.hdr },
         { label: 'รุ่งอรุณ', items: ['รายชื่อบน = รo1/รo2', 'รายชื่อล่าง = ER'], color: PAL.rung.hdr },
       ]
@@ -573,8 +573,7 @@ function renderWeek(
 
       // Header row 0
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'SURG',    { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'IPD',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c2, 0, c3, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย',    { font: hdrFont(PAL.bai),  fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill(dow === 0 || day.isPublicHoliday ? 'FFFEE2E2' : PAL.date.hdr) });
       if (c6 !== null) set(0, c6, 'ส่งยา สอ.', { font: hdrFont(PAL.date), fill: cellFill(PAL.date.hdr) });
@@ -656,8 +655,7 @@ function renderWeek(
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = dateCol;
 
       set(0, c1, 'โครงการ', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c2, 'SURG',    { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
-      set(0, c3, 'IPD',     { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
+      merge(0, c2, 0, c3, 'IPD', { font: hdrFont(PAL.chao), fill: cellFill(PAL.chao.hdr) });
       set(0, c4, 'บ่าย',    { font: hdrFont(PAL.bai), fill: cellFill(PAL.bai.hdr) });
       set(0, c5, day.date, { font: dateFont, fill: cellFill('FFFEE2E2') });
 
