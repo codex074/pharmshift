@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 import { supabase } from '@/lib/supabase';
 import { cn } from '@/lib/utils';
 import type { Shift } from '@/lib/types';
-import { provenancePhrase, resolveSwapDirection, swapPartyName, type SwapDirectionRow } from '@/lib/shiftHistory';
+import { counterpartSwapLabel, counterpartSwapShift, provenancePhrase, resolveSwapDirection, swapPartyName, type SwapDirectionRow } from '@/lib/shiftHistory';
 
 interface Hop {
   id: string;
@@ -16,6 +16,8 @@ interface Hop {
   fromName: string;
   toName: string;
   toIsViewer: boolean;
+  /** for a swap: the shift traded away to get this one */
+  counterpart: string;
   updatedAt: string;
 }
 
@@ -33,7 +35,9 @@ const typeColor: Record<string, string> = {
 const HOP_SELECT = `
   id, request_type, status, shift_id, target_shift_id, updated_at,
   requester:users!requester_id(id, f_name, nickname),
-  target_user:users!target_user_id(id, f_name, nickname)
+  target_user:users!target_user_id(id, f_name, nickname),
+  shift:shifts!shift_id(id, date, shift_type, position, department:departments(name), user:users!user_id(role)),
+  target_shift:shifts!target_shift_id(id, date, shift_type, position, department:departments(name), user:users!user_id(role))
 `;
 
 /**
@@ -91,6 +95,7 @@ export function ShiftProvenance({ shift, currentUserId }: { shift: Shift; curren
             fromName: swapPartyName(fromUser),
             toName: swapPartyName(toUser),
             toIsViewer: toUser?.id === currentUserId,
+            counterpart: counterpartSwapLabel(counterpartSwapShift(row, shift.id)),
             updatedAt: row.updated_at,
           };
         });
@@ -154,7 +159,10 @@ export function ShiftProvenance({ shift, currentUserId }: { shift: Shift; curren
                     ? provenancePhrase(hop.requestType, hop.fromName)
                     : `${hop.fromName} → ${hop.toName}`}
                 </p>
-                <p className="text-[10px] text-gray-400">เมื่อวันที่ {format(new Date(hop.updatedAt), 'd/M/yy')}</p>
+                <p className="text-[10px] text-gray-400">
+                  เมื่อวันที่ {format(new Date(hop.updatedAt), 'd/M/yy')}
+                  {hop.counterpart ? ` · ${hop.counterpart}` : ''}
+                </p>
               </div>
             </div>
           ))}

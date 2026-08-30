@@ -22,7 +22,7 @@ import { AdminShiftSubstituteModal } from '@/components/calendar/AdminShiftSubst
 import { AdminAddShiftModal } from '@/components/calendar/AdminAddShiftModal';
 import { AdminManageShiftsModal } from '@/components/calendar/AdminManageShiftsModal';
 import type { PendingAdd, AddShiftContext } from '@/components/calendar/AdminAddShiftModal';
-import { provenancePhrase, resolveSwapDirection, swapPartyName } from '@/lib/shiftHistory';
+import { counterpartSwapLabel, counterpartSwapShift, provenancePhrase, resolveSwapDirection, swapPartyName } from '@/lib/shiftHistory';
 import { LoadingOverlay } from '@/components/ui/loading-overlay';
 
 import { AdminExportModal } from '@/components/calendar/AdminExportModal';
@@ -507,7 +507,11 @@ export default function CalendarPage() {
         // but let a genuinely later hand-off from someone else win.
         if (lastGiverByShiftId.has(shiftId) && lastGiverByShiftId.get(shiftId) === fromUser?.id) continue;
         lastGiverByShiftId.set(shiftId, fromUser?.id);
-        provenanceByShiftId.set(shiftId, provenancePhrase(r.request_type, swapPartyName(fromUser)));
+        const traded = counterpartSwapLabel(counterpartSwapShift(r as any, shiftId));
+        provenanceByShiftId.set(
+          shiftId,
+          provenancePhrase(r.request_type, swapPartyName(fromUser)) + (traded ? ` (${traded})` : ''),
+        );
       }
     }
   }
