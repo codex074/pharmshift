@@ -92,14 +92,11 @@ function getShiftCode(s: Shift): string {
   const dept = getDeptName(s).toUpperCase();
   if (s.shift_type === 'ดึก') return 'ด';
   if (s.shift_type === 'เช้า') {
-    if (dept === 'MED') return 'ชอ';
-    if (dept === 'SURG') return 'ชศ';
     if (dept === 'ER') return 'ชฉ';
     return 'ช';
   }
   if (s.shift_type === 'บ่าย') {
     if (dept === 'ER') return 'บฉ';
-    if (dept === 'MED') return 'บอ';
     if (dept === 'SURG') return 'บศ';
     return 'บ';
   }
