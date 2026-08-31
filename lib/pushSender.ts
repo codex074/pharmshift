@@ -80,6 +80,38 @@ function endpointHost(endpoint: string): string | null {
   }
 }
 
+// A failed connect on Node 20+ (happy eyeballs) throws an AggregateError whose
+// .message is "" — String(err.message) alone logged those as empty rows
+// (seen 2026-08-31: 17 Apple sends failed with no trace). Always include
+// name/code and the sub-errors so the delivery log says what actually happened.
+function describePushError(err: any): string {
+  const parts: string[] = [];
+  if (err?.message) parts.push(String(err.message));
+  else if (err?.name) parts.push(String(err.name));
+  if (err?.code) parts.push(`code=${err.code}`);
+  if (Array.isArray(err?.errors)) {
+    for (const sub of err.errors.slice(0, 4)) {
+      parts.push(`[${[sub?.code, sub?.address, sub?.message].filter(Boolean).join(' ')}]`);
+    }
+  }
+  return (parts.join(' ') || String(err)).slice(0, 500);
+}
+
+async function sendWithRetry(
+  pushSubscription: webpush.PushSubscription,
+  body: string
+) {
+  try {
+    return await webpush.sendNotification(pushSubscription, body);
+  } catch (err: any) {
+    // Only network-level failures (no HTTP status) get one retry — an HTTP
+    // response like 404/410 is definitive and must reach the stale-cleanup path.
+    if (err?.statusCode != null) throw err;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return await webpush.sendNotification(pushSubscription, body);
+  }
+}
+
 /** Send push notification to a specific user (all their devices) */
 export async function sendPushToUser(
   userId: string,
@@ -134,10 +166,7 @@ export async function sendPushToUser(
       };
 
       try {
-        await webpush.sendNotification(
-          pushSubscription,
-          JSON.stringify(payload)
-        );
+        await sendWithRetry(pushSubscription, JSON.stringify(payload));
         sent++;
         sentIds.push(sub.id);
         logRows.push({
@@ -161,7 +190,7 @@ export async function sendPushToUser(
           endpoint_host: endpointHost(sub.endpoint),
           success: false,
           status_code: err?.statusCode ?? null,
-          error_message: String(err?.message ?? err).slice(0, 500),
+          error_message: describePushError(err),
           tag: payload.tag ?? null,
         });
       }
