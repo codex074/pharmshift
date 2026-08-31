@@ -38,7 +38,7 @@ function sortByRole(a: Shift, b: Shift) {
   return pa - pb;
 }
 
-type Layout = 'simple' | 'with-subtype' | 'chemo' | 'med-morning' | 'surg';
+type Layout = 'simple' | 'with-subtype' | 'chemo';
 
 interface SheetConfig {
   name: string;
@@ -50,7 +50,11 @@ interface SheetConfig {
   advanceDukDate?: boolean; // default true — set false to keep ดึก at original date
   minRows?: number;         // minimum rows per day group (default 1)
   sortPositions?: string[]; // sort positions in this order within each group
-  blackFillEmpty?: boolean; // fill empty name cells black instead of leaving blank
+  buildCustomGroups?: (    // bypass buildGroups' generic filter/role logic entirely
+    shifts: Shift[],
+    originalUserMap: Map<string, string>,
+    usersMap: Map<string, UserInfo>
+  ) => RowGroup[];
 }
 
 const SHEET_CONFIGS: SheetConfig[] = [
@@ -61,26 +65,19 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'simple',
     minRows: 2,
     sortPositions: ['OPD', 'รo1', 'รo2', 'HIV'],
-    blackFillEmpty: true,
   },
   {
     name: 'รุ่งอรุณ ER',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรรุ่งอรุณ ER เดือน ${m} ${y}`,
     filter: (s) => s.shift_type === 'รุ่งอรุณ' && s.position === 'ER',
     layout: 'simple',
-    blackFillEmpty: true,
   },
   {
     name: 'เช้า IPD',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยาอายุรกรรม(IPD)เช้า เดือน ${m} ${y}`,
-    filter: (s) => s.shift_type === 'เช้า' && getDeptName(s) === 'MED',
-    layout: 'med-morning',
-  },
-  {
-    name: 'เช้า SURG',
-    title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยา Surg. เดือน ${m} ${y}`,
-    filter: (s) => s.shift_type === 'เช้า' && getDeptName(s) === 'SURG',
-    layout: 'surg',
+    filter: (s) => s.shift_type === 'เช้า' && (getDeptName(s) === 'MED' || getDeptName(s) === 'SURG'),
+    layout: 'simple',
+    buildCustomGroups: buildIpdMorningGroups,
   },
   {
     name: 'ER',
@@ -89,7 +86,6 @@ const SHEET_CONFIGS: SheetConfig[] = [
     layout: 'with-subtype',
     getSubtype: (s) => s.shift_type,
     subtypeLabel: 'เวร',
-    blackFillEmpty: true,
   },
   {
     name: 'โครงการ',
@@ -97,21 +93,18 @@ const SHEET_CONFIGS: SheetConfig[] = [
     filter: (s) => getDeptName(s) === 'โครงการ',
     layout: 'simple',
     minRows: 2,
-    blackFillEmpty: true,
   },
   {
     name: 'บ่าย IPD',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรเดือน ${m} ${y} เวรบ่าย IPD เวลา 16.30 – 24.00 น.`,
     filter: (s) => s.shift_type === 'บ่าย' && getDeptName(s) === 'MED',
     layout: 'simple',
-    blackFillEmpty: true,
   },
   {
     name: 'SMC',
     title: (m, y) => `ตารางเซ็นต์ชื่อแลกเวรห้องยา SMC เดือน ${m} ${y}`,
     filter: (s) => getDeptName(s) === 'SMC',
     layout: 'simple',
-    blackFillEmpty: true,
   },
   {
     name: 'Chemo',
@@ -154,13 +147,8 @@ interface RowGroup {
   date: string;
   subtype?: string;
   pharmacists: string[];
-  pharm_dc: string[];
-  pharm_cont: string[];
-  pharm_m2: string[];
-  pharm_m3: string[];
   pharm_techs: string[];
   officers: string[];
-  medOfficers: { pos: string; name: string }[];
   chemoNames: string[];
 }
 
@@ -214,26 +202,16 @@ function buildGroups(
     const subtype = config.getSubtype ? config.getSubtype(s) : '';
     const key = config.layout === 'with-subtype'
       ? `${effectiveDate}__${subtype}`
-      : effectiveDate; // med-morning and simple both group by date only
+      : effectiveDate; // simple groups by date only
 
     if (!groupMap.has(key)) {
-      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_dc: [], pharm_cont: [], pharm_m2: [], pharm_m3: [], pharm_techs: [], officers: [], medOfficers: [], chemoNames: [] });
+      groupMap.set(key, { date: effectiveDate, subtype, pharmacists: [], pharm_techs: [], officers: [], chemoNames: [] });
     }
     const grp = groupMap.get(key)!;
     if (config.layout === 'chemo') grp.chemoNames.push(displayName);
-    else if (config.layout === 'med-morning' && role === 'pharmacist') {
-      const pos = s.position || '';
-      if (pos === 'DC' || pos === 'D/C') grp.pharm_dc.push(displayName);
-      else if (pos === 'M1' || pos === 'Cont') grp.pharm_cont.push(displayName);
-      else if (pos === 'M2') grp.pharm_m2.push(displayName);
-      else if (pos === 'M3') grp.pharm_m3.push(displayName);
-      else grp.pharmacists.push(displayName);
-    } else if (role === 'pharmacist') grp.pharmacists.push(displayName);
+    else if (role === 'pharmacist') grp.pharmacists.push(displayName);
     else if (role === 'pharmacy_technician') grp.pharm_techs.push(displayName);
-    else {
-      grp.officers.push(displayName);
-      if (config.layout === 'med-morning') grp.medOfficers.push({ pos: s.position || '', name: displayName });
-    }
+    else grp.officers.push(displayName);
   }
 
   // Sort keys by date then subtype
@@ -246,6 +224,124 @@ function buildGroups(
       return (SHIFT_ORDER.indexOf(sa) - SHIFT_ORDER.indexOf(sb));
     })
     .map(([, v]) => v);
+}
+
+/**
+ * Mirrors buildIndexedSlots() in components/calendar/CalendarGrid.tsx: match each
+ * position exactly first, then hand any leftover *blank*-position shift (the old,
+ * pre-index format) to the remaining slots in creation order. Needed because
+ * pharmacist's dept-SURG legacy shifts (pre Aug-26 four-slot merge) may carry no
+ * position at all.
+ */
+function resolveIndexedLegacy(dateShifts: Shift[], positions: string[]): (Shift | null)[] {
+  const usedIds = new Set<string>();
+  return positions.map((position) => {
+    const exact = dateShifts.find((s) => s.position === position && !usedIds.has(s.id));
+    if (exact) {
+      usedIds.add(exact.id);
+      return exact;
+    }
+    const legacyPool = dateShifts
+      .filter((s) => !s.position && !usedIds.has(s.id))
+      .sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    const legacy = legacyPool[0];
+    if (legacy) {
+      usedIds.add(legacy.id);
+      return legacy;
+    }
+    return null;
+  });
+}
+
+/**
+ * เช้า IPD sign sheet — pharmacist (DC/M1/M2/M3, dept MED), pharmacy_technician
+ * (m1/m2 dept MED + s1/s2 dept SURG → I1-I4) and officer (s1/s2/s3 dept SURG →
+ * S1-S3, m1-m4 dept MED → I1-I4) slots are all folded into one "IPD" sheet per
+ * lib/types.ts's PHARM_TECH_IPD_POSITION_MAP / officer m1-m4+s1-s3 grouping —
+ * each role keeps its own fixed slot order and count instead of being aligned
+ * to a single shared row, since the three roles don't share slot labels 1:1.
+ */
+function buildIpdMorningGroups(
+  shifts: Shift[],
+  originalUserMap: Map<string, string>,
+  usersMap: Map<string, UserInfo>
+): RowGroup[] {
+  const relevant = shifts.filter(
+    (s) => s.shift_type === 'เช้า' && (getDeptName(s) === 'MED' || getDeptName(s) === 'SURG')
+  );
+
+  const roleOf = (s: Shift) => {
+    const origId = originalUserMap.get(s.id) || s.user_id!;
+    const userInfo = usersMap.get(origId);
+    return userInfo?.role || s.original_user?.role || s.user?.role || 'officer';
+  };
+  const nameOf = (s: Shift) => {
+    const origId = originalUserMap.get(s.id) || s.user_id!;
+    return getDisplayName(usersMap.get(origId), s);
+  };
+
+  // getIndexedSlotPosition (lib/shiftSlotRules.ts) hands out the same position string
+  // (e.g. dept SURG position 's1', dept MED position 'm1') to both pharmacy_technician
+  // and officer — role, not position, is what tells the two apart. Key by role too, or
+  // one role's name silently overwrites the other's in byKey.
+  const byKey = new Map<string, string>(); // `${date}__${role}__${dept}__${position}` -> display name
+  const dates = new Set<string>();
+  for (const s of relevant) {
+    byKey.set(`${s.date}__${roleOf(s)}__${getDeptName(s)}__${s.position || ''}`, nameOf(s));
+    dates.add(s.date);
+  }
+
+  const lookup = (date: string, role: string, dept: string, positions: string[]) =>
+    positions.map((p) => byKey.get(`${date}__${role}__${dept}__${p}`)).find(Boolean) || '';
+
+  // Before the Aug-26 four-slot merge, pharmacist's weekend/holiday IPD I2/I3 (M2/M3)
+  // were written as separate dept-SURG shifts (position 's1'/'s2', or blank on older
+  // data) — never rewritten, so old months still carry them under dept SURG. Resolve
+  // that fallback the same way the calendar grid does, keyed per date.
+  const pharmSurgByDate = new Map<string, Shift[]>();
+  for (const s of relevant) {
+    if (getDeptName(s) !== 'SURG' || roleOf(s) !== 'pharmacist') continue;
+    if (!pharmSurgByDate.has(s.date)) pharmSurgByDate.set(s.date, []);
+    pharmSurgByDate.get(s.date)!.push(s);
+  }
+
+  const TECH_SLOTS: string[][] = [
+    ['MED', 'm1'],
+    ['MED', 'm2'],
+    ['SURG', 's1'],
+    ['SURG', 's2'],
+  ];
+  const OFFICER_SLOTS: string[][] = [
+    ['SURG', 's1'],
+    ['SURG', 's2'],
+    ['SURG', 's3'],
+    ['MED', 'm1'],
+    ['MED', 'm2'],
+    ['MED', 'm3'],
+    ['MED', 'm4'],
+  ];
+
+  return Array.from(dates)
+    .sort()
+    .map((date) => {
+      const dc = lookup(date, 'pharmacist', 'MED', ['DC', 'D/C']);
+      const i1 = lookup(date, 'pharmacist', 'MED', ['M1', 'Cont']);
+      let i2 = lookup(date, 'pharmacist', 'MED', ['M2']);
+      let i3 = lookup(date, 'pharmacist', 'MED', ['M3']);
+      if (!i2 || !i3) {
+        const [legacyI2, legacyI3] = resolveIndexedLegacy(pharmSurgByDate.get(date) || [], ['s1', 's2']);
+        if (!i2 && legacyI2) i2 = nameOf(legacyI2);
+        if (!i3 && legacyI3) i3 = nameOf(legacyI3);
+      }
+
+      return {
+        date,
+        pharmacists: [dc, i1, i2, i3],
+        pharm_techs: TECH_SLOTS.map(([dept, ...pos]) => lookup(date, 'pharmacy_technician', dept, pos)),
+        officers: OFFICER_SLOTS.map(([dept, ...pos]) => lookup(date, 'officer', dept, pos)),
+        chemoNames: [],
+      };
+    });
 }
 
 function applySheetColumns(ws: ExcelJS.Worksheet, hasSubtype: boolean) {
@@ -294,10 +390,8 @@ export async function exportSignSheet(
   for (const config of SHEET_CONFIGS) {
     const hasSubtype = config.layout === 'with-subtype';
     const isChemo = config.layout === 'chemo';
-    const isMedMorning = config.layout === 'med-morning';
-    const isSurg = config.layout === 'surg';
-    const totalCols = isChemo ? 8 : (hasSubtype || isMedMorning) ? 15 : 13;
-    const lastColLetter = isChemo ? 'H' : (hasSubtype || isMedMorning) ? 'O' : 'M';
+    const totalCols = isChemo ? 8 : hasSubtype ? 15 : 13;
+    const lastColLetter = isChemo ? 'H' : hasSubtype ? 'O' : 'M';
 
     const ws = workbook.addWorksheet(config.name, {
       pageSetup: {
@@ -311,7 +405,7 @@ export async function exportSignSheet(
       },
     });
     if (isChemo) applyChemoSheetColumns(ws);
-    else applySheetColumns(ws, hasSubtype || isMedMorning);
+    else applySheetColumns(ws, hasSubtype);
 
     // ── Title row ──────────────────────────────────────────────
     const titleRow = ws.addRow([config.title(monthName, bweYear)]);
@@ -348,177 +442,8 @@ export async function exportSignSheet(
             cell.border = ALL_BORDERS;
           }
         });
-        const chemoBlackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-        [2, 3].forEach(col => {
-          if (!dataRow.getCell(col).value) dataRow.getCell(col).fill = chemoBlackFill;
-        });
       }
 
-      continue;
-    }
-
-    if (isMedMorning) {
-      // ── med-morning: same 15-col structure as with-subtype ─────
-      // Row D/C  → ตำแหน่ง=D/C,   เภสัช=pharm_dc[0],   จพง.=pharm_techs[0]
-      // Row Cont → ตำแหน่ง=Cont,  เภสัช=pharm_cont[0], จพง.=pharm_techs[1]
-      const h1v = new Array(15).fill('');
-      const h2v = new Array(15).fill('');
-      h1v[0] = 'ว/ด/ป';
-      h1v[1] = 'ตำแหน่ง';
-      h1v[2] = 'ผู้ปฏิบัติเวรเดิม';
-      h1v[5] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
-      h1v[8] = 'ผู้อนุมัติ';
-      h1v[10] = 'ว/ด/ป';
-      h1v[11] = 'ตำแหน่ง';
-      h1v[12] = 'ผู้ปฏิบัติงานจริง';
-      h2v[2] = 'เภสัช'; h2v[3] = 'จพง.'; h2v[4] = 'จนท.';
-      h2v[5] = 'เภสัช'; h2v[6] = 'จพง.'; h2v[7] = 'จนท.';
-      h2v[12] = 'เภสัช'; h2v[13] = 'จพง.'; h2v[14] = 'จนท.';
-
-      const h1 = ws.addRow(h1v);
-      h1.height = 30;
-      styleHeaderRow(h1, 15);
-      const h2 = ws.addRow(h2v);
-      h2.height = 22;
-      styleHeaderRow(h2, 15);
-
-      const r1 = h1.number;
-      ws.mergeCells(r1, 1, r1 + 1, 1);   // date
-      ws.mergeCells(r1, 2, r1 + 1, 2);   // ตำแหน่ง
-      ws.mergeCells(r1, 3, r1, 5);        // ผู้ปฏิบัติเวรเดิม
-      ws.mergeCells(r1, 6, r1, 8);        // ผู้ขอแลกเวร
-      ws.mergeCells(r1, 9, r1 + 1, 9);   // ผู้อนุมัติ
-      ws.mergeCells(r1, 10, r1 + 1, 10); // gap
-      ws.mergeCells(r1, 11, r1 + 1, 11); // date2
-      ws.mergeCells(r1, 12, r1 + 1, 12); // ตำแหน่ง2
-      ws.mergeCells(r1, 13, r1, 15);     // ผู้ปฏิบัติงานจริง
-
-      const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-
-      // Officers: pull only positions m1, m2, m3 (ignore m4+) ordered m1→m2→m3
-      const MED_OFFICER_POS = ['m1', 'm2', 'm3'];
-
-      const groups = buildGroups(shifts, config, originalUserMap, usersMap);
-      for (const grp of groups) {
-        const startRow = ws.lastRow!.number + 1;
-        const medOfficers = MED_OFFICER_POS
-          .map((p) => grp.medOfficers.find((o) => o.pos === p)?.name || '');
-        // Row 1: DC → เภสัช DC + จพง. m1 + จนท. m1
-        // Row 2: M1 → เภสัช M1 + จพง. m2 + จนท. m2
-        // Row 3: M2 → เภสัช M2 + จนท. m3
-        // Row 4: M3 → เภสัช M3 (จพง./จนท. ทาสีดำ — ไม่มีตำแหน่งคู่กันเหลือ)
-        const pairs: Array<[string, string, string, string]> = [
-          ['DC', grp.pharm_dc[0]   || '', grp.pharm_techs[0] || '', medOfficers[0]],
-          ['I1', grp.pharm_cont[0] || '', grp.pharm_techs[1] || '', medOfficers[1]],
-          ['I2', grp.pharm_m2[0]   || '', '',                       medOfficers[2]],
-          ['I3', grp.pharm_m3[0]   || '', '',                       ''],
-        ];
-        pairs.forEach(([label, pharm, pt, off], i) => {
-          const vals = new Array(15).fill('');
-          if (i === 0) {
-            vals[0] = formatThaiDate(grp.date);
-            vals[10] = formatThaiDate(grp.date);
-          }
-          vals[1] = label;
-          vals[2] = pharm;
-          vals[3] = pt;
-          vals[4] = off;
-          vals[11] = label;
-          const dataRow = ws.addRow(vals);
-          styleDataRow(dataRow, 15, new Set([1, 2, 9, 10, 11, 12]));
-          [[3, 13], [4, 14], [5, 15]].forEach(([origCol, actualCol]) => {
-            if (!dataRow.getCell(origCol).value) {
-              dataRow.getCell(origCol).fill = blackFill;
-              dataRow.getCell(actualCol).fill = blackFill;
-            }
-          });
-        });
-
-        // Merge date cols across 4 rows
-        ws.mergeCells(startRow, 1, startRow + 3, 1);
-        ws.mergeCells(startRow, 10, startRow + 3, 10);
-      }
-
-      ws.views = [{ state: 'frozen', ySplit: 3 }];
-      continue;
-    }
-
-    if (isSurg) {
-      // ── surg: 13-col simple, officer separated to row 3 with black label cell ─
-      // Row 1..n: เภสัช[i] + จพง.[i]
-      // Row 3:    black col2 + officer name in col4 (จนท.)
-      const surgBlackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-      const h1v = new Array(13).fill('');
-      const h2v = new Array(13).fill('');
-      h1v[0] = 'ว/ด/ป';
-      h1v[1] = 'ผู้ปฏิบัติเวรเดิม';
-      h1v[4] = 'ผู้ขอแลกเวร\n(เจ้าของเวรเดิมเป็นผู้เซนต์)';
-      h1v[7] = 'ผู้อนุมัติ';
-      h1v[9] = 'ว/ด/ป';
-      h1v[10] = 'ผู้ปฏิบัติงานจริง';
-      h2v[1] = 'เภสัช'; h2v[2] = 'จพง.'; h2v[3] = 'จนท.';
-      h2v[4] = 'เภสัช'; h2v[5] = 'จพง.'; h2v[6] = 'จนท.';
-      h2v[10] = 'เภสัช'; h2v[11] = 'จพง.'; h2v[12] = 'จนท.';
-
-      const h1 = ws.addRow(h1v);
-      h1.height = 30;
-      styleHeaderRow(h1, 13);
-      const h2 = ws.addRow(h2v);
-      h2.height = 22;
-      styleHeaderRow(h2, 13);
-
-      const r1 = h1.number;
-      ws.mergeCells(r1, 1, r1 + 1, 1);
-      ws.mergeCells(r1, 2, r1, 4);
-      ws.mergeCells(r1, 5, r1, 7);
-      ws.mergeCells(r1, 8, r1 + 1, 8);
-      ws.mergeCells(r1, 10, r1 + 1, 10);
-      ws.mergeCells(r1, 11, r1, 13);
-
-      const surgGroups = buildGroups(shifts, config, originalUserMap, usersMap);
-      for (const grp of surgGroups) {
-        const maxPharmPT = Math.max(grp.pharmacists.length, grp.pharm_techs.length, 1);
-        const startRow = ws.lastRow!.number + 1;
-
-        for (let i = 0; i < maxPharmPT; i++) {
-          const vals = new Array(13).fill('');
-          if (i === 0) {
-            vals[0] = formatThaiDate(grp.date);
-            vals[9] = formatThaiDate(grp.date);
-          }
-          vals[1] = grp.pharmacists[i] || '';
-          vals[2] = grp.pharm_techs[i] || '';
-          vals[3] = grp.officers[i] || '';
-          const dataRow = ws.addRow(vals);
-          styleDataRow(dataRow, 13, new Set([1, 8, 9, 10]));
-          [[2, 11], [3, 12], [4, 13]].forEach(([origCol, actualCol]) => {
-            if (!dataRow.getCell(origCol).value) {
-              dataRow.getCell(origCol).fill = surgBlackFill;
-              dataRow.getCell(actualCol).fill = surgBlackFill;
-            }
-          });
-        }
-
-        // Officer row — col 2 (เภสัช) and col 11 (เภสัช actual) painted black
-        const offVals = new Array(13).fill('');
-        offVals[3] = grp.officers[maxPharmPT] || '';
-        const offRow = ws.addRow(offVals);
-        styleDataRow(offRow, 13, new Set([1, 8, 9, 10]));
-        offRow.getCell(2).fill = surgBlackFill;
-        offRow.getCell(11).fill = surgBlackFill;
-        [[3, 12], [4, 13]].forEach(([origCol, actualCol]) => {
-          if (!offRow.getCell(origCol).value) {
-            offRow.getCell(origCol).fill = surgBlackFill;
-            offRow.getCell(actualCol).fill = surgBlackFill;
-          }
-        });
-
-        // Merge date cols across all rows (maxPharmPT + 1 officer row)
-        ws.mergeCells(startRow, 1, startRow + maxPharmPT, 1);
-        ws.mergeCells(startRow, 10, startRow + maxPharmPT, 10);
-      }
-
-      ws.views = [{ state: 'frozen', ySplit: 3 }];
       continue;
     }
 
@@ -581,7 +506,9 @@ export async function exportSignSheet(
     }
 
     // ── Data rows ──────────────────────────────────────────────
-    const groups = buildGroups(shifts, config, originalUserMap, usersMap);
+    const groups = config.buildCustomGroups
+      ? config.buildCustomGroups(shifts, originalUserMap, usersMap)
+      : buildGroups(shifts, config, originalUserMap, usersMap);
 
     // hasSubtype: merge date col across all shift types of the same day
     const dateSpans = new Map<string, { startRow: number; endRow: number }>();
@@ -619,20 +546,6 @@ export async function exportSignSheet(
           totalCols,
           hasSubtype ? new Set([1, 2, 9, 10, 11, 12]) : new Set([1, 8, 9, 10])
         );
-
-        if (config.blackFillEmpty) {
-          const blackFill: ExcelJS.Fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF000000' } };
-          // [origCol, actualCol] pairs — black both when original is empty
-          const colPairs = hasSubtype
-            ? [[3, 13], [4, 14], [5, 15]]
-            : [[2, 11], [3, 12], [4, 13]];
-          for (const [origCol, actualCol] of colPairs) {
-            if (!dataRow.getCell(origCol).value) {
-              dataRow.getCell(origCol).fill = blackFill;
-              dataRow.getCell(actualCol).fill = blackFill;
-            }
-          }
-        }
       }
 
       const endRow = startRow + maxRows - 1;
