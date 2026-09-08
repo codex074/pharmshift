@@ -150,8 +150,19 @@ export function NotificationsPanel({
       data: n,
       time: n.created_at || '',
     }));
-    return [...swapItems, ...notifItems].sort((a, b) => b.time.localeCompare(a.time));
-  }, [swapRequests, notifications]);
+    // Requests waiting on this user's ยอมรับ/ปฏิเสธ decision stay pinned above
+    // everything else, so newer notifications never push them to another page.
+    const isAwaitingMyDecision = (item: UnifiedItem) =>
+      item.kind === 'swap' &&
+      item.data.target_user_id === currentUser?.id &&
+      item.data.status === 'pending';
+    return [...swapItems, ...notifItems].sort((a, b) => {
+      const aPinned = isAwaitingMyDecision(a);
+      const bPinned = isAwaitingMyDecision(b);
+      if (aPinned !== bPinned) return aPinned ? -1 : 1;
+      return b.time.localeCompare(a.time);
+    });
+  }, [swapRequests, notifications, currentUser?.id]);
 
   const totalPages = Math.ceil(unifiedItems.length / PAGE_SIZE);
   const pageItems = unifiedItems.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
