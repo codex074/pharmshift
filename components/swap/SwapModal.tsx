@@ -11,7 +11,6 @@ import type { Shift, ShiftType, User as UserType, UserRole } from '@/lib/types';
 import { DEPT_STYLES, ROLE_LABELS, deptDisplayLabel, positionDisplayLabel, deptDisplayLabelForRole, positionDisplayLabelForRole, isPharmTechMergedIpdDept } from '@/lib/types';
 import { cn, shiftsOverlap } from '@/lib/utils';
 import { postAuditLog } from '@/lib/auditLogClient';
-import { insertNotifications } from '@/lib/notifyUsers';
 import { ShiftProvenance } from '@/components/calendar/ShiftProvenance';
 import {
   format, startOfMonth, endOfMonth, startOfWeek, addDays, isSameMonth,
@@ -307,7 +306,8 @@ export function SwapModal({
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: selectedUser.id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'transfer-new' }),
         }).catch(() => {});
-        insertNotifications([selectedUser.id], 'swap_request', notifTitle, notifBody);
+        // In-app: the target's own pending swap_requests card already shows
+        // this (NotificationsPanel isIncoming) — only push here.
         toast.success('ส่งคำขอโอนเวรเรียบร้อยแล้ว');
       }
       onClose();
@@ -381,7 +381,8 @@ export function SwapModal({
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'swap-new' }),
         }).catch(() => {});
-        insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
+        // In-app: the target's own pending swap_requests card already shows
+        // this (NotificationsPanel isIncoming) — only push here.
         toast.success('ส่งคำขอแลกเวรเรียบร้อยแล้ว');
       }
       onClose();
@@ -445,7 +446,8 @@ export function SwapModal({
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId: shift.user_id, title: notifTitle, body: notifBody, url: '/calendar', tag: 'cover-new' }),
         }).catch(() => {});
-        insertNotifications([shift.user_id], 'swap_request', notifTitle, notifBody);
+        // In-app: the target's own pending swap_requests card already shows
+        // this (NotificationsPanel isIncoming) — only push here.
         toast.success('ส่งคำขออยู่เวรแทนเรียบร้อยแล้ว');
       }
       onClose();

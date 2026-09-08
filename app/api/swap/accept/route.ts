@@ -114,18 +114,14 @@ export async function POST(request: NextRequest) {
     ? `${acceptorName} ได้ยอมรับให้อยู่เวรแทนแล้ว — ${fmtShift(req.shift)}`
     : `${acceptorName} รับ ${fmtShift(req.shift)} แล้ว`;
 
+  // In-app: the requester's swap_requests card already shows this result
+  // (NotificationsPanel's isUnreadResult) — only push here to avoid a duplicate card.
   sendPushToUser(req.requester_id, {
     title: acceptTitle,
     body: acceptBody,
     url: '/calendar',
     tag: `swap-${req.id}`,
   }).catch(() => {});
-
-  // In-app notification
-  await supa.from('notifications').insert({
-    user_id: req.requester_id, type: 'swap_result',
-    title: acceptTitle, body: acceptBody, url: '/calendar',
-  });
 
   // 6) Notify requests auto-rejected by the atomic accept
   const autoRejectedIds = (acceptResult.auto_rejected_ids || []) as string[];

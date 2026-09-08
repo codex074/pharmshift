@@ -5,7 +5,6 @@ import { supabase, supabaseRealtime } from '@/lib/supabase';
 import type { Shift, ShiftType, SwapRequest, User, Holiday, AppNotification, UserRole } from '@/lib/types';
 import { deptDisplayLabelForRole, positionDisplayLabelForRole } from '@/lib/types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
-import { insertNotifications } from '@/lib/notifyUsers';
 import { toMonthYear } from '@/lib/utils';
 import { toastError } from '@/lib/swal';
 import { format } from 'date-fns';
@@ -477,7 +476,8 @@ export function useSwapRequests(userId?: string) {
           tag: `swap-${swapId}`,
         }),
       }).catch(() => {});
-      insertNotifications([reqData.requester_id], 'swap_result', rejectTitle, rejectBody);
+      // In-app: the requester's own swap_requests card already shows this
+      // (NotificationsPanel's isUnreadResult) — only push here.
     }
 
     applySwapRequests((prev) =>

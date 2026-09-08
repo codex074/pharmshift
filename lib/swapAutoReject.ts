@@ -33,13 +33,9 @@ export async function notifyAutoRejected(
   const title = '⚠️ คำขอถูกยกเลิกอัตโนมัติ';
   const body = `${fmtShift(contextShift)} ถูกดำเนินการโดยผู้อื่นแล้ว คำขอของคุณจึงถูกยกเลิก`;
 
+  // In-app: their swap_requests row is now 'rejected', so their own card in
+  // NotificationsPanel already shows this (isUnreadResult) — only push here.
   sendPushToUsers(notifyIds, {
     title, body, url: '/calendar', tag: `swap-auto-cancel-${contextShift?.id || ''}`,
   }).catch(() => {});
-
-  await supa.from('notifications').insert(
-    notifyIds.map((uid: string) => ({
-      user_id: uid, type: 'swap_result', title, body, url: '/calendar',
-    }))
-  );
 }

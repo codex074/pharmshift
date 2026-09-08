@@ -122,15 +122,13 @@ export async function POST(request: NextRequest) {
     { userId: newReq.target_user_id, body: bodyFor(requesterName) },
   ];
 
+  // In-app: each participant's own swap_requests row is now 'accepted', so
+  // their own card in NotificationsPanel already shows this — only push here.
   for (const r of recipients) {
     sendPushToUser(r.userId, {
       title, body: r.body, url: '/calendar', tag: `swap-automatch-${mirrorReq.id}`,
     }).catch(() => {});
   }
-
-  await supa.from('notifications').insert(
-    recipients.map(r => ({ user_id: r.userId, type: 'swap_result', title, body: r.body, url: '/calendar' }))
-  );
 
   const autoRejectedIds = (acceptResult.auto_rejected_ids || []) as string[];
   await notifyAutoRejected(supa, autoRejectedIds, [newReq.requester_id, newReq.target_user_id], newReq.shift);
