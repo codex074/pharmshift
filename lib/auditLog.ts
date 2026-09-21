@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { resilientFetch } from '@/lib/resilientFetch';
 
 type AuditEntry = {
   actorUserId?: string | null;
@@ -21,6 +22,7 @@ type AuditSchemaKind = 'simple' | 'legacy';
 const auditClient = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { global: { fetch: resilientFetch } },
 );
 
 let schemaKindPromise: Promise<AuditSchemaKind> | null = null;

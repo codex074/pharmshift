@@ -1,6 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { waitUntil } from '@vercel/functions';
+import { resilientFetch } from '@/lib/resilientFetch';
 import { createSupabaseServer } from '@/lib/supabaseServer';
 import { createSession } from '@/lib/session';
 import { isMobileUserAgent } from '@/lib/deviceDetection';
@@ -21,6 +23,7 @@ function createLoginAttemptClient() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { global: { fetch: resilientFetch } },
   );
 }
 
@@ -77,26 +80,28 @@ export async function POST(request: Request) {
 
     const supabase = createSupabaseServer();
     const loginAttemptClient = createLoginAttemptClient();
-    const attempts = await getRecentLoginAttempts(loginAttemptClient, normalizedPhaId, ip);
+    // The attempt check and the user lookup don't depend on each other, and
+    // every DB round trip crosses the home tunnel — run them together.
+    const [attempts, { data: user, error }] = await Promise.all([
+      getRecentLoginAttempts(loginAttemptClient, normalizedPhaId, ip),
+      supabase
+        .from('users')
+        .select('id, pha_id, prefix, f_name, l_name, role, is_sub_admin, must_change_password, password, is_active')
+        .eq('pha_id', normalizedPhaId)
+        .single(),
+    ]);
     if (attempts && (attempts.byUser >= MAX_ATTEMPTS_PER_USER || attempts.byIp >= MAX_ATTEMPTS_PER_IP)) {
       return NextResponse.json({ error: 'พยายามเข้าสู่ระบบมากเกินไป กรุณารอสักครู่แล้วลองใหม่' }, { status: 429 });
     }
 
-    // Find the user by pha_id
-    const { data: user, error } = await supabase
-      .from('users')
-      .select('id, pha_id, prefix, f_name, l_name, role, is_sub_admin, must_change_password, password, is_active')
-      .eq('pha_id', normalizedPhaId)
-      .single();
-
     if (error || !user) {
-      await recordFailedLogin(loginAttemptClient, normalizedPhaId, ip);
+      waitUntil(recordFailedLogin(loginAttemptClient, normalizedPhaId, ip));
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
     const passwordValid = await verifyPassword(password, user.password);
     if (!passwordValid) {
-      await recordFailedLogin(loginAttemptClient, normalizedPhaId, ip);
+      waitUntil(recordFailedLogin(loginAttemptClient, normalizedPhaId, ip));
       return NextResponse.json({ error: 'Invalid user ID or password' }, { status: 401 });
     }
 
@@ -121,11 +126,12 @@ export async function POST(request: Request) {
       persistent: persistent === true || isMobileUserAgent(request.headers.get('user-agent')),
     });
 
-    await writeAuditLog({
+    waitUntil(writeAuditLog({
       actorUserId: user.id,
+      actorName: user.f_name,
       action: 'login',
       description: `เข้าสู่ระบบ`,
-    });
+    }));
 
     return NextResponse.json({
       user: {
