@@ -155,7 +155,7 @@ function buildSections(day: CalendarDay, roleGroup: UserRole): SlotSection[] {
   }
 
   if (isWeekendOrHoliday) {
-    const isSat = dow === 6 && !day.isHoliday;
+    const isSat = dow === 6; // เสาร์มีช่องส่งยา สอ. เสมอ แม้ตรงกับวันหยุดราชการ
     return [
       { id: 'morning', title: 'เช้า', shiftType: 'เช้า', slots: [
         ...rangeLabels('โครงการ', 2, 'เช้า', 'โครงการ', roleGroup),

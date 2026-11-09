@@ -465,7 +465,7 @@ function DayGrid({ day, ctx, onDayClick }: { day: CalendarDay, ctx: RenderContex
   // ═══════════════════════════════════════════════════════════════════
   if (isWeekendOrHoliday) {
     const isSunOrHoliday = dow === 0 || day.isHoliday;
-    const isSat = dow === 6 && !day.isHoliday; // If holiday falls on Saturday, treat it like Sunday for layout
+    const isSat = dow === 6; // เสาร์มีช่องส่งยา สอ. เสมอ แม้ตรงกับวันหยุดราชการ
     const dateColor = isSunOrHoliday ? 'text-red-600'   : 'text-indigo-700';
     const dateBg    = isSunOrHoliday ? 'bg-red-100'     : 'bg-indigo-100';
 

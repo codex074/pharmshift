@@ -563,10 +563,10 @@ function renderWeek(
 
     } else if (role === 'officer' && holiday && isWE) {
       // ══ Officer weekend layout ══
-      // Sat (non public-holiday): 6 cols — โครงการ | SURG | MED | บ่าย | date | ส่งยา สอ.
-      // Sun / Public-holiday-on-weekend: 5 cols — โครงการ | SURG | MED | บ่าย | date
+      // Sat (incl. public holiday): 6 cols — โครงการ | SURG | MED | บ่าย | date | ส่งยา สอ.
+      // Sun: 5 cols — โครงการ | SURG | MED | บ่าย | date
       // Sunday non-holiday gets a 4th MED slot (matches web has4MedSlots).
-      const isSatLayout = dow === 6 && !day.isPublicHoliday;
+      const isSatLayout = dow === 6; // ส่งยา สอ. ทุกเสาร์ แม้ตรงกับวันหยุดราชการ
       const c1 = sc, c2 = sc + 1, c3 = sc + 2, c4 = sc + 3, c5 = sc + 4;
       const c6 = isSatLayout ? sc + 5 : null;
       const has4Med = dow === 0 && !day.isPublicHoliday;
